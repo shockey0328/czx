@@ -1,0 +1,269 @@
+.ai-analysis {
+  margin-bottom: 48px;
+}
+
+.ai-analysis .card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ai-header {
+  background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+  color: white;
+  padding: 12px 20px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-header::before {
+  content: '🤖';
+  font-size: 16px;
+}
+
+.analysis-content {
+  min-height: auto;
+  position: relative;
+  padding: 20px;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.analysis-section {
+  background: white;
+  border-left: 3px solid #FF6B35;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.analysis-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.analysis-section-icon {
+  width: 6px;
+  height: 6px;
+  background: #FF6B35;
+  border-radius: 50%;
+}
+
+.analysis-section-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #FF6B35;
+  margin: 0;
+}
+
+.analysis-section-content {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #666;
+}
+
+.analysis-section-content ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.analysis-section-content li {
+  margin-bottom: 4px;
+}
+
+.analysis-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #FF6B35;
+}
+
+.analysis-loading .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #FFA366;
+  border-top: 3px solid #FF6B35;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+.analysis-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #c62828;
+  background: #ffebee;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.analysis-text {
+  line-height: 1.6;
+  color: #333;
+}
+
+.analysis-text p {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.analysis-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FF6B35;
+  margin: 20px 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #FFA366;
+  display: inline-block;
+}
+
+.analysis-section-title:first-child {
+  margin-top: 0;
+}
+
+.analysis-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0;
+  padding: 16px 20px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.footer-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.test-btn {
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.test-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+}
+
+.refresh-btn {
+  background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.test-btn:disabled,
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.test-result {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.test-result.success {
+  background: #f6ffed;
+  border-color: #52c41a;
+  color: #389e0d;
+}
+
+.test-result.error {
+  background: #fff2f0;
+  border-color: #ff4d4f;
+  color: #cf1322;
+}
+
+.test-result h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.test-result p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+}
+
+.test-result pre {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  overflow-x: auto;
+  margin: 8px 0 0 0;
+}
+
+.test-result details {
+  margin-top: 8px;
+}
+
+.test-result summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #666;
+}
+
+.analysis-note {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .analysis-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .analysis-footer {
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+  
+  .refresh-btn {
+    width: 100%;
+    padding: 10px 16px;
+  }
+  
+  .analysis-section-content {
+    font-size: 12px;
+  }
+}

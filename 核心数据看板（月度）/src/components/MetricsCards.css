@@ -1,0 +1,140 @@
+.metrics-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  margin-bottom: 48px;
+}
+
+.metrics-card {
+  background: white;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.metrics-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.user-card {
+  border-left: 4px solid #FF6B35;
+}
+
+.revenue-card {
+  border-left: 4px solid #FF6B35;
+}
+
+.usage-card {
+  border-left: 4px solid #FF6B35;
+}
+
+.metrics-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #FF6B35;
+  margin-bottom: 24px;
+  padding-left: 0;
+}
+
+.metrics-title::before {
+  display: none;
+}
+
+.metrics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.metric-item {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  transition: none;
+}
+
+.metric-item:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 400;
+}
+
+.metric-value {
+  font-size: 32px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.metric-changes {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.change {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.change.positive {
+  background: transparent;
+  color: #ff4d4f;
+}
+
+.change.negative {
+  background: transparent;
+  color: #52c41a;
+}
+
+.change.neutral {
+  background: transparent;
+  color: #999;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .metrics-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .metrics-cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .metrics-card {
+    padding: 16px;
+  }
+  
+  .metric-value {
+    font-size: 24px;
+  }
+  
+  .metric-changes {
+    gap: 8px;
+  }
+  
+  .change {
+    font-size: 11px;
+  }
+}

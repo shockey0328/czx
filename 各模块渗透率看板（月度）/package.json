@@ -1,0 +1,13 @@
+{
+  "name": "module-penetration-dashboard",
+  "version": "1.0.0",
+  "description": "各模块渗透率看板 - 交互式数据可视化看板",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve .",
+    "build": "echo 'No build step required for static site'"
+  },
+  "keywords": ["dashboard", "data-visualization", "charts"],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,356 @@
+/* 小橙子图标样式 */
+.orange-assistant-icon {
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 9999;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.orange-assistant-icon:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.orange-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  transition: all 0.3s ease;
+}
+
+.orange-image:hover {
+  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+}
+
+.orange-tooltip {
+  position: absolute;
+  left: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.orange-assistant-icon:hover .orange-tooltip {
+  opacity: 1;
+}
+
+.orange-tooltip::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: rgba(0, 0, 0, 0.8);
+}
+
+/* 对话窗口样式 */
+.orange-chat-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.orange-chat-window {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.orange-chat-header {
+  background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.orange-chat-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.orange-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+.orange-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.orange-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.orange-chat-messages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.orange-message {
+  display: flex;
+  gap: 12px;
+  max-width: 80%;
+}
+
+.orange-message.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.orange-message.assistant {
+  align-self: flex-start;
+}
+
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-text {
+  padding: 12px 16px;
+  border-radius: 18px;
+  line-height: 1.4;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.orange-message.user .message-text {
+  background: #FF6B35;
+  color: white;
+  border-bottom-right-radius: 6px;
+}
+
+.orange-message.assistant .message-text {
+  background: #f5f5f5;
+  color: #333;
+  border-bottom-left-radius: 6px;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #999;
+  padding: 0 4px;
+}
+
+.orange-message.user .message-time {
+  text-align: right;
+}
+
+/* 输入框样式 */
+.orange-chat-input {
+  padding: 16px 20px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.chat-textarea {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 12px 16px;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.chat-textarea:focus {
+  border-color: #FF6B35;
+}
+
+.chat-textarea:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.send-button {
+  background: #FF6B35;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.send-button:hover:not(:disabled) {
+  background: #e55a2b;
+  transform: translateY(-1px);
+}
+
+.send-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 打字指示器 */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  background: #f5f5f5;
+  border-radius: 18px;
+  border-bottom-left-radius: 6px;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #999;
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 滚动条样式 */
+.orange-chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.orange-chat-messages::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.orange-chat-messages::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.orange-chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .orange-assistant-icon {
+    left: 15px;
+  }
+  
+  .orange-image {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .orange-chat-overlay {
+    padding: 10px;
+  }
+  
+  .orange-chat-window {
+    height: 80vh;
+    max-height: 600px;
+  }
+  
+  .orange-chat-messages {
+    padding: 15px;
+  }
+  
+  .orange-message {
+    max-width: 90%;
+  }
+  
+  .orange-chat-input {
+    padding: 12px 15px;
+  }
+  
+  .chat-textarea {
+    font-size: 16px; /* 防止iOS缩放 */
+  }
+}
+
+@media (max-width: 480px) {
+  .orange-assistant-icon {
+    left: 10px;
+  }
+  
+  .orange-image {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .orange-tooltip {
+    display: none; /* 小屏幕隐藏提示 */
+  }
+}

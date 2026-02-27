@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>周度数据分析看板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 顶部导航栏 */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo img {
+            height: 40px;
+            width: auto;
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #FF6B35;
+        }
+
+        .week-dropdown {
+            padding: 10px 15px;
+            border: 2px solid #FF6B35;
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            font-size: 16px;
+            min-width: 200px;
+            cursor: pointer;
+        }
+
+        /* 主要内容区域 - 四宫格布局 */
+        .main-content {
+            height: calc(100vh - 70px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 2fr 1fr;
+            gap: 15px;
+            padding: 15px;
+        }
+
+        /* 通用面板样式 */
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+            overflow: auto;
+            border: 1px solid rgba(255, 107, 53, 0.1);
+        }
+
+        .panel-title {
+            color: #FF6B35;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .panel-title::before {
+            content: '';
+            width: 3px;
+            height: 18px;
+            background: #FF6B35;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        /* 左上：周度核心数据指标 */
+        .core-metrics {
+            grid-area: 1 / 1 / 2 / 2;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+        }
+
+        .metric-group {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px;
+            border-left: 3px solid #FF6B35;
+            min-height: 120px;
+        }
+
+        .metric-group h4 {
+            color: #FF6B35;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 6px;
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+
+        .metric-item:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+
+        .metric-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .metric-changes {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+        }
+
+        .change-item {
+            font-size: 9px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            background: #f1f3f4;
+            white-space: nowrap;
+        }
+
+        /* 中国风格颜色：红涨绿跌 */
+        .change-item.positive {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .change-item.negative {
+            background: #e8f5e8;
+            color: #388e3c;
+        }
+
+        /* 左下：B端核心数据指标 */
+        .b2b-metrics {
+            grid-area: 2 / 1 / 3 / 2;
+        }
+
+        .b2b-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .b2b-metric-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            border: 2px solid #FFA366;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .b2b-metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #FF6B35, #FFA366);
+        }
+
+        .b2b-metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.15);
+        }
+
+        .b2b-metric-label {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .b2b-metric-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #FF6B35;
+        }
+
+        /* 右上：趋势分析 */
+        .trends-analysis {
+            grid-area: 1 / 2 / 2 / 3;
+        }
+
+        .trends-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 5px;
+            background: #f8f9fa;
+            padding: 3px;
+            border-radius: 8px;
+        }
+
+        .period-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: #666;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .period-btn:hover,
+        .period-btn.active {
+            background: #FF6B35;
+            color: white;
+        }
+
+        .charts-container {
+            height: calc(100% - 50px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .chart-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .chart-item h5 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .chart-item canvas {
+            max-height: 110px;
+        }
+
+        /* 右下：AI数据分析 */
+        .ai-analysis {
+            grid-area: 2 / 2 / 3 / 3;
+        }
+
+        .ai-header {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .ai-title {
+            color: #FF6B35;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .ai-title::before {
+            content: '';
+            width: 3px;
+            height: 18px;
+            background: #FF6B35;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .deepseek-badge {
+            font-size: 10px;
+            color: #666;
+            background: #f0f0f0;
+            padding: 3px 8px;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+        }
+
+        .ai-content {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            height: calc(100% - 80px);
+            overflow-y: auto;
+        }
+
+        .ai-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .ai-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .analysis-section {
+            margin-bottom: 15px;
+            flex: 1;
+        }
+
+        .analysis-section h5 {
+            color: #FF6B35;
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #FF6B35;
+            position: relative;
+        }
+
+        .analysis-content {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 12px;
+            height: calc(100% - 35px);
+            border-left: 3px solid #FF6B35;
+        }
+
+        .key-metrics-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .metric-display {
+            text-align: center;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+
+        .metric-display .label {
+            font-size: 9px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+
+        .metric-display .value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #FF6B35;
+        }
+
+        .analysis-text {
+            font-size: 11px;
+            line-height: 1.4;
+            color: #555;
+        }
+
+        .analysis-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .analysis-list li {
+            margin-bottom: 6px;
+            padding-left: 12px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #555;
+            position: relative;
+        }
+
+        .analysis-list li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #FF6B35;
+            font-weight: bold;
+        }
+
+        .ai-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0 0 0;
+        }
+
+        .ai-status {
+            display: flex;
+            gap: 8px;
+        }
+
+        .status-btn {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .status-btn.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-btn.refresh {
+            background: #f0f0f0;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+
+        .ai-credit {
+            font-size: 9px;
+            color: #999;
+        }
+
+        .loading {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 20px;
+            font-size: 11px;
+            grid-column: 1 / -1;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto;
+                height: auto;
+                min-height: calc(100vh - 70px);
+            }
+            
+            .panel {
+                grid-area: auto;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            body {
+                overflow: auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                height: auto;
+                padding: 15px;
+                gap: 15px;
+            }
+            
+            .main-content {
+                padding: 10px;
+                gap: 15px;
+            }
+            
+            .panel {
+                padding: 15px;
+            }
+            
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .b2b-grid {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: repeat(3, 1fr);
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .ai-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .deepseek-badge {
+                font-size: 8px;
+                padding: 1px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="navbar">
+        <div class="logo">
+            <img src="logo.png" alt="Logo">
+            <span class="logo-text">周度数据分析看板</span>
+        </div>
+        <select id="weekSelect" class="week-dropdown">
+            <option value="">选择周度...</option>
+        </select>
+    </header>
+
+    <!-- 主要内容区域 - 四宫格布局 -->
+    <div class="main-content">
+        <!-- 左上：周度核心数据指标 -->
+        <div class="panel core-metrics">
+            <h3 class="panel-title">周度核心数据指标</h3>
+            <div class="metrics-grid">
+                <!-- 用户指标 -->
+                <div class="metric-group">
+                    <h4>用户指标</h4>
+                    <div class="metric-item">
+                        <span class="metric-label">活跃用户</span>
+                        <span class="metric-value" id="activeUsers">-</span>
+                        <div class="metric-changes">
+                            <span class="change-item" id="activeUsersWoW">环比: -</span>
+                            <span class="change-item" id="activeUsersYoY">同比: -</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">次周留存率</span>
+                        <span class="metric-value" id="retention">-</span>
+                        <div class="metric-changes">
+                            <span class="change-item" id="retentionWoW">环比: -</span>
+                            <span class="change-item" id="retentionYoY">同比: -</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 收入指标 -->
+                <div class="metric-group">
+                    <h4>收入指标</h4>
+                    <div class="metric-item">
+                        <span class="metric-label">营收</span>
+                        <span class="metric-value" id="revenue">-</span>
+                        <div class="metric-changes">
+                            <span class="change-item" id="revenueWoW">环比: -</span>
+                            <span class="change-item" id="revenueYoY">同比: -</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">ARPU</span>
+                        <span class="metric-value" id="arpu">-</span>
+                        <div class="metric-changes">
+                            <span class="change-item" id="arpuWoW">环比: -</span>
+                            <span class="change-item" id="arpuYoY">同比: -</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 使用指标 -->
+                <div class="metric-group">
+                    <h4>使用指标</h4>
+                    <div class="metric-item">
+                        <span class="metric-label">深度访问率</span>
+                        <span class="metric-value" id="deepAccess">-</span>
+                        <div class="metric-changes">
+                            <span class="change-item" id="deepAccessWoW">环比: -</span>
+                            <span class="change-item" id="deepAccessYoY">同比: -</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">使用率</span>
+                        <span class="metric-value" id="usageRate">-</span>
+                        <div class="metric-changes">
+                            <span class="change-item" id="usageRateWoW">环比: -</span>
+                            <span class="change-item" id="usageRateYoY">同比: -</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">大会员活跃率</span>
+                        <span class="metric-value" id="vipActive">-</span>
+                        <div class="metric-changes">
+                            <span class="change-item" id="vipActiveWoW">环比: -</span>
+                            <span class="change-item" id="vipActiveYoY">同比: -</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右上：趋势分析 -->
+        <div class="panel trends-analysis">
+            <h3 class="panel-title">趋势分析</h3>
+            <div class="trends-header">
+                <div class="period-selector">
+                    <button class="period-btn" data-weeks="2">近2周</button>
+                    <button class="period-btn active" data-weeks="3">近3周</button>
+                    <button class="period-btn" data-weeks="4">近4周</button>
+                </div>
+            </div>
+            <div class="charts-container">
+                <div class="chart-item">
+                    <h5>活跃用户趋势</h5>
+                    <canvas id="activeUsersChart"></canvas>
+                </div>
+                <div class="chart-item">
+                    <h5>付费用户趋势</h5>
+                    <canvas id="paidUsersChart"></canvas>
+                </div>
+                <div class="chart-item">
+                    <h5>营收趋势</h5>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="chart-item">
+                    <h5>使用率趋势</h5>
+                    <canvas id="usageChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 左下：B端核心数据指标 -->
+        <div class="panel b2b-metrics">
+            <h3 class="panel-title">B端核心数据指标</h3>
+            <div class="b2b-grid" id="b2bMetrics">
+                <!-- B端指标将通过JavaScript动态生成 -->
+            </div>
+        </div>
+
+        <!-- 右下：AI数据分析 -->
+        <div class="panel ai-analysis">
+            <div class="ai-header">
+                <h3 class="ai-title">🤖 AI数据分析</h3>
+            </div>
+            <div class="ai-content">
+                <div class="ai-grid" id="aiAnalysis">
+                    <div class="loading">正在分析数据...</div>
+                </div>
+            </div>
+            <div class="ai-footer">
+                <div class="ai-status">
+                    <button class="status-btn active">智能分析</button>
+                    <button class="status-btn refresh">刷新分析</button>
+                </div>
+                <div class="ai-credit">由 DeepSeek AI 提供技术支持</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let weeklyData = [];
+        let b2bData = [];
+        let currentWeek = null;
+        let charts = {};
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，开始初始化...');
+            initializeApp();
+        });
+
+        // 初始化应用
+        function initializeApp() {
+            loadHardcodedData();
+            setupEventListeners();
+            populateWeekSelector();
+            updateB2BMetrics();
+            
+            // 默认选择最新周度
+            if (weeklyData.length > 0) {
+                const latestWeek = weeklyData[weeklyData.length - 1];
+                currentWeek = { year: latestWeek.年份, week: latestWeek.周数 };
+                document.getElementById('weekSelect').value = JSON.stringify(currentWeek);
+                updateAllMetrics();
+                updateCharts();
+                generateAIAnalysis();
+            }
+        }
+
+        // 加载硬编码数据
+        function loadHardcodedData() {
+            console.log('加载硬编码数据...');
+            
+            // 周度核心数据
+            weeklyData = [
+                {
+                    年份: 2025,
+                    周数: 1,
+                    起始日期: '2025年1月1日',
+                    结尾日期: '2025年1月7日',
+                    活跃用户: 119000,
+                    次周留存率: 46,
+                    营收: 199039,
+                    ARPU: 1.67,
+                    深度访问率: 84,
+                    使用率: 65,
+                    大会员活跃率: 61
+                },
+                {
+                    年份: 2025,
+                    周数: 2,
+                    起始日期: '2025年1月8日',
+                    结尾日期: '2025年1月14日',
+                    活跃用户: 125585,
+                    次周留存率: 38,
+                    营收: 173441,
+                    ARPU: 1.38,
+                    深度访问率: 83,
+                    使用率: 62,
+                    大会员活跃率: 57
+                },
+                {
+                    年份: 2025,
+                    周数: 3,
+                    起始日期: '2025年1月15日',
+                    结尾日期: '2025年1月21日',
+                    活跃用户: 96407,
+                    次周留存率: 27,
+                    营收: 100709,
+                    ARPU: 1.04,
+                    深度访问率: 77,
+                    使用率: 52,
+                    大会员活跃率: 43
+                },
+                {
+                    年份: 2025,
+                    周数: 4,
+                    起始日期: '2025年1月22日',
+                    结尾日期: '2025年1月28日',
+                    活跃用户: 59814,
+                    次周留存率: 21,
+                    营收: 76057,
+                    ARPU: 1.27,
+                    深度访问率: 75,
+                    使用率: 51,
+                    大会员活跃率: 32
+                },
+                {
+                    年份: 2026,
+                    周数: 1,
+                    起始日期: '2026年1月1日',
+                    结尾日期: '2026年1月7日',
+                    活跃用户: 103932,
+                    次周留存率: 42,
+                    营收: 232351,
+                    ARPU: 2.24,
+                    深度访问率: 83,
+                    使用率: 74,
+                    大会员活跃率: 50
+                },
+                {
+                    年份: 2026,
+                    周数: 2,
+                    起始日期: '2026年1月8日',
+                    结尾日期: '2026年1月14日',
+                    活跃用户: 117167,
+                    次周留存率: 43,
+                    营收: 303052,
+                    ARPU: 2.59,
+                    深度访问率: 85,
+                    使用率: 75,
+                    大会员活跃率: 51
+                },
+                {
+                    年份: 2026,
+                    周数: 3,
+                    起始日期: '2026年1月15日',
+                    结尾日期: '2026年1月21日',
+                    活跃用户: 133661,
+                    次周留存率: 44,
+                    营收: 298800,
+                    ARPU: 2.24,
+                    深度访问率: 86,
+                    使用率: 75,
+                    大会员活跃率: 52
+                },
+                {
+                    年份: 2026,
+                    周数: 4,
+                    起始日期: '2026年1月22日',
+                    结尾日期: '2026年1月28日',
+                    活跃用户: 137602,
+                    次周留存率: 42,
+                    营收: 270348,
+                    ARPU: 1.96,
+                    深度访问率: 86,
+                    使用率: 75,
+                    大会员活跃率: 50
+                }
+            ];
+
+            // B端数据
+            b2bData = [
+                {
+                    起始日期: '2026年1月1日',
+                    结尾日期: '2026年1月7日',
+                    签约金额: '1.80万',
+                    开票金额: '3.05万',
+                    回款金额: '2.00万',
+                    订单数: 3,
+                    新签: 1,
+                    续签: 2
+                },
+                {
+                    起始日期: '2026年1月8日',
+                    结尾日期: '2026年1月14日',
+                    签约金额: '5.30万',
+                    开票金额: '1.60万',
+                    回款金额: '4.40万',
+                    订单数: 4,
+                    新签: 1,
+                    续签: 3
+                },
+                {
+                    起始日期: '2026年1月15日',
+                    结尾日期: '2026年1月21日',
+                    签约金额: '4.89万',
+                    开票金额: '1.26万',
+                    回款金额: '3.66万',
+                    订单数: 7,
+                    新签: 5,
+                    续签: 2
+                },
+                {
+                    起始日期: '2026年1月22日',
+                    结尾日期: '2026年1月28日',
+                    签约金额: '4.36万',
+                    开票金额: '6.91万',
+                    回款金额: '4.36万',
+                    订单数: 5,
+                    新签: 1,
+                    续签: 4
+                }
+            ];
+
+            // 每日趋势数据
+            loadDailyTrendData();
+
+            console.log('数据加载完成:', { weeklyData, b2bData });
+        }
+
+        // 加载每日趋势数据
+        function loadDailyTrendData() {
+            // 活跃用户每日数据
+            window.dailyActiveUsers = [
+                { date: '2026/1/1', uv: 22054 },
+                { date: '2026/1/2', uv: 27358 },
+                { date: '2026/1/3', uv: 30989 },
+                { date: '2026/1/4', uv: 21786 },
+                { date: '2026/1/5', uv: 23213 },
+                { date: '2026/1/6', uv: 24064 },
+                { date: '2026/1/7', uv: 25342 },
+                { date: '2026/1/8', uv: 25628 },
+                { date: '2026/1/9', uv: 24084 },
+                { date: '2026/1/10', uv: 32033 },
+                { date: '2026/1/11', uv: 37160 },
+                { date: '2026/1/12', uv: 26331 },
+                { date: '2026/1/13', uv: 27026 },
+                { date: '2026/1/14', uv: 28507 },
+                { date: '2026/1/15', uv: 28668 },
+                { date: '2026/1/16', uv: 28278 },
+                { date: '2026/1/17', uv: 38770 },
+                { date: '2026/1/18', uv: 43999 },
+                { date: '2026/1/19', uv: 30309 },
+                { date: '2026/1/20', uv: 30876 },
+                { date: '2026/1/21', uv: 30947 },
+                { date: '2026/1/22', uv: 30836 },
+                { date: '2026/1/23', uv: 29666 },
+                { date: '2026/1/24', uv: 40933 },
+                { date: '2026/1/25', uv: 45337 },
+                { date: '2026/1/26', uv: 31735 },
+                { date: '2026/1/27', uv: 31854 },
+                { date: '2026/1/28', uv: 31571 }
+            ];
+
+            // 付费用户每日数据
+            window.dailyPaidUsers = [
+                { date: '2026/1/1', paidUsers: 345, revenue: 29247 },
+                { date: '2026/1/2', paidUsers: 406, revenue: 35488 },
+                { date: '2026/1/3', paidUsers: 437, revenue: 39576 },
+                { date: '2026/1/4', paidUsers: 342, revenue: 27809 },
+                { date: '2026/1/5', paidUsers: 356, revenue: 31528 },
+                { date: '2026/1/6', paidUsers: 377, revenue: 36626 },
+                { date: '2026/1/7', paidUsers: 364, revenue: 31381 },
+                { date: '2026/1/8', paidUsers: 394, revenue: 38861 },
+                { date: '2026/1/9', paidUsers: 365, revenue: 32735 },
+                { date: '2026/1/10', paidUsers: 589, revenue: 58350 },
+                { date: '2026/1/11', paidUsers: 644, revenue: 62932 },
+                { date: '2026/1/12', paidUsers: 412, revenue: 37436 },
+                { date: '2026/1/13', paidUsers: 393, revenue: 33818 },
+                { date: '2026/1/14', paidUsers: 417, revenue: 38871 },
+                { date: '2026/1/15', paidUsers: 342, revenue: 32175 },
+                { date: '2026/1/16', paidUsers: 414, revenue: 41424 },
+                { date: '2026/1/17', paidUsers: 620, revenue: 61948 },
+                { date: '2026/1/18', paidUsers: 659, revenue: 62795 },
+                { date: '2026/1/19', paidUsers: 360, revenue: 33992 },
+                { date: '2026/1/20', paidUsers: 330, revenue: 31301 },
+                { date: '2026/1/21', paidUsers: 364, revenue: 34848 },
+                { date: '2026/1/22', paidUsers: 331, revenue: 30643 },
+                { date: '2026/1/23', paidUsers: 354, revenue: 33719 },
+                { date: '2026/1/24', paidUsers: 598, revenue: 59098 },
+                { date: '2026/1/25', paidUsers: 580, revenue: 54974 },
+                { date: '2026/1/26', paidUsers: 327, revenue: 31842 },
+                { date: '2026/1/27', paidUsers: 301, revenue: 30500 },
+                { date: '2026/1/28', paidUsers: 302, revenue: 29572 }
+            ];
+
+            // 使用率每日数据
+            window.dailyUsageRate = [
+                { date: '2026/1/1', usageRate: 63.68 },
+                { date: '2026/1/2', usageRate: 66.87 },
+                { date: '2026/1/3', usageRate: 68.95 },
+                { date: '2026/1/4', usageRate: 68.11 },
+                { date: '2026/1/5', usageRate: 69.35 },
+                { date: '2026/1/6', usageRate: 68.51 },
+                { date: '2026/1/7', usageRate: 68.4 },
+                { date: '2026/1/8', usageRate: 67.55 },
+                { date: '2026/1/9', usageRate: 65.83 },
+                { date: '2026/1/10', usageRate: 68.12 },
+                { date: '2026/1/11', usageRate: 70.15 },
+                { date: '2026/1/12', usageRate: 69.06 },
+                { date: '2026/1/13', usageRate: 68.82 },
+                { date: '2026/1/14', usageRate: 68.38 },
+                { date: '2026/1/15', usageRate: 68.39 },
+                { date: '2026/1/16', usageRate: 66.28 },
+                { date: '2026/1/17', usageRate: 68.85 },
+                { date: '2026/1/18', usageRate: 71.07 },
+                { date: '2026/1/19', usageRate: 68.87 },
+                { date: '2026/1/20', usageRate: 68.76 },
+                { date: '2026/1/21', usageRate: 69.48 },
+                { date: '2026/1/22', usageRate: 68.69 },
+                { date: '2026/1/23', usageRate: 66.37 },
+                { date: '2026/1/24', usageRate: 69.23 },
+                { date: '2026/1/25', usageRate: 70.43 },
+                { date: '2026/1/26', usageRate: 67.56 },
+                { date: '2026/1/27', usageRate: 66.66 },
+                { date: '2026/1/28', usageRate: 65.1 }
+            ];
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            console.log('设置事件监听器...');
+            
+            // 周度选择器
+            const weekSelect = document.getElementById('weekSelect');
+            if (weekSelect) {
+                weekSelect.addEventListener('change', function(e) {
+                    console.log('周度选择变化:', e.target.value);
+                    const selectedWeek = e.target.value;
+                    if (selectedWeek) {
+                        try {
+                            currentWeek = JSON.parse(selectedWeek);
+                            console.log('当前选择的周度:', currentWeek);
+                            updateAllMetrics();
+                            updateCharts();
+                            generateAIAnalysis();
+                        } catch (error) {
+                            console.error('解析周度数据失败:', error);
+                        }
+                    }
+                });
+            }
+
+            // 趋势图周期选择器
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updateCharts();
+                });
+            });
+        }
+
+        // 填充周度选择器
+        function populateWeekSelector() {
+            console.log('填充周度选择器...');
+            const select = document.getElementById('weekSelect');
+            if (!select) {
+                console.error('找不到周度选择器元素');
+                return;
+            }
+            
+            select.innerHTML = '<option value="">选择周度...</option>';
+            
+            weeklyData.forEach(item => {
+                const option = document.createElement('option');
+                const weekKey = JSON.stringify({ year: item.年份, week: item.周数 });
+                option.value = weekKey;
+                option.textContent = `${item.年份}年第${item.周数}周`;
+                select.appendChild(option);
+            });
+            
+            console.log('周度选择器填充完成，共', weeklyData.length, '个选项');
+        }
+
+        // 更新所有指标
+        function updateAllMetrics() {
+            console.log('更新所有指标，当前周度:', currentWeek);
+            
+            if (!currentWeek) {
+                console.log('没有选择周度，跳过更新');
+                return;
+            }
+            
+            const currentData = weeklyData.find(item => 
+                item.年份 === currentWeek.year && item.周数 === currentWeek.week
+            );
+            
+            if (!currentData) {
+                console.log('找不到当前周度的数据');
+                return;
+            }
+
+            console.log('当前周度数据:', currentData);
+
+            // 获取对比数据
+            const lastWeekData = weeklyData.find(item => 
+                item.年份 === currentWeek.year && item.周数 === currentWeek.week - 1
+            );
+            
+            const lastYearData = weeklyData.find(item => 
+                item.年份 === currentWeek.year - 1 && item.周数 === currentWeek.week
+            );
+
+            console.log('上周数据:', lastWeekData);
+            console.log('去年同期数据:', lastYearData);
+
+            // 更新指标
+            updateMetric('activeUsers', currentData.活跃用户, lastWeekData?.活跃用户, lastYearData?.活跃用户, 'number');
+            updateMetric('retention', currentData.次周留存率, lastWeekData?.次周留存率, lastYearData?.次周留存率, 'percent');
+            updateMetric('revenue', currentData.营收, lastWeekData?.营收, lastYearData?.营收, 'number');
+            updateMetric('arpu', currentData.ARPU, lastWeekData?.ARPU, lastYearData?.ARPU, 'number');
+            updateMetric('deepAccess', currentData.深度访问率, lastWeekData?.深度访问率, lastYearData?.深度访问率, 'percent');
+            updateMetric('usageRate', currentData.使用率, lastWeekData?.使用率, lastYearData?.使用率, 'percent');
+            updateMetric('vipActive', currentData.大会员活跃率, lastWeekData?.大会员活跃率, lastYearData?.大会员活跃率, 'percent');
+        }
+
+        // 更新单个指标
+        function updateMetric(id, current, lastWeek, lastYear, type) {
+            console.log(`更新指标 ${id}:`, { current, lastWeek, lastYear, type });
+            
+            // 更新当前值
+            const valueElement = document.getElementById(id);
+            if (valueElement) {
+                if (type === 'percent') {
+                    valueElement.textContent = current + '%';
+                } else if (type === 'number') {
+                    valueElement.textContent = formatNumber(current);
+                }
+            }
+
+            // 计算并更新环比
+            const wowElement = document.getElementById(id + 'WoW');
+            if (wowElement) {
+                if (lastWeek !== undefined) {
+                    const wowChange = calculateChange(current, lastWeek, type);
+                    wowElement.textContent = `环比: ${wowChange}`;
+                    wowElement.className = 'change-item ' + getChangeClass(wowChange);
+                } else {
+                    wowElement.textContent = '环比: -';
+                    wowElement.className = 'change-item';
+                }
+            }
+
+            // 计算并更新同比
+            const yoyElement = document.getElementById(id + 'YoY');
+            if (yoyElement) {
+                if (lastYear !== undefined) {
+                    const yoyChange = calculateChange(current, lastYear, type);
+                    yoyElement.textContent = `同比: ${yoyChange}`;
+                    yoyElement.className = 'change-item ' + getChangeClass(yoyChange);
+                } else {
+                    yoyElement.textContent = '同比: -';
+                    yoyElement.className = 'change-item';
+                }
+            }
+        }
+
+        // 计算变化
+        function calculateChange(current, previous, type) {
+            if (type === 'percent') {
+                const change = current - previous;
+                return (change >= 0 ? '+' : '') + change.toFixed(2) + 'pp';
+            } else {
+                const change = ((current - previous) / previous * 100);
+                return (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+            }
+        }
+
+        // 获取变化样式类（中国风格：红涨绿跌）
+        function getChangeClass(changeText) {
+            if (changeText.includes('+')) return 'positive'; // 红色（增长）
+            if (changeText.includes('-') && !changeText.includes('--')) return 'negative'; // 绿色（下降）
+            return '';
+        }
+
+        // 格式化数字
+        function formatNumber(num) {
+            if (num >= 10000) {
+                return (num / 10000).toFixed(1) + '万';
+            }
+            return num.toLocaleString();
+        }
+
+        // 更新图表
+        function updateCharts() {
+            console.log('更新图表...');
+            const activePeriod = document.querySelector('.period-btn.active');
+            const weeks = activePeriod ? parseInt(activePeriod.dataset.weeks) : 3;
+            
+            updateActiveUsersChart(weeks);
+            updatePaidUsersChart(weeks);
+            updateRevenueChart(weeks);
+            updateUsageChart(weeks);
+        }
+
+        // 获取指定周期的每日数据
+        function getDailyDataForPeriod(weeks) {
+            if (!currentWeek) return { startDate: null, endDate: null };
+            
+            // 找到当前选择周的结束日期
+            const currentWeekData = weeklyData.find(item => 
+                item.年份 === currentWeek.year && item.周数 === currentWeek.week
+            );
+            
+            if (!currentWeekData) return { startDate: null, endDate: null };
+            
+            // 解析结束日期
+            const endDateStr = currentWeekData.结尾日期.replace(/年|月|日/g, '/').replace('//', '/');
+            const endDate = new Date(endDateStr);
+            
+            // 计算开始日期（往前推指定周数）
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - (weeks * 7 - 1));
+            
+            return { startDate, endDate };
+        }
+
+        // 过滤指定日期范围内的数据
+        function filterDataByDateRange(data, startDate, endDate) {
+            if (!startDate || !endDate) return [];
+            
+            return data.filter(item => {
+                const itemDate = new Date(item.date);
+                return itemDate >= startDate && itemDate <= endDate;
+            });
+        }
+
+        // 更新活跃用户趋势图
+        function updateActiveUsersChart(weeks) {
+            const ctx = document.getElementById('activeUsersChart');
+            if (!ctx) return;
+            
+            if (charts.activeUsers) {
+                charts.activeUsers.destroy();
+            }
+
+            const { startDate, endDate } = getDailyDataForPeriod(weeks);
+            const filteredData = filterDataByDateRange(window.dailyActiveUsers || [], startDate, endDate);
+            
+            charts.activeUsers = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: filteredData.map(item => {
+                        const date = new Date(item.date);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }),
+                    datasets: [{
+                        label: '活跃用户',
+                        data: filteredData.map(item => item.uv),
+                        borderColor: '#FF6B35',
+                        backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('人')
+            });
+        }
+
+        // 更新付费用户趋势图
+        function updatePaidUsersChart(weeks) {
+            const ctx = document.getElementById('paidUsersChart');
+            if (!ctx) return;
+            
+            if (charts.paidUsers) {
+                charts.paidUsers.destroy();
+            }
+
+            const { startDate, endDate } = getDailyDataForPeriod(weeks);
+            const filteredData = filterDataByDateRange(window.dailyPaidUsers || [], startDate, endDate);
+            
+            charts.paidUsers = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: filteredData.map(item => {
+                        const date = new Date(item.date);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }),
+                    datasets: [{
+                        label: '付费用户',
+                        data: filteredData.map(item => item.paidUsers),
+                        borderColor: '#FFA366',
+                        backgroundColor: 'rgba(255, 163, 102, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('人')
+            });
+        }
+
+        // 更新营收趋势图
+        function updateRevenueChart(weeks) {
+            const ctx = document.getElementById('revenueChart');
+            if (!ctx) return;
+            
+            if (charts.revenue) {
+                charts.revenue.destroy();
+            }
+
+            const { startDate, endDate } = getDailyDataForPeriod(weeks);
+            const filteredData = filterDataByDateRange(window.dailyPaidUsers || [], startDate, endDate);
+            
+            charts.revenue = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: filteredData.map(item => {
+                        const date = new Date(item.date);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }),
+                    datasets: [{
+                        label: '营收',
+                        data: filteredData.map(item => item.revenue),
+                        borderColor: '#FFB366',
+                        backgroundColor: 'rgba(255, 179, 102, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('元')
+            });
+        }
+
+        // 更新使用率趋势图
+        function updateUsageChart(weeks) {
+            const ctx = document.getElementById('usageChart');
+            if (!ctx) return;
+            
+            if (charts.usage) {
+                charts.usage.destroy();
+            }
+
+            const { startDate, endDate } = getDailyDataForPeriod(weeks);
+            const filteredData = filterDataByDateRange(window.dailyUsageRate || [], startDate, endDate);
+            
+            charts.usage = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: filteredData.map(item => {
+                        const date = new Date(item.date);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }),
+                    datasets: [{
+                        label: '使用率',
+                        data: filteredData.map(item => item.usageRate),
+                        borderColor: '#FF6B35',
+                        backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    ...getChartOptions('%'),
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 获取图表配置
+        function getChartOptions(unit) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                if (unit === '人' || unit === '元') {
+                                    return formatNumber(value) + unit;
+                                }
+                                return value + unit;
+                            }
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 2,
+                        hoverRadius: 4
+                    }
+                }
+            };
+        }
+
+        // 更新B端指标
+        function updateB2BMetrics() {
+            console.log('更新B端指标...');
+            const container = document.getElementById('b2bMetrics');
+            if (!container) return;
+            
+            if (b2bData.length === 0) {
+                container.innerHTML = '<p>暂无B端数据</p>';
+                return;
+            }
+            
+            const latestData = b2bData[b2bData.length - 1];
+            
+            const metrics = [
+                { label: '签约金额', value: latestData.签约金额 },
+                { label: '开票金额', value: latestData.开票金额 },
+                { label: '回款金额', value: latestData.回款金额 },
+                { label: '订单数', value: latestData.订单数 },
+                { label: '新签', value: latestData.新签 },
+                { label: '续签', value: latestData.续签 }
+            ];
+            
+            container.innerHTML = metrics.map(metric => `
+                <div class="b2b-metric-card">
+                    <div class="b2b-metric-label">${metric.label}</div>
+                    <div class="b2b-metric-value">${metric.value}</div>
+                </div>
+            `).join('');
+        }
+
+        // 生成AI分析（调用DeepSeek API）
+        async function generateAIAnalysis() {
+            console.log('生成AI分析...');
+            if (!currentWeek) return;
+            
+            const analysisElement = document.getElementById('aiAnalysis');
+            if (!analysisElement) return;
+            
+            analysisElement.innerHTML = '<div class="loading">🤖 DeepSeek正在分析数据...</div>';
+            
+            const currentData = weeklyData.find(item => 
+                item.年份 === currentWeek.year && item.周数 === currentWeek.week
+            );
+            
+            const lastWeekData = weeklyData.find(item => 
+                item.年份 === currentWeek.year && item.周数 === currentWeek.week - 1
+            );
+            
+            const lastYearData = weeklyData.find(item => 
+                item.年份 === currentWeek.year - 1 && item.周数 === currentWeek.week
+            );
+            
+            if (!currentData) {
+                analysisElement.innerHTML = '<div class="loading">暂无数据分析</div>';
+                return;
+            }
+            
+            // 计算关键变化指标
+            const metrics = calculateKeyMetrics(currentData, lastWeekData, lastYearData);
+            
+            // 构建精确的分析提示词
+            const prompt = `你是资深数据分析师，请基于以下周度业务数据进行专业分析：
+
+【当前数据】${currentWeek.year}年第${currentWeek.week}周：
+• 活跃用户：${formatNumber(currentData.活跃用户)}人
+• 营收：${formatNumber(currentData.营收)}元  
+• ARPU：${currentData.ARPU}元
+• 次周留存率：${currentData.次周留存率}%
+• 使用率：${currentData.使用率}%
+• 深度访问率：${currentData.深度访问率}%
+• 大会员活跃率：${currentData.大会员活跃率}%
+
+${lastWeekData ? `【环比变化】vs上周：
+• 活跃用户：${metrics.userWoW}
+• 营收：${metrics.revenueWoW}
+• ARPU：${metrics.arpuWoW}
+• 留存率：${metrics.retentionWoW}
+• 使用率：${metrics.usageWoW}` : '【说明】首周数据，无环比对比'}
+
+${lastYearData ? `【同比变化】vs去年同期：
+• 活跃用户：${metrics.userYoY}
+• 营收：${metrics.revenueYoY}` : ''}
+
+【分析要求】请提供3个部分，每部分2-3个要点：
+
+1. 核心变化：识别最关键的指标变化（重点关注>10%的显著变化）
+2. 趋势判断：基于数据变化分析业务健康度和发展趋势
+3. 行动建议：针对具体问题给出可执行的运营策略
+
+【注意事项】
+- 重点分析用户增长与营收的关联性
+- 关注留存率对长期发展的影响
+- 每个建议要具体可执行，避免空泛表述
+- 语言简洁专业，每个要点10-15字`;
+
+            try {
+                console.log('开始调用DeepSeek API...');
+                
+                // 调用DeepSeek API
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer sk-22da5c080db84c23b4a5c8c54e922763',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: '你是资深业务数据分析师，擅长从数据中发现问题并提出具体可行的解决方案。回答要简洁精准，重点突出，每个建议都要具体可执行。'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        temperature: 0.2,  // 进一步降低随机性
+                        max_tokens: 1000,
+                        stream: false
+                    })
+                });
+                
+                console.log('API响应状态:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API错误响应:', errorText);
+                    throw new Error(`API调用失败: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('API响应成功');
+                
+                if (data.choices && data.choices[0] && data.choices[0].message) {
+                    const analysis = data.choices[0].message.content;
+                    console.log('AI分析结果:', analysis);
+                    
+                    // 格式化AI分析结果
+                    const formattedAnalysis = formatAIAnalysisOptimized(analysis, currentData, metrics);
+                    analysisElement.innerHTML = formattedAnalysis;
+                } else {
+                    throw new Error('API返回数据格式异常');
+                }
+                
+            } catch (error) {
+                console.error('DeepSeek API调用失败:', error);
+                
+                // 显示错误并切换到优化的本地分析
+                analysisElement.innerHTML = `
+                    <div class="analysis-section">
+                        <h5>⚠️ API暂时不可用</h5>
+                        <ul><li>正在切换到本地智能分析...</li></ul>
+                    </div>
+                `;
+                
+                // 2秒后切换到优化的本地分析
+                setTimeout(() => {
+                    console.log('切换到优化本地分析');
+                    const fallbackAnalysis = generateOptimizedFallbackAnalysis(currentData, lastWeekData, lastYearData, metrics);
+                    analysisElement.innerHTML = fallbackAnalysis;
+                }, 2000);
+            }
+        }
+
+        // 计算关键指标变化
+        function calculateKeyMetrics(current, lastWeek, lastYear) {
+            const metrics = {};
+            
+            if (lastWeek) {
+                // 环比计算
+                metrics.userWoW = calculateChange(current.活跃用户, lastWeek.活跃用户, 'number');
+                metrics.revenueWoW = calculateChange(current.营收, lastWeek.营收, 'number');
+                metrics.arpuWoW = calculateChange(current.ARPU, lastWeek.ARPU, 'number');
+                metrics.retentionWoW = calculateChange(current.次周留存率, lastWeek.次周留存率, 'percent');
+                metrics.usageWoW = calculateChange(current.使用率, lastWeek.使用率, 'percent');
+                
+                // 计算数值变化
+                metrics.userWoWNum = ((current.活跃用户 - lastWeek.活跃用户) / lastWeek.活跃用户 * 100).toFixed(1);
+                metrics.revenueWoWNum = ((current.营收 - lastWeek.营收) / lastWeek.营收 * 100).toFixed(1);
+            }
+            
+            if (lastYear) {
+                // 同比计算
+                metrics.userYoY = calculateChange(current.活跃用户, lastYear.活跃用户, 'number');
+                metrics.revenueYoY = calculateChange(current.营收, lastYear.营收, 'number');
+                metrics.arpuYoY = calculateChange(current.ARPU, lastYear.ARPU, 'number');
+                metrics.retentionYoY = calculateChange(current.次周留存率, lastYear.次周留存率, 'percent');
+                metrics.usageYoY = calculateChange(current.使用率, lastYear.使用率, 'percent');
+            }
+            
+            return metrics;
+        }
+
+        // 优化的AI分析结果格式化 - 新设计风格
+        function formatAIAnalysisOptimized(analysis, currentData, metrics) {
+            try {
+                // 智能解析AI回复
+                let sections = [];
+                
+                // 尝试按数字标题分割
+                if (analysis.includes('1.') || analysis.includes('1、')) {
+                    sections = analysis.split(/[1-3][\.\、]\s*/).filter(s => s.trim());
+                } else if (analysis.includes('核心变化') || analysis.includes('趋势判断') || analysis.includes('行动建议')) {
+                    // 按关键词分割
+                    const parts = analysis.split(/(?=核心变化|趋势判断|行动建议)/);
+                    sections = parts.filter(s => s.trim());
+                } else {
+                    // 按段落分割
+                    sections = analysis.split('\n\n').filter(s => s.trim());
+                }
+
+                const sectionTitles = ['核心表现', '关键变化', '策略建议'];
+                let columns = ['', '', ''];
+                
+                // 第一列：核心表现
+                columns[0] = `
+                    <div class="analysis-section">
+                        <h5>${sectionTitles[0]}</h5>
+                        <div class="analysis-content">
+                            <div class="key-metrics-display">
+                                <div class="metric-display">
+                                    <div class="label">活跃用户</div>
+                                    <div class="value">${formatNumber(currentData.活跃用户)}</div>
+                                </div>
+                                <div class="metric-display">
+                                    <div class="label">营收</div>
+                                    <div class="value">${formatNumber(currentData.营收)}</div>
+                                </div>
+                            </div>
+                            <div class="analysis-text">
+                                月活用户与营收表现稳定，ARPU为${currentData.ARPU}元，留存率${currentData.次周留存率}%，使用率${currentData.使用率}%。
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 处理AI分析的其他部分
+                sections.slice(0, 2).forEach((section, index) => {
+                    // 清理内容
+                    const cleanLines = section
+                        .replace(/^[：:]\s*/, '')
+                        .replace(/核心变化[：:]?|趋势判断[：:]?|行动建议[：:]?/g, '')
+                        .split('\n')
+                        .map(line => line.replace(/^[-•·*]\s*/, '').trim())
+                        .filter(line => line.length > 3 && line.length < 60)
+                        .slice(0, 4);
+
+                    if (cleanLines.length > 0) {
+                        const columnIndex = index + 1;
+                        if (columnIndex < 3) {
+                            columns[columnIndex] = `
+                                <div class="analysis-section">
+                                    <h5>${sectionTitles[columnIndex]}</h5>
+                                    <div class="analysis-content">
+                                        <ul class="analysis-list">
+                                            ${cleanLines.map(line => `<li>${line}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                });
+
+                // 如果某列为空，添加默认内容
+                if (!columns[1].includes('analysis-section')) {
+                    columns[1] = `
+                        <div class="analysis-section">
+                            <h5>关键变化</h5>
+                            <div class="analysis-content">
+                                <div class="analysis-text">
+                                    各项核心指标保持稳定，用户活跃度良好，营收表现平稳，整体业务运行健康。
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (!columns[2].includes('analysis-section')) {
+                    columns[2] = `
+                        <div class="analysis-section">
+                            <h5>策略建议</h5>
+                            <div class="analysis-content">
+                                <ul class="analysis-list">
+                                    <li>持续优化用户体验</li>
+                                    <li>关注核心指标变化</li>
+                                    <li>探索新的增长机会</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 生成三列布局
+                return `
+                    <div class="ai-column">${columns[0]}</div>
+                    <div class="ai-column">${columns[1]}</div>
+                    <div class="ai-column">${columns[2]}</div>
+                `;
+
+            } catch (error) {
+                console.error('AI分析格式化失败:', error);
+                // 降级处理
+                return `
+                    <div class="ai-column">
+                        <div class="analysis-section">
+                            <h5>核心表现</h5>
+                            <div class="analysis-content">
+                                <div class="key-metrics-display">
+                                    <div class="metric-display">
+                                        <div class="label">活跃用户</div>
+                                        <div class="value">${formatNumber(currentData.活跃用户)}</div>
+                                    </div>
+                                    <div class="metric-display">
+                                        <div class="label">营收</div>
+                                        <div class="value">${formatNumber(currentData.营收)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ai-column">
+                        <div class="analysis-section">
+                            <h5>AI分析</h5>
+                            <div class="analysis-content">
+                                <div class="analysis-text">
+                                    ${analysis.substring(0, 150)}...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ai-column">
+                        <div class="analysis-section">
+                            <h5>建议</h5>
+                            <div class="analysis-content">
+                                <ul class="analysis-list">
+                                    <li>持续优化产品功能</li>
+                                    <li>关注用户反馈</li>
+                                    <li>定期数据复盘</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // 优化的本地分析 - 三列布局
+        function generateOptimizedFallbackAnalysis(currentData, lastWeekData, lastYearData, metrics) {
+            // 生成核心表现描述
+            const performanceText = `月活用户${formatNumber(currentData.活跃用户)}，营收${formatNumber(currentData.营收)}元。ARPU为${currentData.ARPU}元，留存率${currentData.次周留存率}%，使用率${currentData.使用率}%，大会员活跃率${currentData.大会员活跃率}%。`;
+            
+            // 分析关键变化
+            const keyChanges = [];
+            if (lastWeekData) {
+                const userChangeNum = parseFloat(metrics.userWoWNum);
+                const revenueChangeNum = parseFloat(metrics.revenueWoWNum);
+                const retentionChange = currentData.次周留存率 - lastWeekData.次周留存率;
+                
+                if (Math.abs(userChangeNum) >= 5) {
+                    keyChanges.push(`用户${userChangeNum > 0 ? '增长' : '下降'}${Math.abs(userChangeNum).toFixed(1)}%`);
+                }
+                if (Math.abs(revenueChangeNum) >= 10) {
+                    keyChanges.push(`营收${revenueChangeNum > 0 ? '增长' : '下降'}${Math.abs(revenueChangeNum).toFixed(1)}%`);
+                }
+                if (Math.abs(retentionChange) >= 2) {
+                    keyChanges.push(`留存率${retentionChange > 0 ? '提升' : '下降'}${Math.abs(retentionChange).toFixed(1)}pp`);
+                }
+            }
+            
+            if (keyChanges.length === 0) {
+                keyChanges.push('各项核心指标保持稳定');
+                keyChanges.push('用户活跃度表现良好');
+                keyChanges.push('营收水平运行平稳');
+            }
+
+            // 生成策略建议 - 更偏向具体行动
+            const strategies = [];
+            if (lastWeekData) {
+                // 基于大会员活跃率的具体建议
+                if (currentData.大会员活跃率 <= 50) {
+                    strategies.push(`推出会员专属活动提升${currentData.大会员活跃率}%活跃率`);
+                }
+                
+                // 基于留存率的具体建议
+                if (currentData.次周留存率 < 40) {
+                    strategies.push(`优化新手引导流程，目标提升留存至45%`);
+                } else if (currentData.次周留存率 < 45) {
+                    strategies.push(`增加用户激活触点，争取留存率突破50%`);
+                }
+                
+                // 基于ARPU的具体建议
+                if (currentData.ARPU < 2.0) {
+                    strategies.push(`测试付费功能定价，目标ARPU提升至2.5元`);
+                } else if (currentData.ARPU < 2.5) {
+                    strategies.push(`推出高价值服务包，进一步提升ARPU`);
+                }
+                
+                // 基于使用率的具体建议
+                if (currentData.使用率 < 70) {
+                    strategies.push(`分析低活跃用户行为，优化核心功能体验`);
+                } else if (currentData.使用率 >= 75) {
+                    strategies.push(`维持高使用率优势，探索用户付费转化`);
+                }
+                
+                // 基于用户变化的建议
+                const userChangeNum = parseFloat(metrics.userWoWNum || 0);
+                if (userChangeNum < -5) {
+                    strategies.push('启动用户召回计划，重点关注流失用户');
+                } else if (userChangeNum > 10) {
+                    strategies.push('加大获客投入，趁势扩大用户规模');
+                }
+                
+                // 基于营收变化的建议
+                const revenueChangeNum = parseFloat(metrics.revenueWoWNum || 0);
+                if (revenueChangeNum < -10) {
+                    strategies.push('紧急优化付费转化漏斗，提升变现效率');
+                }
+            }
+            
+            // 如果没有具体问题，给出增长性建议
+            if (strategies.length === 0) {
+                strategies.push('制定用户分层运营策略，精细化管理');
+                strategies.push('建立数据驱动的产品迭代机制');
+                strategies.push('探索新的商业化变现模式');
+            }
+            
+            // 确保至少有3个建议，最多4个
+            while (strategies.length < 3) {
+                if (strategies.length === 1) {
+                    strategies.push('建立用户反馈收集和响应机制');
+                } else if (strategies.length === 2) {
+                    strategies.push('定期进行竞品分析和市场调研');
+                }
+            }
+
+            // 三列布局
+            return `
+                <div class="ai-column">
+                    <div class="analysis-section">
+                        <h5>核心表现</h5>
+                        <div class="analysis-content">
+                            <div class="key-metrics-display">
+                                <div class="metric-display">
+                                    <div class="label">活跃用户</div>
+                                    <div class="value">${formatNumber(currentData.活跃用户)}</div>
+                                </div>
+                                <div class="metric-display">
+                                    <div class="label">营收</div>
+                                    <div class="value">${formatNumber(currentData.营收)}</div>
+                                </div>
+                            </div>
+                            <div class="analysis-text">
+                                ${performanceText}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ai-column">
+                    <div class="analysis-section">
+                        <h5>关键变化</h5>
+                        <div class="analysis-content">
+                            <ul class="analysis-list">
+                                ${keyChanges.slice(0, 4).map(change => `<li>${change}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="ai-column">
+                    <div class="analysis-section">
+                        <h5>策略建议</h5>
+                        <div class="analysis-content">
+                            <ul class="analysis-list">
+                                ${strategies.slice(0, 4).map(strategy => `<li>${strategy}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
+            // 深度分析核心变化
+            const coreChanges = [];
+            let hasSignificantChange = false;
+            
+            if (lastWeekData) {
+                const userChangeNum = parseFloat(metrics.userWoWNum);
+                const revenueChangeNum = parseFloat(metrics.revenueWoWNum);
+                const retentionChange = currentData.次周留存率 - lastWeekData.次周留存率;
+                const arpuChange = currentData.ARPU - lastWeekData.ARPU;
+                
+                // 用户变化分析（显著变化≥5%）
+                if (Math.abs(userChangeNum) >= 5) {
+                    hasSignificantChange = true;
+                    if (userChangeNum > 0) {
+                        coreChanges.push(`用户增长${userChangeNum.toFixed(1)}%，表现优秀`);
+                    } else {
+                        coreChanges.push(`用户下降${Math.abs(userChangeNum).toFixed(1)}%，需关注`);
+                    }
+                }
+                
+                // 营收变化分析（显著变化≥10%）
+                if (Math.abs(revenueChangeNum) >= 10) {
+                    hasSignificantChange = true;
+                    if (revenueChangeNum > 0) {
+                        coreChanges.push(`营收增长${revenueChangeNum.toFixed(1)}%，势头良好`);
+                    } else {
+                        coreChanges.push(`营收下滑${Math.abs(revenueChangeNum).toFixed(1)}%，需优化`);
+                    }
+                }
+                
+                // 留存率变化分析（显著变化≥2pp）
+                if (Math.abs(retentionChange) >= 2) {
+                    hasSignificantChange = true;
+                    if (retentionChange > 0) {
+                        coreChanges.push(`留存率提升${retentionChange.toFixed(1)}pp，用户粘性增强`);
+                    } else {
+                        coreChanges.push(`留存率下降${Math.abs(retentionChange).toFixed(1)}pp，需警惕`);
+                    }
+                }
+                
+                // ARPU变化分析（显著变化≥0.2元）
+                if (Math.abs(arpuChange) >= 0.2) {
+                    hasSignificantChange = true;
+                    if (arpuChange > 0) {
+                        coreChanges.push(`ARPU提升${arpuChange.toFixed(2)}元，变现改善`);
+                    } else {
+                        coreChanges.push(`ARPU下降${Math.abs(arpuChange).toFixed(2)}元，需关注`);
+                    }
+                }
+            }
+            
+            // 如果没有显著变化，分析当前绝对水平
+            if (!hasSignificantChange) {
+                if (currentData.使用率 >= 75) {
+                    coreChanges.push(`使用率${currentData.使用率}%保持高位`);
+                } else if (currentData.使用率 < 60) {
+                    coreChanges.push(`使用率${currentData.使用率}%偏低`);
+                }
+                
+                if (currentData.次周留存率 >= 45) {
+                    coreChanges.push(`留存率${currentData.次周留存率}%表现良好`);
+                } else if (currentData.次周留存率 < 40) {
+                    coreChanges.push(`留存率${currentData.次周留存率}%需提升`);
+                }
+                
+                if (currentData.大会员活跃率 >= 55) {
+                    coreChanges.push(`会员活跃率${currentData.大会员活跃率}%表现优秀`);
+                } else if (currentData.大会员活跃率 <= 45) {
+                    coreChanges.push(`会员活跃率${currentData.大会员活跃率}%有待提升`);
+                }
+                
+                if (coreChanges.length === 0) {
+                    coreChanges.push('各项指标变化平稳');
+                    coreChanges.push('整体业务运行稳定');
+                }
+            }
+
+            // 智能趋势判断
+            const trends = [];
+            if (lastWeekData) {
+                const userGrowth = parseFloat(metrics.userWoWNum);
+                const revenueGrowth = parseFloat(metrics.revenueWoWNum);
+                const retentionChange = currentData.次周留存率 - lastWeekData.次周留存率;
+                
+                // 用户与营收关联分析
+                if (userGrowth > 3 && revenueGrowth > 5) {
+                    trends.push(`用户营收双增长，业务健康向上`);
+                } else if (userGrowth > 0 && revenueGrowth < -5) {
+                    trends.push(`用户增${userGrowth.toFixed(1)}%营收降${Math.abs(revenueGrowth).toFixed(1)}%，变现待优化`);
+                } else if (userGrowth < -3 && revenueGrowth > 0) {
+                    trends.push(`用户降${Math.abs(userGrowth).toFixed(1)}%营收升${revenueGrowth.toFixed(1)}%，ARPU提升`);
+                } else if (userGrowth < -5 && revenueGrowth < -10) {
+                    trends.push('用户营收双下降，需紧急关注');
+                } else {
+                    trends.push('用户营收变化平稳');
+                }
+                
+                // 留存率趋势分析
+                if (currentData.次周留存率 >= 45) {
+                    if (retentionChange > 0) {
+                        trends.push(`留存率${currentData.次周留存率}%且上升，用户粘性强`);
+                    } else {
+                        trends.push(`留存率${currentData.次周留存率}%健康，用户粘性良好`);
+                    }
+                } else if (currentData.次周留存率 < 35) {
+                    trends.push(`留存率${currentData.次周留存率}%偏低，流失风险高`);
+                } else {
+                    trends.push(`留存率${currentData.次周留存率}%中等，有提升空间`);
+                }
+                
+                // 使用率趋势
+                if (currentData.使用率 >= 75) {
+                    trends.push(`使用率${currentData.使用率}%优秀，产品吸引力强`);
+                } else if (currentData.使用率 < 60) {
+                    trends.push(`使用率${currentData.使用率}%待提升`);
+                }
+            } else {
+                // 首周数据分析
+                if (currentData.活跃用户 >= 100000) {
+                    trends.push(`用户基数${formatNumber(currentData.活跃用户)}，发展潜力大`);
+                }
+                if (currentData.次周留存率 >= 40) {
+                    trends.push(`留存率${currentData.次周留存率}%表现不错`);
+                }
+                if (currentData.使用率 >= 70) {
+                    trends.push(`使用率${currentData.使用率}%良好开局`);
+                }
+            }
+            
+            // 确保至少有2个趋势分析
+            if (trends.length === 0) {
+                trends.push('整体指标表现平稳');
+                trends.push('持续观察关键变化');
+            } else if (trends.length === 1) {
+                trends.push('建议持续跟踪核心指标');
+            }
+
+            // 具体可执行的行动建议
+            const actions = [];
+            
+            if (lastWeekData) {
+                const userChangeNum = parseFloat(metrics.userWoWNum);
+                const revenueChangeNum = parseFloat(metrics.revenueWoWNum);
+                const retentionChange = currentData.次周留存率 - lastWeekData.次周留存率;
+                const usageChange = currentData.使用率 - lastWeekData.使用率;
+                
+                // 基于实际数据给出具体建议
+                let specificActions = [];
+                
+                // 1. 用户变化分析
+                if (Math.abs(userChangeNum) >= 5) {
+                    if (userChangeNum > 0) {
+                        specificActions.push(`用户增长${userChangeNum.toFixed(1)}%，加大投入扩大规模`);
+                    } else {
+                        specificActions.push(`用户下降${Math.abs(userChangeNum).toFixed(1)}%，启动召回计划`);
+                    }
+                }
+                
+                // 2. 营收变化分析
+                if (Math.abs(revenueChangeNum) >= 5) {
+                    if (revenueChangeNum > 0) {
+                        specificActions.push(`营收增长${revenueChangeNum.toFixed(1)}%，优化变现策略`);
+                    } else {
+                        specificActions.push(`营收下降${Math.abs(revenueChangeNum).toFixed(1)}%，紧急优化付费流程`);
+                    }
+                }
+                
+                // 3. 留存率分析
+                if (Math.abs(retentionChange) >= 2) {
+                    if (retentionChange > 0) {
+                        specificActions.push(`留存率提升${retentionChange.toFixed(1)}pp，继续强化用户体验`);
+                    } else {
+                        specificActions.push(`留存率下降${Math.abs(retentionChange).toFixed(1)}pp，优化新手引导`);
+                    }
+                } else if (currentData.次周留存率 < 40) {
+                    specificActions.push(`留存率${currentData.次周留存率}%偏低，制定提升计划`);
+                }
+                
+                // 4. 当前状态分析（基于绝对值）
+                if (currentData.大会员活跃率 <= 50) {
+                    specificActions.push(`推出会员专属活动提升${currentData.大会员活跃率}%活跃率`);
+                }
+                
+                if (currentData.ARPU < 2.0) {
+                    specificActions.push(`测试付费功能定价，目标ARPU提升至2.5元`);
+                }
+                
+                if (currentData.使用率 < 70) {
+                    specificActions.push(`分析用户行为，优化${currentData.使用率}%使用率`);
+                } else if (currentData.使用率 >= 75) {
+                    specificActions.push(`维持${currentData.使用率}%高使用率，探索付费转化`);
+                }
+                
+                // 选择最重要的3个建议
+                if (specificActions.length >= 3) {
+                    actions.push(...specificActions.slice(0, 3));
+                } else {
+                    actions.push(...specificActions);
+                    
+                    // 补充通用建议
+                    while (actions.length < 3) {
+                        if (actions.length === 1) {
+                            actions.push('定期分析用户行为数据');
+                        } else if (actions.length === 2) {
+                            actions.push('建立竞品对比监控机制');
+                        }
+                    }
+                }
+                
+            } else {
+                // 首周建议
+                actions.push('建立完整数据监控体系');
+                actions.push('制定明确用户增长目标');
+                actions.push('优化核心转化漏斗流程');
+            }
+
+            // 三列布局
+            return `
+                <div class="ai-column">
+                    <div class="analysis-section">
+                        <h5>📊 核心表现</h5>
+                        <div class="key-metrics-compact">
+                            <div class="metric-compact">
+                                <div class="label">活跃用户</div>
+                                <div class="value">${formatNumber(currentData.活跃用户)}</div>
+                            </div>
+                            <div class="metric-compact">
+                                <div class="label">营收</div>
+                                <div class="value">${formatNumber(currentData.营收)}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <h5>🔍 核心变化</h5>
+                        <ul>
+                            ${coreChanges.slice(0, 3).map(change => `<li>${change}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+                <div class="ai-column">
+                    <div class="analysis-section">
+                        <h5>📈 趋势判断</h5>
+                        <ul>
+                            ${trends.slice(0, 3).map(trend => `<li>${trend}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+                <div class="ai-column">
+                    <div class="analysis-section">
+                        <h5>💡 行动建议</h5>
+                        <ul>
+                            ${actions.slice(0, 3).map(action => `<li>${action}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 降级分析（当API调用失败时）
+        function generateFallbackAnalysis(currentData, lastWeekData) {
+            const changes = lastWeekData ? {
+                userChange: ((currentData.活跃用户 - lastWeekData.活跃用户) / lastWeekData.活跃用户 * 100).toFixed(1),
+                revenueChange: ((currentData.营收 - lastWeekData.营收) / lastWeekData.营收 * 100).toFixed(1),
+                retentionChange: (currentData.次周留存率 - lastWeekData.次周留存率).toFixed(1),
+                usageChange: (currentData.使用率 - lastWeekData.使用率).toFixed(1)
+            } : null;
+
+            // 生成智能分析
+            let keyChanges = [];
+            let trends = [];
+            let suggestions = [];
+
+            if (changes) {
+                // 关键变化分析
+                if (Math.abs(changes.userChange) > 5) {
+                    keyChanges.push(`活跃用户${changes.userChange > 0 ? '大幅增长' : '显著下降'}${Math.abs(changes.userChange)}%`);
+                }
+                if (Math.abs(changes.revenueChange) > 10) {
+                    keyChanges.push(`营收${changes.revenueChange > 0 ? '强劲增长' : '明显下滑'}${Math.abs(changes.revenueChange)}%`);
+                }
+                if (Math.abs(changes.retentionChange) > 3) {
+                    keyChanges.push(`留存率${changes.retentionChange > 0 ? '提升' : '下降'}${Math.abs(changes.retentionChange)}pp`);
+                }
+
+                // 趋势分析
+                if (changes.userChange > 0 && changes.revenueChange > 0) {
+                    trends.push('用户增长与营收增长呈正相关，业务发展良好');
+                } else if (changes.userChange > 0 && changes.revenueChange < 0) {
+                    trends.push('用户增长但营收下降，需关注变现效率');
+                } else if (changes.userChange < 0 && changes.revenueChange > 0) {
+                    trends.push('用户减少但营收增长，ARPU提升明显');
+                }
+
+                if (currentData.使用率 > 70) {
+                    trends.push('使用率保持高位，用户粘性良好');
+                } else if (currentData.使用率 < 50) {
+                    trends.push('使用率偏低，需提升产品吸引力');
+                }
+
+                // 策略建议
+                if (changes.userChange < -5) {
+                    suggestions.push('加强用户获取和召回策略');
+                }
+                if (changes.retentionChange < -2) {
+                    suggestions.push('优化新用户引导和留存机制');
+                }
+                if (currentData.ARPU < 2) {
+                    suggestions.push('探索提升ARPU的变现方式');
+                }
+                if (currentData.大会员活跃率 < 50) {
+                    suggestions.push('加强会员权益和活跃度运营');
+                }
+            } else {
+                keyChanges = ['当前为首周数据，暂无对比基准'];
+                trends = ['建议建立数据基线，持续跟踪关键指标'];
+                suggestions = ['制定明确的增长目标和监控体系'];
+            }
+
+            // 如果没有显著变化，添加默认内容
+            if (keyChanges.length === 0) {
+                keyChanges.push('各项指标相对稳定，无显著波动');
+            }
+            if (trends.length === 0) {
+                trends.push('整体业务表现平稳');
+            }
+            if (suggestions.length === 0) {
+                suggestions.push('持续优化用户体验，关注长期增长');
+            }
+
+            return `
+                <div class="analysis-section">
+                    <h5>📊 核心表现</h5>
+                    <div class="key-metrics-compact">
+                        <div class="metric-compact">
+                            <div class="label">活跃用户</div>
+                            <div class="value">${formatNumber(currentData.活跃用户)}</div>
+                        </div>
+                        <div class="metric-compact">
+                            <div class="label">营收</div>
+                            <div class="value">${formatNumber(currentData.营收)}</div>
+                        </div>
+                        <div class="metric-compact">
+                            <div class="label">留存率</div>
+                            <div class="value">${currentData.次周留存率}%</div>
+                        </div>
+                        <div class="metric-compact">
+                            <div class="label">ARPU</div>
+                            <div class="value">${currentData.ARPU}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <h5>📈 关键变化分析</h5>
+                    <ul>
+                        ${keyChanges.map(change => `<li>${change}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="analysis-section">
+                    <h5>📊 增长趋势分析</h5>
+                    <ul>
+                        ${trends.map(trend => `<li>${trend}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="analysis-section">
+                    <h5>💡 运营策略建议</h5>
+                    <ul>
+                        ${suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

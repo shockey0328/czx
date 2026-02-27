@@ -1,0 +1,89 @@
+.header {
+  background: white;
+  color: #333;
+  padding: 16px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  height: 36px;
+  width: auto;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0;
+  color: #FF6B35;
+}
+
+.month-selector {
+  position: relative;
+}
+
+.month-select {
+  background: white;
+  border: 2px solid #FF6B35;
+  border-radius: 6px;
+  color: #333;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.month-select:hover {
+  border-color: #FFA366;
+  background-color: #fff8f6;
+}
+
+.month-select:focus {
+  outline: none;
+  border-color: #FF6B35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+.month-select option {
+  background: white;
+  color: #333;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .header {
+    padding: 12px 0;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .title {
+    font-size: 18px;
+  }
+  
+  .logo {
+    height: 32px;
+  }
+  
+  .month-select {
+    min-width: 120px;
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+}

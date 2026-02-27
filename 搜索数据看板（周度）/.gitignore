@@ -1,0 +1,20 @@
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Test files (optional)
+test.html
+
+# Local server script (optional, can be kept)
+# server.js
