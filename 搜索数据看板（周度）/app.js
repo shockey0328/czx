@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // 加载所有数据
 async function loadAllData() {
-    let usingSampleData = false;
+    const errors = [];
     
     try {
         // 加载每周搜索词数据
@@ -29,7 +29,9 @@ async function loadAllData() {
                 const response = await fetch(`第${i}周搜索词.csv`);
                 console.log(`尝试加载第${i}周搜索词，状态:`, response.status);
                 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} - 文件不存在或无法访问`);
+                }
                 
                 const buffer = await response.arrayBuffer();
                 const decoder = new TextDecoder('utf-8');
@@ -37,15 +39,14 @@ async function loadAllData() {
                 allData.keywords[i] = parseCSV(text);
                 
                 if (allData.keywords[i].length === 0) {
-                    throw new Error('CSV解析后数据为空');
+                    throw new Error('CSV解析后数据为空，请检查文件格式');
                 }
                 
-                console.log(`✓ 第${i}周搜索词加载成功，共 ${allData.keywords[i].length} 条真实数据`);
+                console.log(`✓ 第${i}周搜索词加载成功，共 ${allData.keywords[i].length} 条数据`);
             } catch (error) {
                 console.error(`✗ 第${i}周搜索词加载失败:`, error.message);
-                console.warn(`⚠️ 使用示例数据替代第${i}周数据`);
-                allData.keywords[i] = generateSampleKeywords(i);
-                usingSampleData = true;
+                errors.push(`第${i}周搜索词: ${error.message}`);
+                allData.keywords[i] = []; // 使用空数组而不是示例数据
             }
         }
 
@@ -54,7 +55,9 @@ async function loadAllData() {
             const funnelResponse = await fetch('搜索行为漏斗.csv');
             console.log('尝试加载搜索行为漏斗，状态:', funnelResponse.status);
             
-            if (!funnelResponse.ok) throw new Error(`HTTP ${funnelResponse.status}`);
+            if (!funnelResponse.ok) {
+                throw new Error(`HTTP ${funnelResponse.status} - 文件不存在或无法访问`);
+            }
             
             const funnelBuffer = await funnelResponse.arrayBuffer();
             const funnelDecoder = new TextDecoder('utf-8');
@@ -62,15 +65,14 @@ async function loadAllData() {
             allData.funnel = parseCSV(funnelText);
             
             if (allData.funnel.length === 0) {
-                throw new Error('CSV解析后数据为空');
+                throw new Error('CSV解析后数据为空，请检查文件格式');
             }
             
-            console.log('✓ 搜索行为漏斗加载成功，共', allData.funnel.length, '条真实数据');
+            console.log('✓ 搜索行为漏斗加载成功，共', allData.funnel.length, '条数据');
         } catch (error) {
             console.error('✗ 搜索行为漏斗加载失败:', error.message);
-            console.warn('⚠️ 使用示例数据替代漏斗数据');
-            allData.funnel = generateSampleFunnel();
-            usingSampleData = true;
+            errors.push(`搜索行为漏斗: ${error.message}`);
+            allData.funnel = [];
         }
 
         // 加载转化率数据
@@ -78,7 +80,9 @@ async function loadAllData() {
             const conversionResponse = await fetch('搜索转化率.csv');
             console.log('尝试加载搜索转化率，状态:', conversionResponse.status);
             
-            if (!conversionResponse.ok) throw new Error(`HTTP ${conversionResponse.status}`);
+            if (!conversionResponse.ok) {
+                throw new Error(`HTTP ${conversionResponse.status} - 文件不存在或无法访问`);
+            }
             
             const conversionBuffer = await conversionResponse.arrayBuffer();
             const conversionDecoder = new TextDecoder('utf-8');
@@ -86,15 +90,14 @@ async function loadAllData() {
             allData.conversion = parseCSV(conversionText);
             
             if (allData.conversion.length === 0) {
-                throw new Error('CSV解析后数据为空');
+                throw new Error('CSV解析后数据为空，请检查文件格式');
             }
             
-            console.log('✓ 搜索转化率加载成功，共', allData.conversion.length, '条真实数据');
+            console.log('✓ 搜索转化率加载成功，共', allData.conversion.length, '条数据');
         } catch (error) {
             console.error('✗ 搜索转化率加载失败:', error.message);
-            console.warn('⚠️ 使用示例数据替代转化率数据');
-            allData.conversion = generateSampleConversion();
-            usingSampleData = true;
+            errors.push(`搜索转化率: ${error.message}`);
+            allData.conversion = [];
         }
 
         // 加载留存数据
@@ -102,7 +105,9 @@ async function loadAllData() {
             const retentionResponse = await fetch('搜索功能留存看板.csv');
             console.log('尝试加载搜索功能留存，状态:', retentionResponse.status);
             
-            if (!retentionResponse.ok) throw new Error(`HTTP ${retentionResponse.status}`);
+            if (!retentionResponse.ok) {
+                throw new Error(`HTTP ${retentionResponse.status} - 文件不存在或无法访问`);
+            }
             
             const retentionBuffer = await retentionResponse.arrayBuffer();
             const retentionDecoder = new TextDecoder('utf-8');
@@ -110,27 +115,34 @@ async function loadAllData() {
             allData.retention = parseCSV(retentionText);
             
             if (allData.retention.length === 0) {
-                throw new Error('CSV解析后数据为空');
+                throw new Error('CSV解析后数据为空，请检查文件格式');
             }
             
-            console.log('✓ 搜索功能留存加载成功，共', allData.retention.length, '条真实数据');
+            console.log('✓ 搜索功能留存加载成功，共', allData.retention.length, '条数据');
         } catch (error) {
             console.error('✗ 搜索功能留存加载失败:', error.message);
-            console.warn('⚠️ 使用示例数据替代留存数据');
-            allData.retention = generateSampleRetention();
-            usingSampleData = true;
+            errors.push(`搜索功能留存: ${error.message}`);
+            allData.retention = [];
         }
 
-        // 显示数据来源提示
-        if (usingSampleData) {
-            console.warn('========================================');
-            console.warn('⚠️ 警告：部分数据使用示例数据');
-            console.warn('请检查 CSV 文件是否存在且格式正确');
-            console.warn('========================================');
-            showDataSourceWarning();
+        // 显示加载结果
+        if (errors.length > 0) {
+            console.error('========================================');
+            console.error('✗ 数据加载失败');
+            console.error('失败的文件:');
+            errors.forEach(err => console.error('  - ' + err));
+            console.error('========================================');
+            console.error('请检查:');
+            console.error('1. 是否通过 HTTP 服务器访问（不能直接打开 HTML 文件）');
+            console.error('2. CSV 文件是否存在于正确的目录');
+            console.error('3. 文件编码是否为 UTF-8');
+            console.error('4. 文件格式是否正确（有 header，数据完整）');
+            console.error('========================================');
+            showDataLoadError(errors);
         } else {
             console.log('========================================');
-            console.log('✓ 所有数据均为真实 CSV 数据');
+            console.log('✓ 所有数据加载成功');
+            console.log('✓ 全部使用真实 CSV 数据');
             console.log('========================================');
         }
 
@@ -141,109 +153,32 @@ async function loadAllData() {
     }
 }
 
-// 显示数据来源警告
-function showDataSourceWarning() {
-    // 在页面顶部添加警告提示
-    const warning = document.createElement('div');
-    warning.style.cssText = `
+// 显示数据加载错误
+function showDataLoadError(errors) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
-        background: #fff3cd;
-        color: #856404;
-        padding: 10px 20px;
-        text-align: center;
+        background: #f8d7da;
+        color: #721c24;
+        padding: 15px 20px;
         z-index: 9999;
-        border-bottom: 2px solid #ffc107;
+        border-bottom: 3px solid #dc3545;
         font-size: 14px;
-        font-weight: 500;
     `;
-    warning.innerHTML = '⚠️ 部分数据使用示例数据（CSV文件加载失败）- 请检查文件路径和网络连接';
-    document.body.insertBefore(warning, document.body.firstChild);
     
-    // 5秒后自动隐藏
-    setTimeout(() => {
-        warning.style.transition = 'opacity 0.5s';
-        warning.style.opacity = '0';
-        setTimeout(() => warning.remove(), 500);
-    }, 5000);
-}
-
-// 生成示例关键词数据
-function generateSampleKeywords(week) {
-    const keywords = [
-        '期末试卷', '数学', '英语', '语文', '物理', '化学', '生物', '历史', '地理', '政治',
-        '高考', '中考', '小升初', '作文', '阅读理解', '古诗词', '文言文', '函数', '几何', '代数'
-    ];
+    let errorList = '<strong>数据加载失败：</strong><br>';
+    errorList += '<ul style="margin: 10px 0; padding-left: 20px;">';
+    errors.forEach(err => {
+        errorList += `<li>${err}</li>`;
+    });
+    errorList += '</ul>';
+    errorList += '<small>请检查: 1) 通过HTTP服务器访问 2) CSV文件存在 3) 文件编码UTF-8 4) 文件格式正确</small>';
     
-    return keywords.map((keyword, index) => ({
-        keywords: keyword,
-        uv: Math.floor(Math.random() * 5000) + 1000,
-        pv: Math.floor(Math.random() * 10000) + 2000
-    }));
-}
-
-// 生成示例漏斗数据
-function generateSampleFunnel() {
-    const data = [];
-    for (let i = 1; i <= 8; i++) {
-        const searchPV = Math.floor(Math.random() * 50000) + 30000;
-        const clickPV = Math.floor(searchPV * (0.6 + Math.random() * 0.2));
-        const usagePV = Math.floor(clickPV * (0.4 + Math.random() * 0.2));
-        
-        data.push({
-            week_key: `W${String(i).padStart(2, '0')}`,
-            search_pv: searchPV.toString(),
-            click_pv: clickPV.toString(),
-            any_usage_pv: usagePV.toString()
-        });
-    }
-    return data;
-}
-
-// 生成示例转化率数据
-function generateSampleConversion() {
-    const data = [];
-    const startDate = new Date('2026-01-01');
-    
-    for (let i = 0; i < 56; i++) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
-        const rate = (15 + Math.random() * 10).toFixed(2);
-        
-        data.push({
-            dt: dateStr,
-            '搜索转化率': rate
-        });
-    }
-    return data;
-}
-
-// 生成示例留存数据
-function generateSampleRetention() {
-    const data = [];
-    const startDate = new Date('2026-01-01');
-    
-    for (let i = 0; i < 8; i++) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i * 7);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        const row = {
-            cohort_week: dateStr
-        };
-        
-        row.week_0 = '100';
-        for (let j = 1; j <= 12; j++) {
-            const retention = (30 - j * 2 + Math.random() * 5).toFixed(1);
-            row[`week_${j}`] = retention;
-        }
-        
-        data.push(row);
-    }
-    return data;
+    errorDiv.innerHTML = errorList;
+    document.body.insertBefore(errorDiv, document.body.firstChild);
 }
 
 // CSV 解析
