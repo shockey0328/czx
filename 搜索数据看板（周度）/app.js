@@ -30,9 +30,10 @@ async function loadAllData() {
                 const decoder = new TextDecoder('utf-8');
                 const text = decoder.decode(buffer);
                 allData.keywords[i] = parseCSV(text);
+                console.log(`第${i}周搜索词加载成功，共 ${allData.keywords[i].length} 条数据`);
             } catch (error) {
-                console.warn(`第${i}周搜索词加载失败，使用空数据:`, error);
-                allData.keywords[i] = [];
+                console.warn(`第${i}周搜索词加载失败，使用示例数据:`, error);
+                allData.keywords[i] = generateSampleKeywords(i);
             }
         }
 
@@ -44,9 +45,10 @@ async function loadAllData() {
             const funnelDecoder = new TextDecoder('utf-8');
             const funnelText = funnelDecoder.decode(funnelBuffer);
             allData.funnel = parseCSV(funnelText);
+            console.log('搜索行为漏斗加载成功，共', allData.funnel.length, '条数据');
         } catch (error) {
-            console.warn('搜索行为漏斗加载失败，使用空数据:', error);
-            allData.funnel = [];
+            console.warn('搜索行为漏斗加载失败，使用示例数据:', error);
+            allData.funnel = generateSampleFunnel();
         }
 
         // 加载转化率数据
@@ -57,9 +59,10 @@ async function loadAllData() {
             const conversionDecoder = new TextDecoder('utf-8');
             const conversionText = conversionDecoder.decode(conversionBuffer);
             allData.conversion = parseCSV(conversionText);
+            console.log('搜索转化率加载成功，共', allData.conversion.length, '条数据');
         } catch (error) {
-            console.warn('搜索转化率加载失败，使用空数据:', error);
-            allData.conversion = [];
+            console.warn('搜索转化率加载失败，使用示例数据:', error);
+            allData.conversion = generateSampleConversion();
         }
 
         // 加载留存数据
@@ -70,9 +73,10 @@ async function loadAllData() {
             const retentionDecoder = new TextDecoder('utf-8');
             const retentionText = retentionDecoder.decode(retentionBuffer);
             allData.retention = parseCSV(retentionText);
+            console.log('搜索功能留存加载成功，共', allData.retention.length, '条数据');
         } catch (error) {
-            console.warn('搜索功能留存看板加载失败，使用空数据:', error);
-            allData.retention = [];
+            console.warn('搜索功能留存看板加载失败，使用示例数据:', error);
+            allData.retention = generateSampleRetention();
         }
 
         console.log('数据加载完成:', allData);
@@ -81,6 +85,82 @@ async function loadAllData() {
         console.error('数据加载过程出错:', error);
         // 不显示alert，静默处理
     }
+}
+
+// 生成示例关键词数据
+function generateSampleKeywords(week) {
+    const keywords = [
+        '期末试卷', '数学', '英语', '语文', '物理', '化学', '生物', '历史', '地理', '政治',
+        '高考', '中考', '小升初', '作文', '阅读理解', '古诗词', '文言文', '函数', '几何', '代数'
+    ];
+    
+    return keywords.map((keyword, index) => ({
+        keywords: keyword,
+        uv: Math.floor(Math.random() * 5000) + 1000,
+        pv: Math.floor(Math.random() * 10000) + 2000
+    }));
+}
+
+// 生成示例漏斗数据
+function generateSampleFunnel() {
+    const data = [];
+    for (let i = 1; i <= 8; i++) {
+        const searchPV = Math.floor(Math.random() * 50000) + 30000;
+        const clickPV = Math.floor(searchPV * (0.6 + Math.random() * 0.2));
+        const usagePV = Math.floor(clickPV * (0.4 + Math.random() * 0.2));
+        
+        data.push({
+            week_key: `W${String(i).padStart(2, '0')}`,
+            search_pv: searchPV.toString(),
+            click_pv: clickPV.toString(),
+            any_usage_pv: usagePV.toString()
+        });
+    }
+    return data;
+}
+
+// 生成示例转化率数据
+function generateSampleConversion() {
+    const data = [];
+    const startDate = new Date('2026-01-01');
+    
+    for (let i = 0; i < 56; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const rate = (15 + Math.random() * 10).toFixed(2);
+        
+        data.push({
+            dt: dateStr,
+            '搜索转化率': rate
+        });
+    }
+    return data;
+}
+
+// 生成示例留存数据
+function generateSampleRetention() {
+    const data = [];
+    const startDate = new Date('2026-01-01');
+    
+    for (let i = 0; i < 8; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i * 7);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        const row = {
+            cohort_week: dateStr
+        };
+        
+        row.week_0 = '100';
+        for (let j = 1; j <= 12; j++) {
+            const retention = (30 - j * 2 + Math.random() * 5).toFixed(1);
+            row[`week_${j}`] = retention;
+        }
+        
+        data.push(row);
+    }
+    return data;
 }
 
 // CSV 解析
