@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索数据看板 - 诊断工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #FF6B35;
+            margin-bottom: 20px;
+        }
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #FF6B35;
+        }
+        .test-item {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .test-item.pending {
+            background: #f0f0f0;
+        }
+        .test-item.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .test-item.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status {
+            font-weight: bold;
+            min-width: 60px;
+        }
+        button {
+            background: #FF6B35;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #E85A2A;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .data-preview {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .summary {
+            background: #e7f3ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .summary.error {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 搜索数据看板 - 诊断工具</h1>
+        
+        <div class="section">
+            <h2>1. 文件检测</h2>
+            <button onclick="testFiles()">开始检测</button>
+            <div id="fileTests"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. 数据加载测试</h2>
+            <button onclick="testDataLoading()">测试数据加载</button>
+            <div id="dataTests"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. 数据预览</h2>
+            <div id="dataPreview"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. 诊断总结</h2>
+            <div id="summary"></div>
+        </div>
+    </div>
+
+    <script>
+        const files = [
+            '第1周搜索词.csv',
+            '第2周搜索词.csv',
+            '第3周搜索词.csv',
+            '第4周搜索词.csv',
+            '第5周搜索词.csv',
+            '第6周搜索词.csv',
+            '第7周搜索词.csv',
+            '第8周搜索词.csv',
+            '搜索行为漏斗.csv',
+            '搜索转化率.csv',
+            '搜索功能留存看板.csv'
+        ];
+
+        let testResults = {
+            filesExist: 0,
+            filesTotal: files.length,
+            dataLoaded: 0,
+            dataTotal: files.length,
+            errors: []
+        };
+
+        async function testFiles() {
+            const container = document.getElementById('fileTests');
+            container.innerHTML = '<p>正在检测文件...</p>';
+            
+            let html = '';
+            testResults.filesExist = 0;
+            testResults.errors = [];
+
+            for (const file of files) {
+                try {
+                    const response = await fetch(file, { method: 'HEAD' });
+                    if (response.ok) {
+                        html += `<div class="test-item success"><span class="status">✓ 存在</span>${file}</div>`;
+                        testResults.filesExist++;
+                    } else {
+                        html += `<div class="test-item error"><span class="status">✗ 缺失</span>${file} (HTTP ${response.status})</div>`;
+                        testResults.errors.push(`${file}: HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    html += `<div class="test-item error"><span class="status">✗ 错误</span>${file} (${error.message})</div>`;
+                    testResults.errors.push(`${file}: ${error.message}`);
+                }
+            }
+
+            container.innerHTML = html;
+            updateSummary();
+        }
+
+        async function testDataLoading() {
+            const container = document.getElementById('dataTests');
+            const previewContainer = document.getElementById('dataPreview');
+            container.innerHTML = '<p>正在测试数据加载...</p>';
+            
+            let html = '';
+            let previewHtml = '';
+            testResults.dataLoaded = 0;
+
+            // 测试第1周搜索词
+            try {
+                const response = await fetch('第1周搜索词.csv');
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                
+                if (lines.length > 1) {
+                    html += `<div class="test-item success"><span class="status">✓ 成功</span>第1周搜索词 (${lines.length - 1} 条数据)</div>`;
+                    testResults.dataLoaded++;
+                    
+                    previewHtml += '<h3>第1周搜索词 - 前5行预览：</h3>';
+                    previewHtml += '<div class="data-preview">';
+                    previewHtml += lines.slice(0, 6).map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n');
+                    previewHtml += '</div>';
+                } else {
+                    html += `<div class="test-item error"><span class="status">✗ 空文件</span>第1周搜索词</div>`;
+                }
+            } catch (error) {
+                html += `<div class="test-item error"><span class="status">✗ 失败</span>第1周搜索词: ${error.message}</div>`;
+            }
+
+            // 测试漏斗数据
+            try {
+                const response = await fetch('搜索行为漏斗.csv');
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                
+                if (lines.length > 1) {
+                    html += `<div class="test-item success"><span class="status">✓ 成功</span>搜索行为漏斗 (${lines.length - 1} 条数据)</div>`;
+                    testResults.dataLoaded++;
+                    
+                    previewHtml += '<h3>搜索行为漏斗 - 前5行预览：</h3>';
+                    previewHtml += '<div class="data-preview">';
+                    previewHtml += lines.slice(0, 6).map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n');
+                    previewHtml += '</div>';
+                } else {
+                    html += `<div class="test-item error"><span class="status">✗ 空文件</span>搜索行为漏斗</div>`;
+                }
+            } catch (error) {
+                html += `<div class="test-item error"><span class="status">✗ 失败</span>搜索行为漏斗: ${error.message}</div>`;
+            }
+
+            // 测试转化率数据
+            try {
+                const response = await fetch('搜索转化率.csv');
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                
+                if (lines.length > 1) {
+                    html += `<div class="test-item success"><span class="status">✓ 成功</span>搜索转化率 (${lines.length - 1} 条数据)</div>`;
+                    testResults.dataLoaded++;
+                    
+                    previewHtml += '<h3>搜索转化率 - 前5行预览：</h3>';
+                    previewHtml += '<div class="data-preview">';
+                    previewHtml += lines.slice(0, 6).map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n');
+                    previewHtml += '</div>';
+                } else {
+                    html += `<div class="test-item error"><span class="status">✗ 空文件</span>搜索转化率</div>`;
+                }
+            } catch (error) {
+                html += `<div class="test-item error"><span class="status">✗ 失败</span>搜索转化率: ${error.message}</div>`;
+            }
+
+            // 测试留存数据
+            try {
+                const response = await fetch('搜索功能留存看板.csv');
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                
+                if (lines.length > 1) {
+                    html += `<div class="test-item success"><span class="status">✓ 成功</span>搜索功能留存 (${lines.length - 1} 条数据)</div>`;
+                    testResults.dataLoaded++;
+                    
+                    previewHtml += '<h3>搜索功能留存 - 前5行预览：</h3>';
+                    previewHtml += '<div class="data-preview">';
+                    previewHtml += lines.slice(0, 6).map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n');
+                    previewHtml += '</div>';
+                } else {
+                    html += `<div class="test-item error"><span class="status">✗ 空文件</span>搜索功能留存</div>`;
+                }
+            } catch (error) {
+                html += `<div class="test-item error"><span class="status">✗ 失败</span>搜索功能留存: ${error.message}</div>`;
+            }
+
+            container.innerHTML = html;
+            previewContainer.innerHTML = previewHtml;
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const container = document.getElementById('summary');
+            const allSuccess = testResults.filesExist === testResults.filesTotal && 
+                              testResults.dataLoaded === testResults.dataTotal;
+            
+            let html = '';
+            
+            if (allSuccess) {
+                html = `
+                    <div class="summary">
+                        <h3>✓ 诊断通过</h3>
+                        <p>所有文件都存在且可以正常加载。</p>
+                        <p><strong>文件检测：</strong>${testResults.filesExist}/${testResults.filesTotal} 通过</p>
+                        <p><strong>数据加载：</strong>${testResults.dataLoaded}/${testResults.dataTotal} 成功</p>
+                        <p style="margin-top: 15px;">✅ 搜索数据看板应该能正常显示真实数据。</p>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div class="summary error">
+                        <h3>⚠️ 发现问题</h3>
+                        <p><strong>文件检测：</strong>${testResults.filesExist}/${testResults.filesTotal} 通过</p>
+                        <p><strong>数据加载：</strong>${testResults.dataLoaded}/${testResults.dataTotal} 成功</p>
+                `;
+                
+                if (testResults.errors.length > 0) {
+                    html += '<p style="margin-top: 10px;"><strong>错误列表：</strong></p><ul>';
+                    testResults.errors.forEach(error => {
+                        html += `<li>${error}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                html += `
+                        <p style="margin-top: 15px;"><strong>建议：</strong></p>
+                        <ul>
+                            <li>确保通过 HTTP 服务器访问（不要直接打开 HTML 文件）</li>
+                            <li>检查 CSV 文件是否存在于正确的目录</li>
+                            <li>确认文件编码为 UTF-8</li>
+                            <li>查看浏览器控制台的详细错误信息</li>
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // 页面加载时显示当前路径
+        window.addEventListener('load', () => {
+            console.log('当前页面路径:', window.location.href);
+            console.log('当前目录:', window.location.pathname);
+        });
+    </script>
+</body>
+</html>

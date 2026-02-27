@@ -20,71 +20,154 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // 加载所有数据
 async function loadAllData() {
+    let usingSampleData = false;
+    
     try {
         // 加载每周搜索词数据
         for (let i = 1; i <= 8; i++) {
             try {
                 const response = await fetch(`第${i}周搜索词.csv`);
-                if (!response.ok) throw new Error(`第${i}周数据加载失败`);
+                console.log(`尝试加载第${i}周搜索词，状态:`, response.status);
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
                 const buffer = await response.arrayBuffer();
                 const decoder = new TextDecoder('utf-8');
                 const text = decoder.decode(buffer);
                 allData.keywords[i] = parseCSV(text);
-                console.log(`第${i}周搜索词加载成功，共 ${allData.keywords[i].length} 条数据`);
+                
+                if (allData.keywords[i].length === 0) {
+                    throw new Error('CSV解析后数据为空');
+                }
+                
+                console.log(`✓ 第${i}周搜索词加载成功，共 ${allData.keywords[i].length} 条真实数据`);
             } catch (error) {
-                console.warn(`第${i}周搜索词加载失败，使用示例数据:`, error);
+                console.error(`✗ 第${i}周搜索词加载失败:`, error.message);
+                console.warn(`⚠️ 使用示例数据替代第${i}周数据`);
                 allData.keywords[i] = generateSampleKeywords(i);
+                usingSampleData = true;
             }
         }
 
         // 加载漏斗数据
         try {
             const funnelResponse = await fetch('搜索行为漏斗.csv');
-            if (!funnelResponse.ok) throw new Error('漏斗数据加载失败');
+            console.log('尝试加载搜索行为漏斗，状态:', funnelResponse.status);
+            
+            if (!funnelResponse.ok) throw new Error(`HTTP ${funnelResponse.status}`);
+            
             const funnelBuffer = await funnelResponse.arrayBuffer();
             const funnelDecoder = new TextDecoder('utf-8');
             const funnelText = funnelDecoder.decode(funnelBuffer);
             allData.funnel = parseCSV(funnelText);
-            console.log('搜索行为漏斗加载成功，共', allData.funnel.length, '条数据');
+            
+            if (allData.funnel.length === 0) {
+                throw new Error('CSV解析后数据为空');
+            }
+            
+            console.log('✓ 搜索行为漏斗加载成功，共', allData.funnel.length, '条真实数据');
         } catch (error) {
-            console.warn('搜索行为漏斗加载失败，使用示例数据:', error);
+            console.error('✗ 搜索行为漏斗加载失败:', error.message);
+            console.warn('⚠️ 使用示例数据替代漏斗数据');
             allData.funnel = generateSampleFunnel();
+            usingSampleData = true;
         }
 
         // 加载转化率数据
         try {
             const conversionResponse = await fetch('搜索转化率.csv');
-            if (!conversionResponse.ok) throw new Error('转化率数据加载失败');
+            console.log('尝试加载搜索转化率，状态:', conversionResponse.status);
+            
+            if (!conversionResponse.ok) throw new Error(`HTTP ${conversionResponse.status}`);
+            
             const conversionBuffer = await conversionResponse.arrayBuffer();
             const conversionDecoder = new TextDecoder('utf-8');
             const conversionText = conversionDecoder.decode(conversionBuffer);
             allData.conversion = parseCSV(conversionText);
-            console.log('搜索转化率加载成功，共', allData.conversion.length, '条数据');
+            
+            if (allData.conversion.length === 0) {
+                throw new Error('CSV解析后数据为空');
+            }
+            
+            console.log('✓ 搜索转化率加载成功，共', allData.conversion.length, '条真实数据');
         } catch (error) {
-            console.warn('搜索转化率加载失败，使用示例数据:', error);
+            console.error('✗ 搜索转化率加载失败:', error.message);
+            console.warn('⚠️ 使用示例数据替代转化率数据');
             allData.conversion = generateSampleConversion();
+            usingSampleData = true;
         }
 
         // 加载留存数据
         try {
             const retentionResponse = await fetch('搜索功能留存看板.csv');
-            if (!retentionResponse.ok) throw new Error('留存数据加载失败');
+            console.log('尝试加载搜索功能留存，状态:', retentionResponse.status);
+            
+            if (!retentionResponse.ok) throw new Error(`HTTP ${retentionResponse.status}`);
+            
             const retentionBuffer = await retentionResponse.arrayBuffer();
             const retentionDecoder = new TextDecoder('utf-8');
             const retentionText = retentionDecoder.decode(retentionBuffer);
             allData.retention = parseCSV(retentionText);
-            console.log('搜索功能留存加载成功，共', allData.retention.length, '条数据');
+            
+            if (allData.retention.length === 0) {
+                throw new Error('CSV解析后数据为空');
+            }
+            
+            console.log('✓ 搜索功能留存加载成功，共', allData.retention.length, '条真实数据');
         } catch (error) {
-            console.warn('搜索功能留存看板加载失败，使用示例数据:', error);
+            console.error('✗ 搜索功能留存加载失败:', error.message);
+            console.warn('⚠️ 使用示例数据替代留存数据');
             allData.retention = generateSampleRetention();
+            usingSampleData = true;
+        }
+
+        // 显示数据来源提示
+        if (usingSampleData) {
+            console.warn('========================================');
+            console.warn('⚠️ 警告：部分数据使用示例数据');
+            console.warn('请检查 CSV 文件是否存在且格式正确');
+            console.warn('========================================');
+            showDataSourceWarning();
+        } else {
+            console.log('========================================');
+            console.log('✓ 所有数据均为真实 CSV 数据');
+            console.log('========================================');
         }
 
         console.log('数据加载完成:', allData);
 
     } catch (error) {
         console.error('数据加载过程出错:', error);
-        // 不显示alert，静默处理
     }
+}
+
+// 显示数据来源警告
+function showDataSourceWarning() {
+    // 在页面顶部添加警告提示
+    const warning = document.createElement('div');
+    warning.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #fff3cd;
+        color: #856404;
+        padding: 10px 20px;
+        text-align: center;
+        z-index: 9999;
+        border-bottom: 2px solid #ffc107;
+        font-size: 14px;
+        font-weight: 500;
+    `;
+    warning.innerHTML = '⚠️ 部分数据使用示例数据（CSV文件加载失败）- 请检查文件路径和网络连接';
+    document.body.insertBefore(warning, document.body.firstChild);
+    
+    // 5秒后自动隐藏
+    setTimeout(() => {
+        warning.style.transition = 'opacity 0.5s';
+        warning.style.opacity = '0';
+        setTimeout(() => warning.remove(), 500);
+    }, 5000);
 }
 
 // 生成示例关键词数据
