@@ -94,27 +94,32 @@ http://localhost:8000/dashboard.html
 
 ## 🚀 快速开始
 
-### 方法一：使用Python启动（推荐）
+### 方法一：一键启动（最简单）
+
+**Windows 用户**:
+- 双击 `启动本地服务器.bat`
+- 或右键 `启动本地服务器.ps1` 选择"使用 PowerShell 运行"
+- 浏览器会自动打开 http://localhost:8000
+
+### 方法二：使用Python启动
 
 ```bash
 python -m http.server 8000
 ```
 
-然后在浏览器中访问：http://localhost:8000/dashboard.html
+然后在浏览器中访问：http://localhost:8000
 
-### 方法二：使用Node.js启动
+### 方法三：使用Node.js启动
 
 ```bash
 npx http-server -p 8000
 ```
 
-然后在浏览器中访问：http://localhost:8000/dashboard.html
+然后在浏览器中访问：http://localhost:8000
 
-### 方法三：使用VS Code Live Server
+### 方法四：快速测试
 
-1. 安装 Live Server 扩展
-2. 右键点击 `dashboard.html`
-3. 选择 "Open with Live Server"
+直接打开 `test-local.html` 进行快速测试（可能遇到 CORS 问题，建议使用方法一）
 
 ## 💡 功能特性
 
@@ -174,10 +179,16 @@ npx http-server -p 8000
 
 ```
 橙子学数据看板/
-├── dashboard.html                      # 主入口页面
+├── index.html                          # 主入口页面（重要）
 ├── dashboard.css                       # 主样式文件
 ├── dashboard.js                        # 主逻辑文件
+├── test-local.html                     # 本地测试页面（新增）
+├── 启动本地服务器.bat                  # Windows 启动脚本（新增）
+├── 启动本地服务器.ps1                  # PowerShell 启动脚本（新增）
+├── 当前状态说明.md                     # 项目状态说明（新增）
 ├── README.md                           # 说明文档
+├── vercel.json                         # Vercel 部署配置
+├── .gitignore                          # Git 忽略文件
 ├── 快速启动指南.md                     # 快速启动说明
 ├── 核心数据看板（周度）/
 │   ├── index.html
@@ -185,7 +196,7 @@ npx http-server -p 8000
 │   └── ...
 ├── 搜索数据看板（周度）/
 │   ├── index.html
-│   ├── app.js
+│   ├── app.js                          # 已修复 CSV 文件名
 │   └── ...
 ├── 核心数据看板（月度）/
 │   ├── public/
@@ -193,7 +204,7 @@ npx http-server -p 8000
 │   └── ...
 └── 各模块渗透率看板（月度）/
     ├── index.html
-    ├── script.js
+    ├── script.js                       # 已配置内置数据
     └── ...
 ```
 
@@ -208,7 +219,30 @@ npx http-server -p 8000
 
 ## 🌐 部署说明
 
-### 部署到Vercel
+### 部署到Vercel（推荐）
+
+#### 方法1: 使用 Vercel CLI（最快）
+
+```bash
+# 1. 安装 Vercel CLI
+npm install -g vercel
+
+# 2. 登录 Vercel（会打开浏览器）
+vercel login
+
+# 3. 部署到生产环境
+vercel --prod
+```
+
+首次部署时会询问：
+- Set up and deploy? 选择 `Y`
+- Which scope? 选择你的账号
+- Link to existing project? 选择 `N`
+- What's your project's name? 输入: `czx-dashboard`
+- In which directory is your code located? 直接回车（当前目录）
+- Want to override the settings? 选择 `N`
+
+#### 方法2: 通过 GitHub
 
 1. 将项目推送到GitHub
 2. 在Vercel中导入项目
