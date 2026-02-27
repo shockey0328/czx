@@ -23,60 +23,11 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    padding: 0 5px;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.logo-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.logo {
-    height: 50px;
-    width: auto;
-    object-fit: contain;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
-}
-
-.logo:hover {
-    transform: scale(1.05);
-}
-
-.logo-fallback {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 50px;
-    width: 50px;
-    background: rgba(255, 107, 53, 0.2);
-    border: 2px solid #ff6b35;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-}
-
-.logo-fallback:hover {
-    transform: scale(1.05);
-    background: rgba(255, 107, 53, 0.3);
-}
-
-.logo-placeholder {
-    font-size: 20px;
-    color: #ff6b35;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .dashboard-header h1 {
@@ -84,6 +35,12 @@ body {
     color: #ff6b35;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     margin: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 /* 筛选器样式 */

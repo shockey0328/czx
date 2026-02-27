@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>看板标题优化完成</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #FF6B35, #FFA366);
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 32px;
+        }
+        .section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        h2 {
+            color: #FF6B35;
+            border-bottom: 3px solid #FF6B35;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .before, .after {
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .before {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+        }
+        .after {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+        .before h3, .after h3 {
+            margin-top: 0;
+        }
+        .mock-navbar {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .mock-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #FF6B35;
+        }
+        .mock-selector {
+            padding: 10px 15px;
+            border: 2px solid #FF6B35;
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            font-size: 16px;
+        }
+        .dashboard-list {
+            list-style: none;
+            padding: 0;
+        }
+        .dashboard-list li {
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #ff7043;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .dashboard-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .status {
+            background: #4caf50;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #ff7043;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 10px 10px 0;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 112, 67, 0.3);
+        }
+        .highlight {
+            background: #fff9c4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        .checklist {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .checklist ul {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 10px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #ff7043;
+        }
+        @media (max-width: 768px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ 看板标题优化完成</h1>
+            <p style="font-size: 18px; margin: 10px 0 0 0;">
+                移除各看板内部logo，统一只显示标题文字
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>🎯 优化目标</h2>
+            <p style="font-size: 16px; line-height: 1.8; color: #666;">
+                由于主看板顶部已经有统一的logo和导航，各个子看板内部不需要重复显示logo，
+                只保留标题文字即可，这样可以：
+            </p>
+            <ul style="line-height: 2; color: #666; margin-top: 15px;">
+                <li>✓ 避免视觉重复，界面更简洁</li>
+                <li>✓ 节省顶部空间，内容区域更大</li>
+                <li>✓ 统一设计风格，层级更清晰</li>
+                <li>✓ 提升用户体验，减少干扰</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>📋 优化对比</h2>
+            
+            <div class="comparison">
+                <div class="before">
+                    <h3>优化前</h3>
+                    <div class="mock-navbar">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 40px; height: 40px; background: #FF6B35; border-radius: 8px;"></div>
+                            <span class="mock-title">周度数据分析看板</span>
+                        </div>
+                        <select class="mock-selector">
+                            <option>选择周度...</option>
+                        </select>
+                    </div>
+                    <p style="margin-top: 15px; color: #666;">
+                        ❌ 有logo图片 + 标题文字
+                    </p>
+                </div>
+                
+                <div class="after">
+                    <h3>优化后 ✓</h3>
+                    <div class="mock-navbar">
+                        <span class="mock-title">周度数据分析看板</span>
+                        <select class="mock-selector">
+                            <option>选择周度...</option>
+                        </select>
+                    </div>
+                    <p style="margin-top: 15px; color: #666;">
+                        ✓ 只保留标题文字
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>✨ 已优化的看板</h2>
+            
+            <ul class="dashboard-list">
+                <li>
+                    <div>
+                        <div class="dashboard-name">月度核心数据看板</div>
+                        <div style="font-size: 13px; color: #999; margin-top: 5px;">
+                            核心数据看板（月度）/index-static.html
+                        </div>
+                    </div>
+                    <span class="status">已优化</span>
+                </li>
+                <li>
+                    <div>
+                        <div class="dashboard-name">周度数据分析看板</div>
+                        <div style="font-size: 13px; color: #999; margin-top: 5px;">
+                            核心数据看板（周度）/index.html
+                        </div>
+                    </div>
+                    <span class="status">已优化</span>
+                </li>
+                <li>
+                    <div>
+                        <div class="dashboard-name">搜索数据看板</div>
+                        <div style="font-size: 13px; color: #999; margin-top: 5px;">
+                            搜索数据看板（周度）/index.html
+                        </div>
+                    </div>
+                    <span class="status">已优化</span>
+                </li>
+                <li>
+                    <div>
+                        <div class="dashboard-name">各模块渗透率看板</div>
+                        <div style="font-size: 13px; color: #999; margin-top: 5px;">
+                            各模块渗透率看板（月度）/index.html
+                        </div>
+                    </div>
+                    <span class="status">已优化</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>🔧 技术改进</h2>
+            
+            <h3 style="color: #ff7043; margin-top: 20px;">1. HTML结构简化</h3>
+            <div style="background: #263238; color: #aed581; padding: 20px; border-radius: 8px; font-family: 'Courier New', monospace; margin: 15px 0;">
+                <div style="color: #999;">优化前：</div>
+                <div style="margin: 10px 0;">
+                    &lt;div class="navbar"&gt;<br>
+                    &nbsp;&nbsp;&lt;div class="logo"&gt;<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&lt;img src="logo.png"&gt;<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&lt;div class="logo-text"&gt;标题&lt;/div&gt;<br>
+                    &nbsp;&nbsp;&lt;/div&gt;<br>
+                    &lt;/div&gt;
+                </div>
+                <div style="color: #999; margin-top: 15px;">优化后：</div>
+                <div style="margin: 10px 0;">
+                    &lt;div class="navbar"&gt;<br>
+                    &nbsp;&nbsp;&lt;div class="logo-text"&gt;标题&lt;/div&gt;<br>
+                    &lt;/div&gt;
+                </div>
+            </div>
+
+            <h3 style="color: #ff7043; margin-top: 20px;">2. CSS样式清理</h3>
+            <div class="checklist">
+                <ul>
+                    <li>✓ 移除 <span class="highlight">.logo</span> 容器样式</li>
+                    <li>✓ 移除 <span class="highlight">.logo img</span> 图片样式</li>
+                    <li>✓ 移除 <span class="highlight">.header-left</span> 布局样式</li>
+                    <li>✓ 保留 <span class="highlight">.logo-text</span> 标题样式</li>
+                    <li>✓ 优化标题字重为 <span class="highlight">600</span></li>
+                </ul>
+            </div>
+
+            <h3 style="color: #ff7043; margin-top: 20px;">3. 统一标题样式</h3>
+            <div class="checklist">
+                <ul>
+                    <li>✓ 字体大小：<span class="highlight">24px</span></li>
+                    <li>✓ 字体颜色：<span class="highlight">#FF6B35</span>（橙色）</li>
+                    <li>✓ 字重：<span class="highlight">600</span>（半粗体）</li>
+                    <li>✓ 对齐方式：左对齐</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 设计层级</h2>
+            
+            <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; border-left: 4px solid #ff7043;">
+                <h3 style="margin-top: 0; color: #333;">清晰的视觉层级</h3>
+                
+                <div style="margin: 20px 0;">
+                    <div style="padding: 15px; background: white; border-radius: 6px; margin-bottom: 10px; border: 2px solid #ff7043;">
+                        <strong style="color: #ff7043;">第一层：主看板导航</strong>
+                        <div style="color: #666; margin-top: 5px; font-size: 14px;">
+                            包含logo + 标题 + 周度/月度切换 + 看板选择器
+                        </div>
+                    </div>
+                    
+                    <div style="padding: 15px; background: white; border-radius: 6px; margin-bottom: 10px; border: 2px solid #4caf50;">
+                        <strong style="color: #4caf50;">第二层：子看板标题</strong>
+                        <div style="color: #666; margin-top: 5px; font-size: 14px;">
+                            只显示标题文字 + 时间选择器（无logo）
+                        </div>
+                    </div>
+                    
+                    <div style="padding: 15px; background: white; border-radius: 6px; border: 2px solid #2196f3;">
+                        <strong style="color: #2196f3;">第三层：内容区域</strong>
+                        <div style="color: #666; margin-top: 5px; font-size: 14px;">
+                            数据卡片、图表、表格等内容
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 测试验证</h2>
+            
+            <a href="index.html" class="btn" target="_blank">打开主看板</a>
+            <a href="核心数据看板（月度）/index-static.html" class="btn" target="_blank">月度看板</a>
+            <a href="核心数据看板（周度）/index.html" class="btn" target="_blank">周度看板</a>
+            <a href="搜索数据看板（周度）/index.html" class="btn" target="_blank">搜索看板</a>
+            <a href="各模块渗透率看板（月度）/index.html" class="btn" target="_blank">渗透率看板</a>
+            
+            <div class="checklist" style="margin-top: 20px;">
+                <h3 style="margin-top: 0;">验证清单：</h3>
+                <ul>
+                    <li>[ ] 主看板顶部有logo和完整导航</li>
+                    <li>[ ] 各子看板顶部只有标题文字</li>
+                    <li>[ ] 标题颜色统一为橙色</li>
+                    <li>[ ] 标题大小统一为24px</li>
+                    <li>[ ] 时间选择器正常显示</li>
+                    <li>[ ] 整体视觉更简洁统一</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📁 修改的文件</h2>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <h3 style="margin-top: 0; color: #333;">HTML文件（4个）</h3>
+                <ul style="line-height: 2; color: #666;">
+                    <li>核心数据看板（月度）/index-static.html</li>
+                    <li>核心数据看板（周度）/index.html</li>
+                    <li>搜索数据看板（周度）/index.html</li>
+                    <li>各模块渗透率看板（月度）/index.html</li>
+                </ul>
+                
+                <h3 style="margin-top: 20px; color: #333;">CSS文件（1个）</h3>
+                <ul style="line-height: 2; color: #666;">
+                    <li>各模块渗透率看板（月度）/styles.css</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section" style="background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%); color: white;">
+            <h2 style="color: white; border-bottom-color: white;">✅ 优化完成</h2>
+            <p style="font-size: 16px; line-height: 1.8;">
+                所有看板的标题已优化完成！<br><br>
+                
+                <strong>主要改进：</strong><br>
+                • 移除各子看板内部的logo图片<br>
+                • 只保留标题文字，界面更简洁<br>
+                • 统一标题样式（24px，橙色，600字重）<br>
+                • 清晰的视觉层级，用户体验更好<br><br>
+                
+                现在整个数据看板系统的设计更加统一和专业！
+            </p>
+        </div>
+    </div>
+
+    <script>
+        console.log('✅ 看板标题优化完成');
+        console.log('已优化的看板：');
+        console.log('1. 月度核心数据看板');
+        console.log('2. 周度数据分析看板');
+        console.log('3. 搜索数据看板');
+        console.log('4. 各模块渗透率看板');
+        console.log('');
+        console.log('主要改进：移除logo图片，只保留标题文字');
+    </script>
+</body>
+</html>

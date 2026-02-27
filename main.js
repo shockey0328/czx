@@ -15,9 +15,8 @@ const dashboardConfig = {
     monthly: {
         'core-monthly': {
             name: '核心数据',
-            path: 'http://localhost:3000',
-            type: 'react',
-            note: '需要先运行: cd 核心数据看板（月度） && npm start'
+            path: '核心数据看板（月度）/index-static.html',
+            type: 'static'
         },
         'penetration-monthly': {
             name: '各模块渗透率',

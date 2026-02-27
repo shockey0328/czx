@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试AI修复</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #ff7043;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #ff7043;
+            padding-bottom: 10px;
+        }
+        .fix-item {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #ff7043;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 10px 10px 10px 0;
+        }
+        .btn:hover {
+            background: #e55a2b;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 AI功能修复验证</h1>
+    
+    <div class="test-section">
+        <h2>✅ 已修复的问题</h2>
+        
+        <div class="fix-item">
+            <h3>问题1: AI数据分析位置错误</h3>
+            <p><strong>问题描述：</strong>AI数据分析模块显示在B端核心数据上面</p>
+            <p><strong>修复方案：</strong>调整HTML结构，将AI数据分析移到B端核心数据下面</p>
+            <p class="success">✓ 已修复</p>
+        </div>
+
+        <div class="fix-item">
+            <h3>问题2: AI分析输出显示异常</h3>
+            <p><strong>问题描述：</strong>"关键变化"列显示为乱码或特殊字符</p>
+            <p><strong>修复方案：</strong></p>
+            <ul>
+                <li>重写displayAIAnalysis函数，改进解析逻辑</li>
+                <li>优化AI提示词，要求更结构化的输出格式</li>
+                <li>添加更智能的文本清理和格式化</li>
+                <li>添加调试日志，便于排查问题</li>
+            </ul>
+            <p class="success">✓ 已修复</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 验证步骤</h2>
+        
+        <h3>1. 验证AI数据分析位置</h3>
+        <ol>
+            <li>打开月度看板</li>
+            <li>滚动到页面中下部</li>
+            <li>确认顺序为：
+                <ul>
+                    <li>趋势分析（3个图表）</li>
+                    <li><strong>AI数据分析</strong>（3列分析）</li>
+                    <li><strong>B端核心数据</strong>（6个指标）</li>
+                </ul>
+            </li>
+        </ol>
+
+        <h3>2. 验证AI分析输出</h3>
+        <ol>
+            <li>查看AI数据分析模块</li>
+            <li>确认显示3列内容：
+                <ul>
+                    <li><strong>核心表现</strong> - 显示一段描述文字</li>
+                    <li><strong>关键变化</strong> - 显示3-4个要点列表</li>
+                    <li><strong>策略建议</strong> - 显示3-4个建议列表</li>
+                </ul>
+            </li>
+            <li>确认文字显示正常，无乱码</li>
+            <li>点击"刷新分析"按钮，测试重新生成</li>
+            <li>切换不同月份，观察分析是否更新</li>
+        </ol>
+
+        <h3>3. 验证小橙子AI助手</h3>
+        <ol>
+            <li>点击页面左侧的小橙子图标</li>
+            <li>测试对话功能是否正常</li>
+            <li>确认回答内容正常显示</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 技术改进</h2>
+        
+        <h3>displayAIAnalysis函数改进</h3>
+        <ul>
+            <li><strong>智能解析</strong> - 按行分析，识别章节标题</li>
+            <li><strong>文本清理</strong> - 移除【】[]标记、冒号、列表符号</li>
+            <li><strong>长度过滤</strong> - 过滤过短或过长的内容</li>
+            <li><strong>结构化输出</strong> - 分别处理核心表现、关键变化、策略建议</li>
+            <li><strong>后备方案</strong> - 解析失败时使用默认内容</li>
+            <li><strong>调试日志</strong> - 输出原始回复，便于排查</li>
+        </ul>
+
+        <h3>AI提示词优化</h3>
+        <ul>
+            <li><strong>明确格式</strong> - 要求按特定格式输出</li>
+            <li><strong>独立分段</strong> - 每个维度独立一段</li>
+            <li><strong>列表标记</strong> - 要求使用"-"开头</li>
+            <li><strong>字数限制</strong> - 明确每个要点的字数范围</li>
+            <li><strong>禁用符号</strong> - 不使用【】等特殊符号</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 预期效果</h2>
+        
+        <h3>AI数据分析示例</h3>
+        
+        <h4>核心表现：</h4>
+        <p>月活335,280人，营收119.8万元，ARPU3.57元，留存率46%，使用率78%。本月各项指标表现优秀，用户规模和营收均实现显著增长。</p>
+
+        <h4>关键变化：</h4>
+        <ul>
+            <li>月活同比增长16.2%，用户规模持续扩大</li>
+            <li>营收同比增长110.4%，变现能力显著提升</li>
+            <li>留存率同比提升3.0pp，用户粘性增强</li>
+        </ul>
+
+        <h4>策略建议：</h4>
+        <ul>
+            <li>持续优化用户体验，巩固增长势头</li>
+            <li>探索新的付费场景，提升ARPU值</li>
+            <li>加强用户运营，进一步提升留存率</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>⚠️ 注意事项</h2>
+        <ul>
+            <li><strong>网络连接</strong> - AI功能需要网络访问DeepSeek API</li>
+            <li><strong>首次加载</strong> - 首次生成分析可能需要3-5秒</li>
+            <li><strong>API限制</strong> - 如果频繁刷新可能触发API限制</li>
+            <li><strong>后备方案</strong> - API失败时会自动使用本地分析</li>
+            <li><strong>浏览器控制台</strong> - 可以查看调试日志了解详情</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🐛 如果仍有问题</h2>
+        
+        <h3>检查步骤：</h3>
+        <ol>
+            <li>打开浏览器控制台（F12）</li>
+            <li>查看Console标签页</li>
+            <li>查找"AI原始回复:"日志</li>
+            <li>检查AI返回的内容格式</li>
+            <li>查看是否有错误信息</li>
+        </ol>
+
+        <h3>常见问题：</h3>
+        <ul>
+            <li><strong>显示"正在分析数据..."</strong> - 等待API响应或网络问题</li>
+            <li><strong>显示默认内容</strong> - API调用失败，使用了本地分析</li>
+            <li><strong>内容格式异常</strong> - AI返回格式不符合预期，需要调整解析逻辑</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 快速测试</h2>
+        <a href="核心数据看板（月度）/index-static.html" class="btn" target="_blank">打开月度看板</a>
+        <a href="测试AI功能.html" class="btn" target="_blank">查看AI功能测试</a>
+        
+        <h3 style="margin-top: 20px;">测试清单：</h3>
+        <ul>
+            <li>[ ] AI数据分析位置正确（在B端数据下面）</li>
+            <li>[ ] 核心表现列显示正常</li>
+            <li>[ ] 关键变化列显示正常（无乱码）</li>
+            <li>[ ] 策略建议列显示正常</li>
+            <li>[ ] 刷新分析按钮工作正常</li>
+            <li>[ ] 切换月份时分析更新</li>
+            <li>[ ] 小橙子对话功能正常</li>
+        </ul>
+    </div>
+
+    <script>
+        console.log('AI修复测试页面加载完成');
+        console.log('修复内容：');
+        console.log('1. 调整AI数据分析位置到B端数据下面');
+        console.log('2. 改进AI分析输出解析逻辑');
+        console.log('3. 优化AI提示词格式');
+    </script>
+</body>
+</html>

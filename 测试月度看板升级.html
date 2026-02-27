@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试月度看板升级</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #ff7043;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #ff7043;
+            padding-bottom: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .status.done {
+            background: #4caf50;
+            color: white;
+        }
+        .status.pending {
+            background: #ff9800;
+            color: white;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        .feature-list li {
+            margin-bottom: 10px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #ff7043;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 10px 10px 10px 0;
+        }
+        .btn:hover {
+            background: #e55a2b;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎉 月度核心数据看板升级测试</h1>
+    
+    <div class="test-section">
+        <h2>✅ 已完成功能 <span class="status done">DONE</span></h2>
+        <ul class="feature-list">
+            <li><strong>同比数据显示</strong> - 核心指标卡片现在同时显示环比和同比数据</li>
+            <li><strong>时间范围切换</strong> - 趋势图支持3/6/12个月切换，默认3个月</li>
+            <li><strong>简化趋势图</strong> - 只保留月活、营收、留存率三个图表，移除ARPPU</li>
+            <li><strong>B端数据展示</strong> - 新增B端核心数据模块（签约、开票、到款、订单、新签、续签）</li>
+            <li><strong>样式优化</strong> - 中国风格（红涨绿跌），统一橙色主题</li>
+            <li><strong>响应式设计</strong> - 优化移动端显示</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>⏳ 待完成功能 <span class="status pending">PENDING</span></h2>
+        <ul class="feature-list">
+            <li><strong>AI数据分析</strong> - 集成DeepSeek AI进行智能数据分析</li>
+            <li><strong>小橙子AI助手</strong> - 固定在页面左侧的智能对话助手</li>
+        </ul>
+        <p><strong>说明：</strong>AI功能需要配置DeepSeek API密钥才能使用。由于文件较大，建议分步实施。</p>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 测试步骤</h2>
+        <ol>
+            <li>确保已运行 <code>更新数据.bat</code> 更新数据文件</li>
+            <li>打开 <code>核心数据看板（月度）/index-static.html</code></li>
+            <li>检查以下功能：
+                <ul>
+                    <li>核心指标卡片是否显示环比和同比数据</li>
+                    <li>环比同比数据颜色是否正确（红涨绿跌）</li>
+                    <li>趋势图是否只有3个（月活、营收、留存率）</li>
+                    <li>时间范围切换按钮是否工作（3/6/12个月）</li>
+                    <li>B端数据是否正确显示</li>
+                    <li>切换不同月份，数据是否正确更新</li>
+                </ul>
+            </li>
+            <li>测试响应式：缩小浏览器窗口，检查移动端显示</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 数据验证</h2>
+        <h3>同比计算示例：</h3>
+        <p>26年1月 vs 25年1月：</p>
+        <ul>
+            <li>月活：335,280 vs 288,582 = <strong>+16.2%</strong></li>
+            <li>营收：1,198,458 vs 569,695 = <strong>+110.4%</strong></li>
+            <li>留存率：46% vs 43% = <strong>+3.0pp</strong></li>
+        </ul>
+        
+        <h3>B端数据示例（26年1月）：</h3>
+        <ul>
+            <li>签约金额：18.35万</li>
+            <li>开票金额：12.82万</li>
+            <li>到款金额：14.42万</li>
+            <li>订单数：20</li>
+            <li>新签：9</li>
+            <li>续签：11</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 快速链接</h2>
+        <a href="核心数据看板（月度）/index-static.html" class="btn" target="_blank">打开月度看板</a>
+        <a href="核心数据看板（周度）/index.html" class="btn" target="_blank">参考周度看板</a>
+        <a href="月度核心数据看板完整实施方案.md" class="btn" target="_blank">查看实施方案</a>
+        <a href="月度看板升级检查清单.md" class="btn" target="_blank">查看检查清单</a>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 下一步工作</h2>
+        <p>如果基础功能测试通过，可以继续添加AI功能：</p>
+        <ol>
+            <li>获取DeepSeek API密钥：<a href="https://platform.deepseek.com/" target="_blank">https://platform.deepseek.com/</a></li>
+            <li>参考周度看板的AI实现（<code>核心数据看板（周度）/index.html</code>）</li>
+            <li>添加AI数据分析模块</li>
+            <li>添加小橙子AI助手</li>
+            <li>测试AI功能</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>⚠️ 注意事项</h2>
+        <ul>
+            <li>确保数据文件格式正确，特别是百分号和单位</li>
+            <li>同比数据需要至少13个月的数据（当前有13个月，满足要求）</li>
+            <li>B端数据需要与月度数据的年份月份匹配</li>
+            <li>Chart.js需要从CDN加载，确保网络连接正常</li>
+            <li>AI功能需要配置API密钥，否则会使用本地分析</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>✨ 升级亮点</h2>
+        <ul class="feature-list">
+            <li><strong>数据维度更丰富</strong> - 环比+同比双维度对比，发现长期趋势</li>
+            <li><strong>分析更灵活</strong> - 3/6/12个月时间范围自由切换</li>
+            <li><strong>视图更聚焦</strong> - 只保留最核心的3个趋势图</li>
+            <li><strong>数据更完整</strong> - 新增B端核心数据，全面掌握业务</li>
+            <li><strong>体验更统一</strong> - 与周度看板样式一致，品牌统一</li>
+            <li><strong>设计更友好</strong> - 中国风格配色，符合使用习惯</li>
+        </ul>
+    </div>
+
+    <script>
+        console.log('月度看板升级测试页面加载完成');
+        console.log('请按照测试步骤进行功能验证');
+    </script>
+</body>
+</html>

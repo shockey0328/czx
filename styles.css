@@ -6,18 +6,20 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background-color: #f5f5f5;
     color: #333;
     line-height: 1.6;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* 顶部导航栏 */
 .main-header {
     background: white;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    padding: 15px 30px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    padding: 16px 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -29,7 +31,7 @@ body {
 .header-left {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
 }
 
 .logo {
@@ -38,8 +40,8 @@ body {
 }
 
 .main-title {
-    font-size: 26px;
-    font-weight: bold;
+    font-size: 22px;
+    font-weight: 600;
     color: #FF6B35;
     margin: 0;
 }
@@ -47,39 +49,42 @@ body {
 .header-right {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
 }
 
 /* 周度/月度切换按钮 */
 .period-toggle {
     display: flex;
-    background: #f0f0f0;
-    border-radius: 10px;
-    padding: 4px;
-    gap: 4px;
+    background: white;
+    border-radius: 4px;
+    gap: 8px;
 }
 
 .toggle-btn {
-    padding: 10px 24px;
-    border: none;
-    background: transparent;
+    padding: 8px 20px;
+    border: 2px solid #ff7043;
+    background: white;
     color: #666;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 15px;
     font-weight: 500;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .toggle-btn:hover {
-    background: rgba(255, 107, 53, 0.1);
-    color: #FF6B35;
+    background: #fff5f0;
+    border-color: #ff7043;
+    color: #ff7043;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 112, 67, 0.2);
 }
 
 .toggle-btn.active {
-    background: #FF6B35;
+    background: #ff7043;
     color: white;
-    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+    border-color: #ff7043;
+    box-shadow: 0 2px 8px rgba(255, 112, 67, 0.3);
 }
 
 /* 看板类型选择器 */
@@ -88,41 +93,51 @@ body {
 }
 
 .dashboard-select {
-    padding: 10px 40px 10px 20px;
-    border: 2px solid #FF6B35;
-    border-radius: 10px;
+    padding: 8px 36px 8px 16px;
+    border: 2px solid #ff7043;
+    border-radius: 6px;
     background: white;
-    color: #FF6B35;
+    color: #333;
     font-size: 15px;
     font-weight: 500;
     cursor: pointer;
     outline: none;
     appearance: none;
-    min-width: 180px;
-    transition: all 0.3s ease;
+    min-width: 160px;
+    transition: all 0.2s ease;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
 }
 
 .dashboard-select:hover {
-    background: #FFF5F2;
-    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+    border-color: #ff7043;
 }
 
 .dashboard-select:focus {
-    border-color: #FFA366;
+    border-color: #ff7043;
+    box-shadow: 0 0 0 2px rgba(255, 112, 67, 0.1);
+}
+
+.dashboard-select option {
+    background: white;
+    color: #333;
 }
 
 /* 看板容器 */
 .dashboard-container {
     width: 100%;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - 72px);
+    background-color: #f5f5f5;
 }
 
 /* iframe样式 */
 .dashboard-frame {
     width: 100%;
-    height: calc(100vh - 80px);
+    height: calc(100vh - 72px);
     border: none;
     display: block;
+    background-color: #f5f5f5;
 }
 
 /* 加载动画 */
@@ -131,15 +146,16 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: calc(100vh - 80px);
+    height: calc(100vh - 72px);
     gap: 20px;
+    background-color: #f5f5f5;
 }
 
 .loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #FF6B35;
+    width: 48px;
+    height: 48px;
+    border: 4px solid #ffe0d6;
+    border-top: 4px solid #ff7043;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -150,16 +166,62 @@ body {
 }
 
 .loading-text {
-    font-size: 16px;
+    font-size: 14px;
     color: #666;
+    font-weight: 400;
+}
+
+/* React应用提示样式 */
+.loading-container h3 {
+    color: #ff7043;
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
+.loading-container p {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.loading-container .loading-text {
+    background: white;
+    padding: 24px 32px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    max-width: 600px;
+    text-align: left;
+}
+
+.loading-container .loading-text ol {
+    margin-left: 20px;
+    line-height: 2;
+}
+
+.loading-container .loading-text code {
+    background: #f5f5f5;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    color: #ff7043;
+}
+
+.loading-container .loading-text a {
+    color: #ff7043;
+    text-decoration: none;
+}
+
+.loading-container .loading-text a:hover {
+    text-decoration: underline;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
     .main-header {
         flex-direction: column;
-        padding: 15px;
-        gap: 15px;
+        padding: 12px 16px;
+        gap: 12px;
     }
 
     .header-left {
@@ -170,23 +232,63 @@ body {
     .header-right {
         width: 100%;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
     }
 
-    .period-toggle,
-    .dashboard-select {
+    .period-toggle {
         width: 100%;
+        justify-content: center;
     }
 
     .toggle-btn {
         flex: 1;
+        padding: 8px 12px;
+        font-size: 13px;
     }
 
     .main-title {
-        font-size: 22px;
+        font-size: 18px;
     }
 
     .logo {
         height: 38px;
+    }
+
+    .dashboard-select {
+        width: 100%;
+        min-width: auto;
+        font-size: 13px;
+        padding: 8px 32px 8px 12px;
+    }
+
+    .dashboard-container,
+    .dashboard-frame {
+        min-height: calc(100vh - 140px);
+        height: calc(100vh - 140px);
+    }
+
+    .loading-container {
+        height: calc(100vh - 140px);
+        padding: 20px;
+    }
+
+    .loading-container .loading-text {
+        padding: 20px;
+        max-width: 100%;
+    }
+}
+
+/* 平板端优化 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .main-header {
+        padding: 14px 24px;
+    }
+
+    .main-title {
+        font-size: 20px;
+    }
+
+    .logo {
+        height: 42px;
     }
 }

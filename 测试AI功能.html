@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试AI功能</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #ff7043;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #ff7043;
+            padding-bottom: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .status.done {
+            background: #4caf50;
+            color: white;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #ff7043;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 10px 10px 10px 0;
+        }
+        .btn:hover {
+            background: #e55a2b;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .feature-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff7043;
+            padding: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 AI功能测试指南</h1>
+    
+    <div class="test-section">
+        <h2>✅ AI功能已完成 <span class="status done">DONE</span></h2>
+        <p class="success">恭喜！AI数据分析和小橙子AI助手功能已全部实现！</p>
+        
+        <div class="feature-box">
+            <h3>🎯 新增功能</h3>
+            <ul>
+                <li><strong>AI数据分析</strong> - 自动分析月度数据，提供核心表现、关键变化、策略建议</li>
+                <li><strong>小橙子AI助手</strong> - 固定在页面左侧，支持智能对话分析</li>
+                <li><strong>DeepSeek AI集成</strong> - 使用DeepSeek API提供专业分析</li>
+                <li><strong>本地分析后备</strong> - API失败时自动切换到本地分析</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 测试步骤</h2>
+        
+        <h3>1. 测试AI数据分析</h3>
+        <ol>
+            <li>打开 <code>核心数据看板（月度）/index-static.html</code></li>
+            <li>等待页面加载完成</li>
+            <li>查看页面底部的"AI数据分析"模块</li>
+            <li>检查是否显示三列分析：
+                <ul>
+                    <li>核心表现 - 当前月份的整体数据</li>
+                    <li>关键变化 - 重要指标的变化分析</li>
+                    <li>策略建议 - 具体可执行的优化建议</li>
+                </ul>
+            </li>
+            <li>点击"刷新分析"按钮，测试重新生成分析</li>
+            <li>切换不同月份，观察分析内容是否更新</li>
+        </ol>
+
+        <h3>2. 测试小橙子AI助手</h3>
+        <ol>
+            <li>在页面左侧找到小橙子图标（橙色圆形按钮）</li>
+            <li>点击小橙子图标，打开对话窗口</li>
+            <li>查看欢迎消息是否显示</li>
+            <li>测试快捷问题：
+                <ul>
+                    <li>点击"分析本月数据"</li>
+                    <li>点击"营收变化原因"</li>
+                    <li>点击"提升建议"</li>
+                </ul>
+            </li>
+            <li>测试自定义问题：
+                <ul>
+                    <li>输入"本月用户活跃度如何？"</li>
+                    <li>输入"营收相比上月有什么变化？"</li>
+                    <li>输入"如何提升留存率？"</li>
+                </ul>
+            </li>
+            <li>观察小橙子的回答是否专业、友好</li>
+            <li>点击右上角×关闭对话窗口</li>
+        </ol>
+
+        <h3>3. 测试响应式设计</h3>
+        <ol>
+            <li>缩小浏览器窗口到移动端尺寸</li>
+            <li>检查小橙子图标是否移动到底部</li>
+            <li>检查对话窗口是否全屏显示</li>
+            <li>检查AI分析模块是否单列显示</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 功能说明</h2>
+        
+        <h3>AI数据分析</h3>
+        <ul>
+            <li><strong>自动生成</strong> - 切换月份时自动生成分析</li>
+            <li><strong>三维分析</strong> - 核心表现、关键变化、策略建议</li>
+            <li><strong>智能解析</strong> - 自动格式化AI回复内容</li>
+            <li><strong>后备方案</strong> - API失败时使用本地分析</li>
+        </ul>
+
+        <h3>小橙子AI助手</h3>
+        <ul>
+            <li><strong>固定位置</strong> - 页面左侧，随时可用</li>
+            <li><strong>智能对话</strong> - 基于当前数据回答问题</li>
+            <li><strong>快捷问题</strong> - 预设常用问题，一键提问</li>
+            <li><strong>友好交互</strong> - 语气亲切，适当使用emoji</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🔑 API配置</h2>
+        <p><strong>DeepSeek API密钥已配置：</strong></p>
+        <code>sk-22da5c080db84c23b4a5c8c54e922763</code>
+        
+        <p style="margin-top: 15px;"><strong>API端点：</strong></p>
+        <code>https://api.deepseek.com/v1/chat/completions</code>
+        
+        <p style="margin-top: 15px;"><strong>模型：</strong></p>
+        <code>deepseek-chat</code>
+    </div>
+
+    <div class="test-section">
+        <h2>💡 使用技巧</h2>
+        
+        <h3>AI数据分析</h3>
+        <ul>
+            <li>每次切换月份都会自动生成新的分析</li>
+            <li>点击"刷新分析"可以重新生成</li>
+            <li>分析内容包含环比和同比数据</li>
+            <li>建议具体可执行，可直接参考</li>
+        </ul>
+
+        <h3>小橙子AI助手</h3>
+        <ul>
+            <li>可以询问任何关于当前数据的问题</li>
+            <li>支持对比分析（环比、同比）</li>
+            <li>可以要求详细解释某个指标</li>
+            <li>可以咨询优化建议和策略</li>
+        </ul>
+
+        <h3>示例问题</h3>
+        <ul>
+            <li>"本月月活用户增长的主要原因是什么？"</li>
+            <li>"营收下降应该如何应对？"</li>
+            <li>"留存率相比去年同期有什么变化？"</li>
+            <li>"ARPU值偏低，有什么改进建议？"</li>
+            <li>"使用率如何才能提升到80%以上？"</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>⚠️ 注意事项</h2>
+        <ul>
+            <li><strong>网络连接</strong> - AI功能需要网络连接访问DeepSeek API</li>
+            <li><strong>API限制</strong> - 注意API调用频率限制，避免过度使用</li>
+            <li><strong>数据隐私</strong> - 发送到API的数据仅包含统计数据，不含敏感信息</li>
+            <li><strong>后备方案</strong> - API失败时会自动使用本地分析，不影响使用</li>
+            <li><strong>浏览器兼容</strong> - 推荐使用Chrome或Edge最新版</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🎉 完整功能清单</h2>
+        <p>月度核心数据看板现已包含以下所有功能：</p>
+        
+        <h3>✅ 基础功能（6个）</h3>
+        <ul>
+            <li>✓ 同比数据显示 - 环比+同比双维度对比</li>
+            <li>✓ 时间范围切换 - 3/6/12个月灵活切换</li>
+            <li>✓ 简化趋势图 - 月活、营收、留存率三个核心图表</li>
+            <li>✓ B端核心数据 - 6个B端关键指标</li>
+            <li>✓ 样式优化 - 统一橙色主题，中国风格配色</li>
+            <li>✓ 响应式设计 - 完美适配移动端</li>
+        </ul>
+
+        <h3>✅ AI功能（2个）</h3>
+        <ul>
+            <li>✓ AI数据分析 - DeepSeek AI智能分析</li>
+            <li>✓ 小橙子AI助手 - 智能对话分析助手</li>
+        </ul>
+
+        <p class="success" style="margin-top: 20px; font-size: 18px;">
+            🎊 所有功能已全部实现！共8个核心功能！
+        </p>
+    </div>
+
+    <div class="test-section">
+        <h2>🚀 快速链接</h2>
+        <a href="核心数据看板（月度）/index-static.html" class="btn" target="_blank">打开月度看板</a>
+        <a href="测试月度看板升级.html" class="btn" target="_blank">查看基础功能测试</a>
+        <a href="月度看板升级完成.md" class="btn" target="_blank">查看升级总结</a>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 测试检查表</h2>
+        <h3>AI数据分析</h3>
+        <ul>
+            <li>[ ] 页面加载时自动生成分析</li>
+            <li>[ ] 显示三列分析内容</li>
+            <li>[ ] 刷新按钮工作正常</li>
+            <li>[ ] 切换月份时分析更新</li>
+            <li>[ ] 分析内容专业准确</li>
+        </ul>
+
+        <h3>小橙子AI助手</h3>
+        <ul>
+            <li>[ ] 小橙子图标显示正常</li>
+            <li>[ ] 点击图标打开对话窗口</li>
+            <li>[ ] 显示欢迎消息</li>
+            <li>[ ] 快捷问题按钮工作</li>
+            <li>[ ] 自定义问题回答正确</li>
+            <li>[ ] 输入指示器显示正常</li>
+            <li>[ ] 关闭按钮工作正常</li>
+        </ul>
+
+        <h3>响应式设计</h3>
+        <ul>
+            <li>[ ] 移动端小橙子位置正确</li>
+            <li>[ ] 移动端对话窗口全屏</li>
+            <li>[ ] 移动端AI分析单列显示</li>
+        </ul>
+    </div>
+
+    <script>
+        console.log('AI功能测试页面加载完成');
+        console.log('DeepSeek API密钥已配置');
+        console.log('请按照测试步骤进行功能验证');
+    </script>
+</body>
+</html>
