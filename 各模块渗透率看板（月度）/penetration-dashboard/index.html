@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>各模块渗透率看板</title>
+    <!-- 移除Chart.js依赖，使用纯CSS图表 -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- 顶部标题和筛选器 -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <div class="logo-container">
+                    <img src="logo.png" alt="Logo" class="logo" loading="eager" id="mainLogo">
+                    <div class="logo-fallback" id="logoFallback" style="display: none;">
+                        <div class="logo-placeholder">📊</div>
+                    </div>
+                </div>
+                <h1>各模块渗透率看板</h1>
+            </div>
+            <div class="header-right">
+                <div class="filter-group">
+                    <label>月份筛选：</label>
+                    <select id="monthFilter">
+                        <option value="2025-03">25年3月</option>
+                        <option value="2025-04">25年4月</option>
+                        <option value="2025-05">25年5月</option>
+                        <option value="2025-06">25年6月</option>
+                        <option value="2025-07">25年7月</option>
+                        <option value="2025-08">25年8月</option>
+                        <option value="2025-09">25年9月</option>
+                        <option value="2025-10">25年10月</option>
+                        <option value="2025-11">25年11月</option>
+                        <option value="2025-12">25年12月</option>
+                        <option value="2026-01">26年1月</option>
+                        <option value="recent-year" selected>近1年</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>按一级模块筛选：</label>
+                    <select id="moduleFilter">
+                        <option value="all" selected>全部</option>
+                        <option value="功能">功能</option>
+                        <option value="真题试卷">真题试卷</option>
+                        <option value="备考">备考</option>
+                        <option value="同步">同步</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- KPI卡片区 -->
+        <div class="kpi-section">
+            <div class="kpi-card">
+                <div class="kpi-icon">📊</div>
+                <div class="kpi-content">
+                    <div class="kpi-title">平均渗透率</div>
+                    <div class="kpi-value" id="avgPenetration">--</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">🏆</div>
+                <div class="kpi-content">
+                    <div class="kpi-title">最高渗透率</div>
+                    <div class="kpi-value" id="maxPenetration">--</div>
+                    <div class="kpi-subtitle" id="maxModule">--</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">📈</div>
+                <div class="kpi-content">
+                    <div class="kpi-title">环比增长最快</div>
+                    <div class="kpi-value" id="fastestGrowth">--</div>
+                    <div class="kpi-subtitle" id="fastestModule">--</div>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">🔢</div>
+                <div class="kpi-content">
+                    <div class="kpi-title">模块总数</div>
+                    <div class="kpi-value" id="moduleCount">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要图表区域 -->
+        <div class="main-charts-section">
+            <!-- 趋势折线图 -->
+            <div class="chart-container trend-chart">
+                <div class="chart-header">
+                    <h3>渗透率趋势图</h3>
+                    <div class="time-range-buttons">
+                        <button class="time-btn active" data-range="3">近3个月</button>
+                        <button class="time-btn" data-range="6">近6个月</button>
+                        <button class="time-btn" data-range="12">近12个月</button>
+                    </div>
+                </div>
+                <div id="trendChart" class="css-chart-container">
+                    <!-- 纯CSS图表将在这里生成 -->
+                </div>
+            </div>
+
+            <!-- 排名柱状图 -->
+            <div class="chart-container ranking-chart">
+                <div class="chart-header">
+                    <h3>模块平均渗透率排名</h3>
+                </div>
+                <div id="rankingChart" class="css-chart-container">
+                    <!-- 纯CSS柱状图将在这里生成 -->
+                </div>
+            </div>
+
+            <!-- 分类占比图 -->
+            <div class="chart-container pie-chart">
+                <div class="chart-header">
+                    <h3>各一级模块分布</h3>
+                </div>
+                <div id="pieChart" class="css-chart-container">
+                    <!-- 纯CSS饼图将在这里生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 热力图区域 -->
+        <div class="heatmap-section">
+            <div class="chart-header">
+                <h3>渗透率热力图</h3>
+                <div class="time-range-buttons">
+                    <button class="heatmap-btn active" data-range="3">近3个月</button>
+                    <button class="heatmap-btn" data-range="6">近6个月</button>
+                    <button class="heatmap-btn" data-range="12">近12个月</button>
+                </div>
+            </div>
+            <div id="heatmapContainer"></div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="table-section">
+            <div class="chart-header">
+                <h3>数据表格</h3>
+            </div>
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>一级模块</th>
+                            <th>二级模块</th>
+                            <th>25年3月</th>
+                            <th>25年4月</th>
+                            <th>25年5月</th>
+                            <th>25年6月</th>
+                            <th>25年7月</th>
+                            <th>25年8月</th>
+                            <th>25年9月</th>
+                            <th>25年10月</th>
+                            <th>25年11月</th>
+                            <th>25年12月</th>
+                            <th>26年1月</th>
+                            <th>平均值</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- AI分析板块 -->
+        <div class="ai-analysis-section">
+            <div class="chart-header">
+                <h3>AI智能分析</h3>
+                <button id="analyzeBtn" class="analyze-btn">
+                    <span class="btn-icon">🤖</span>
+                    生成分析报告
+                </button>
+            </div>
+            <div class="ai-content">
+                <div id="aiAnalysis" class="ai-analysis-content">
+                    <div class="ai-placeholder">
+                        <div class="ai-icon">🤖</div>
+                        <p>点击"生成分析报告"按钮，AI将基于当前筛选的数据生成深度分析报告</p>
+                    </div>
+                </div>
+                <div id="aiLoading" class="ai-loading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p>AI正在分析数据，请稍候...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI分析结果区域 -->
+        <div class="ai-results-section" id="aiResultsSection" style="display: none;">
+            <!-- 整体分析 -->
+            <div class="analysis-card">
+                <div class="analysis-header">
+                    <div class="analysis-icon">📊</div>
+                    <h3>整体分析</h3>
+                </div>
+                <div class="analysis-content" id="overallAnalysis">
+                    <!-- 整体分析内容 -->
+                </div>
+            </div>
+
+            <!-- 优化建议 -->
+            <div class="analysis-card">
+                <div class="analysis-header">
+                    <div class="analysis-icon">💡</div>
+                    <h3>优化建议</h3>
+                </div>
+                <div class="analysis-content" id="optimizationSuggestions">
+                    <!-- 优化建议内容 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

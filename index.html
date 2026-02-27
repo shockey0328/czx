@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据看板</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="main-header">
+        <div class="header-left">
+            <img src="logo.png" alt="Logo" class="logo">
+            <h1 class="main-title">数据看板</h1>
+        </div>
+        <div class="header-right">
+            <!-- 周度/月度切换 -->
+            <div class="period-toggle">
+                <button class="toggle-btn active" data-period="weekly">周度</button>
+                <button class="toggle-btn" data-period="monthly">月度</button>
+            </div>
+            <!-- 看板类型选择 -->
+            <div class="dashboard-selector">
+                <select id="dashboardType" class="dashboard-select">
+                    <option value="core-weekly">核心数据</option>
+                    <option value="search-weekly">搜索数据</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- 看板容器 -->
+    <div id="dashboardContainer" class="dashboard-container">
+        <!-- 动态加载的看板内容将显示在这里 -->
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

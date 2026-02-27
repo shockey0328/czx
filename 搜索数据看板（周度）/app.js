@@ -20,165 +20,102 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // 加载所有数据
 async function loadAllData() {
-    const errors = [];
-    
     try {
+        console.log('=== 使用嵌入的数据 ===');
+        
+        // 检查dashboardData是否存在
+        if (typeof dashboardData === 'undefined') {
+            throw new Error('数据文件未加载，请确保data.js文件存在');
+        }
+        
+        console.log('可用的数据集:', Object.keys(dashboardData));
+        
         // 加载每周搜索词数据
         for (let i = 1; i <= 8; i++) {
-            try {
-                const response = await fetch(`第${i}周搜索词.csv`);
-                console.log(`尝试加载第${i}周搜索词，状态:`, response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status} - 文件不存在或无法访问`);
-                }
-                
-                const buffer = await response.arrayBuffer();
-                const decoder = new TextDecoder('utf-8');
-                const text = decoder.decode(buffer);
-                allData.keywords[i] = parseCSV(text);
-                
-                if (allData.keywords[i].length === 0) {
-                    throw new Error('CSV解析后数据为空，请检查文件格式');
-                }
-                
-                console.log(`✓ 第${i}周搜索词加载成功，共 ${allData.keywords[i].length} 条数据`);
-            } catch (error) {
-                console.error(`✗ 第${i}周搜索词加载失败:`, error.message);
-                errors.push(`第${i}周搜索词: ${error.message}`);
-                allData.keywords[i] = []; // 使用空数组而不是示例数据
+            const key = `第${i}周搜索词`;
+            if (dashboardData[key]) {
+                allData.keywords[i] = dashboardData[key];
+                console.log(`第${i}周数据加载成功，共 ${allData.keywords[i].length} 条`);
+            } else {
+                console.warn(`未找到第${i}周数据`);
             }
         }
 
         // 加载漏斗数据
-        try {
-            const funnelResponse = await fetch('搜索行为漏斗.csv');
-            console.log('尝试加载搜索行为漏斗，状态:', funnelResponse.status);
-            
-            if (!funnelResponse.ok) {
-                throw new Error(`HTTP ${funnelResponse.status} - 文件不存在或无法访问`);
-            }
-            
-            const funnelBuffer = await funnelResponse.arrayBuffer();
-            const funnelDecoder = new TextDecoder('utf-8');
-            const funnelText = funnelDecoder.decode(funnelBuffer);
-            allData.funnel = parseCSV(funnelText);
-            
-            if (allData.funnel.length === 0) {
-                throw new Error('CSV解析后数据为空，请检查文件格式');
-            }
-            
-            console.log('✓ 搜索行为漏斗加载成功，共', allData.funnel.length, '条数据');
-        } catch (error) {
-            console.error('✗ 搜索行为漏斗加载失败:', error.message);
-            errors.push(`搜索行为漏斗: ${error.message}`);
-            allData.funnel = [];
+        if (dashboardData['搜索行为漏斗']) {
+            allData.funnel = dashboardData['搜索行为漏斗'];
+            console.log('漏斗数据加载成功，共', allData.funnel.length, '条');
         }
 
         // 加载转化率数据
-        try {
-            const conversionResponse = await fetch('搜索转化率.csv');
-            console.log('尝试加载搜索转化率，状态:', conversionResponse.status);
-            
-            if (!conversionResponse.ok) {
-                throw new Error(`HTTP ${conversionResponse.status} - 文件不存在或无法访问`);
-            }
-            
-            const conversionBuffer = await conversionResponse.arrayBuffer();
-            const conversionDecoder = new TextDecoder('utf-8');
-            const conversionText = conversionDecoder.decode(conversionBuffer);
-            allData.conversion = parseCSV(conversionText);
-            
-            if (allData.conversion.length === 0) {
-                throw new Error('CSV解析后数据为空，请检查文件格式');
-            }
-            
-            console.log('✓ 搜索转化率加载成功，共', allData.conversion.length, '条数据');
-        } catch (error) {
-            console.error('✗ 搜索转化率加载失败:', error.message);
-            errors.push(`搜索转化率: ${error.message}`);
-            allData.conversion = [];
+        if (dashboardData['搜索转化率']) {
+            allData.conversion = dashboardData['搜索转化率'];
+            console.log('转化率数据加载成功，共', allData.conversion.length, '条');
         }
 
         // 加载留存数据
-        try {
-            const retentionResponse = await fetch('搜索功能留存看板.csv');
-            console.log('尝试加载搜索功能留存，状态:', retentionResponse.status);
-            
-            if (!retentionResponse.ok) {
-                throw new Error(`HTTP ${retentionResponse.status} - 文件不存在或无法访问`);
-            }
-            
-            const retentionBuffer = await retentionResponse.arrayBuffer();
-            const retentionDecoder = new TextDecoder('utf-8');
-            const retentionText = retentionDecoder.decode(retentionBuffer);
-            allData.retention = parseCSV(retentionText);
-            
-            if (allData.retention.length === 0) {
-                throw new Error('CSV解析后数据为空，请检查文件格式');
-            }
-            
-            console.log('✓ 搜索功能留存加载成功，共', allData.retention.length, '条数据');
-        } catch (error) {
-            console.error('✗ 搜索功能留存加载失败:', error.message);
-            errors.push(`搜索功能留存: ${error.message}`);
-            allData.retention = [];
+        if (dashboardData['搜索功能留存看板']) {
+            allData.retention = dashboardData['搜索功能留存看板'];
+            console.log('留存数据加载成功，共', allData.retention.length, '条');
         }
 
-        // 显示加载结果
-        if (errors.length > 0) {
-            console.error('========================================');
-            console.error('✗ 数据加载失败');
-            console.error('失败的文件:');
-            errors.forEach(err => console.error('  - ' + err));
-            console.error('========================================');
-            console.error('请检查:');
-            console.error('1. 是否通过 HTTP 服务器访问（不能直接打开 HTML 文件）');
-            console.error('2. CSV 文件是否存在于正确的目录');
-            console.error('3. 文件编码是否为 UTF-8');
-            console.error('4. 文件格式是否正确（有 header，数据完整）');
-            console.error('========================================');
-            showDataLoadError(errors);
-        } else {
-            console.log('========================================');
-            console.log('✓ 所有数据加载成功');
-            console.log('✓ 全部使用真实 CSV 数据');
-            console.log('========================================');
-        }
-
-        console.log('数据加载完成:', allData);
+        console.log('所有数据加载成功:', allData);
 
     } catch (error) {
-        console.error('数据加载过程出错:', error);
-    }
-}
+        console.error('=== 数据加载失败 ===');
+        console.error('错误类型:', error.name);
+        console.error('错误信息:', error.message);
+        console.error('完整错误:', error);
+        
+        // 显示详细的错误信息
+        const errorMsg = `
+数据加载失败！
 
-// 显示数据加载错误
-function showDataLoadError(errors) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: #f8d7da;
-        color: #721c24;
-        padding: 15px 20px;
-        z-index: 9999;
-        border-bottom: 3px solid #dc3545;
-        font-size: 14px;
-    `;
-    
-    let errorList = '<strong>数据加载失败：</strong><br>';
-    errorList += '<ul style="margin: 10px 0; padding-left: 20px;">';
-    errors.forEach(err => {
-        errorList += `<li>${err}</li>`;
-    });
-    errorList += '</ul>';
-    errorList += '<small>请检查: 1) 通过HTTP服务器访问 2) CSV文件存在 3) 文件编码UTF-8 4) 文件格式正确</small>';
-    
-    errorDiv.innerHTML = errorList;
-    document.body.insertBefore(errorDiv, document.body.firstChild);
+错误信息: ${error.message}
+
+可能的原因:
+1. data.js文件不存在
+2. data.js文件格式错误
+3. CSV数据未转换
+
+解决方法:
+1. 运行"更新数据.bat"转换CSV数据
+2. 确保data.js文件存在于当前目录
+3. 刷新浏览器页面
+
+当前访问地址: ${window.location.href}
+        `.trim();
+        
+        alert(errorMsg);
+        
+        // 在页面上显示错误信息
+        document.body.innerHTML = `
+            <div style="padding: 40px; max-width: 800px; margin: 0 auto; font-family: Arial, sans-serif;">
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <h2 style="color: #856404; margin-top: 0;">⚠️ 数据加载失败</h2>
+                    <p style="color: #856404; line-height: 1.6;">
+                        <strong>错误信息:</strong> ${error.message}<br><br>
+                        <strong>当前地址:</strong> ${window.location.href}
+                    </p>
+                </div>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="color: #FF6B35;">解决方法：</h3>
+                    <ol style="line-height: 2;">
+                        <li>运行"更新数据.bat"或"更新数据.ps1"</li>
+                        <li>确保生成了data.js文件</li>
+                        <li>刷新浏览器页面（Ctrl+F5）</li>
+                    </ol>
+                    
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button onclick="location.reload()" style="background: #FF6B35; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                            重新加载
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 // CSV 解析

@@ -67,6 +67,15 @@ function setupLogoErrorHandling() {
 // 加载数据
 async function loadData() {
     try {
+        // 检查是否有嵌入的数据
+        if (typeof dashboardData !== 'undefined' && dashboardData['各模块渗透率']) {
+            console.log('使用嵌入的数据');
+            parseEmbeddedData(dashboardData['各模块渗透率']);
+            updateDashboard();
+            return;
+        }
+        
+        // 尝试从CSV加载
         const response = await fetch('各模块渗透率.csv');
         if (!response.ok) {
             throw new Error('CSV文件加载失败');
@@ -80,6 +89,59 @@ async function loadData() {
         parseCSV(''); // parseCSV函数内部已经有完整的示例数据
         updateDashboard();
     }
+}
+
+// 解析嵌入的数据
+function parseEmbeddedData(data) {
+    console.log('解析嵌入数据，共', data.length, '条');
+    
+    // CSV字段名到显示标签的映射
+    const fieldMapping = {
+        '2025年3月': '25年3月',
+        '2025年4月': '25年4月',
+        '2025年5月': '25年5月',
+        '2025年6月': '25年6月',
+        '2025年7月': '25年7月',
+        '2025年8月': '25年8月',
+        '2025年9月': '25年9月',
+        '2025年10月': '25年10月',
+        '2025年11月': '25年11月',
+        '2025年12月': '25年12月',
+        '2026年1月': '26年1月'
+    };
+    
+    // 将CSV格式的数据转换为内部数据结构
+    const dataByModule = {};
+    
+    data.forEach(row => {
+        const module1 = row['一级模块'] || '';
+        const module2 = row['二级模块'] || '';
+        const key = `${module1}-${module2}`;
+        
+        if (!dataByModule[key]) {
+            dataByModule[key] = {
+                一级模块: module1,
+                二级模块: module2,
+                data: {}
+            };
+        }
+        
+        // 将每个月份的数据添加到data对象中
+        Object.keys(fieldMapping).forEach(csvField => {
+            const displayLabel = fieldMapping[csvField];
+            const value = row[csvField];
+            
+            if (value && value !== '' && value !== 'null') {
+                dataByModule[key].data[displayLabel] = parseFloat(value);
+            } else {
+                dataByModule[key].data[displayLabel] = null;
+            }
+        });
+    });
+    
+    rawData = Object.values(dataByModule);
+    console.log('解析完成，共', rawData.length, '个模块');
+    console.log('示例数据:', rawData[0]);
 }
 
 // 解析CSV数据

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试搜索数据看板</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #FF6B35;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #FF6B35;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #e55a2b;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="color: #FF6B35;">搜索数据看板诊断工具</h1>
+
+    <div class="test-section">
+        <div class="test-title">1. 测试HTTP服务器</div>
+        <button onclick="testServer()">测试服务器</button>
+        <div id="serverResult"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">2. 测试CSV文件访问</div>
+        <button onclick="testCSVFiles()">测试CSV文件</button>
+        <div id="csvResult"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">3. 测试搜索看板页面</div>
+        <button onclick="testSearchDashboard()">测试看板页面</button>
+        <div id="dashboardResult"></div>
+    </div>
+
+    <div class="test-section">
+        <div class="test-title">4. 直接访问搜索看板</div>
+        <a href="搜索数据看板（周度）/index.html" target="_blank" style="color: #FF6B35; text-decoration: none; font-weight: bold;">
+            点击这里直接打开搜索数据看板 →
+        </a>
+    </div>
+
+    <script>
+        async function testServer() {
+            const result = document.getElementById('serverResult');
+            result.innerHTML = '<div class="test-result info">正在测试...</div>';
+            
+            try {
+                const response = await fetch('/');
+                if (response.ok) {
+                    result.innerHTML = `
+                        <div class="test-result success">
+                            ✅ HTTP服务器运行正常<br>
+                            当前URL: ${window.location.href}<br>
+                            协议: ${window.location.protocol}
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `<div class="test-result error">❌ 服务器响应异常: ${response.status}</div>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<div class="test-result error">❌ 无法连接到服务器: ${error.message}</div>`;
+            }
+        }
+
+        async function testCSVFiles() {
+            const result = document.getElementById('csvResult');
+            result.innerHTML = '<div class="test-result info">正在测试CSV文件...</div>';
+            
+            const files = [
+                '搜索数据看板（周度）/第1周搜索词.csv',
+                '搜索数据看板（周度）/搜索行为漏斗.csv',
+                '搜索数据看板（周度）/搜索转化率.csv',
+                '搜索数据看板（周度）/搜索功能留存看板.csv'
+            ];
+            
+            let html = '<div class="test-result">';
+            let allSuccess = true;
+            
+            for (const file of files) {
+                try {
+                    const response = await fetch(file);
+                    if (response.ok) {
+                        const text = await response.text();
+                        const lines = text.split('\n').length;
+                        html += `✅ ${file} (${lines} 行)<br>`;
+                    } else {
+                        html += `❌ ${file} - HTTP ${response.status}<br>`;
+                        allSuccess = false;
+                    }
+                } catch (error) {
+                    html += `❌ ${file} - ${error.message}<br>`;
+                    allSuccess = false;
+                }
+            }
+            
+            html += '</div>';
+            result.innerHTML = html;
+            
+            if (allSuccess) {
+                result.querySelector('.test-result').classList.add('success');
+            } else {
+                result.querySelector('.test-result').classList.add('error');
+            }
+        }
+
+        async function testSearchDashboard() {
+            const result = document.getElementById('dashboardResult');
+            result.innerHTML = '<div class="test-result info">正在测试看板页面...</div>';
+            
+            try {
+                const response = await fetch('搜索数据看板（周度）/index.html');
+                if (response.ok) {
+                    const html = await response.text();
+                    const hasAppJs = html.includes('app.js');
+                    const hasEcharts = html.includes('echarts');
+                    
+                    result.innerHTML = `
+                        <div class="test-result success">
+                            ✅ 看板页面可访问<br>
+                            包含 app.js: ${hasAppJs ? '是' : '否'}<br>
+                            包含 ECharts: ${hasEcharts ? '是' : '否'}<br>
+                            <br>
+                            <strong>建议：</strong>直接访问 
+                            <a href="搜索数据看板（周度）/index.html" target="_blank" style="color: #FF6B35;">
+                                搜索数据看板（周度）/index.html
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `<div class="test-result error">❌ 无法访问看板页面: HTTP ${response.status}</div>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<div class="test-result error">❌ 测试失败: ${error.message}</div>`;
+            }
+        }
+
+        // 页面加载时自动运行测试
+        window.addEventListener('load', () => {
+            console.log('=== 自动诊断开始 ===');
+            testServer();
+            setTimeout(() => testCSVFiles(), 1000);
+            setTimeout(() => testSearchDashboard(), 2000);
+        });
+    </script>
+</body>
+</html>

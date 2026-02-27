@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试渗透率看板</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #FF6B35;
+            margin-top: 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        button {
+            background: #FF6B35;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #E85A2A;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 400px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #FF6B35;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>各模块渗透率看板测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 数据文件检查</h2>
+        <div id="file-status" class="status info">等待测试...</div>
+        <button onclick="testDataFile()">测试data.js</button>
+        <pre id="file-result"></pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 数据结构检查</h2>
+        <div id="structure-status" class="status info">等待测试...</div>
+        <button onclick="testDataStructure()">测试数据结构</button>
+        <div id="structure-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 字段映射检查</h2>
+        <div id="mapping-status" class="status info">等待测试...</div>
+        <button onclick="testFieldMapping()">测试字段映射</button>
+        <pre id="mapping-result"></pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 打开看板</h2>
+        <button onclick="window.open('各模块渗透率看板（月度）/index.html')">打开渗透率看板</button>
+        <button onclick="window.open('index.html')">打开统一看板</button>
+    </div>
+
+    <script>
+        let loadedData = null;
+        
+        async function testDataFile() {
+            const statusEl = document.getElementById('file-status');
+            const resultEl = document.getElementById('file-result');
+            
+            statusEl.className = 'status info';
+            statusEl.textContent = '正在测试...';
+            resultEl.textContent = '';
+            
+            try {
+                const response = await fetch('各模块渗透率看板（月度）/data.js');
+                
+                if (!response.ok) {
+                    throw new Error(`data.js文件不存在: ${response.status}`);
+                }
+                
+                const content = await response.text();
+                const sizeKB = (content.length / 1024).toFixed(2);
+                
+                // 检查中文
+                if (content.includes('��') || content.includes('锟斤拷')) {
+                    throw new Error('检测到编码问题');
+                }
+                
+                // 加载数据
+                const scriptEl = document.createElement('script');
+                scriptEl.textContent = content;
+                document.head.appendChild(scriptEl);
+                
+                if (typeof dashboardData === 'undefined') {
+                    throw new Error('无法加载dashboardData');
+                }
+                
+                loadedData = dashboardData;
+                
+                statusEl.className = 'status success';
+                statusEl.textContent = '✓ data.js文件正常';
+                
+                resultEl.textContent = `文件大小: ${sizeKB} KB
+数据集: ${Object.keys(dashboardData).join(', ')}
+记录数: ${dashboardData['各模块渗透率'].length}`;
+                
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '✗ 测试失败';
+                resultEl.textContent = `错误: ${error.message}`;
+            }
+        }
+        
+        function testDataStructure() {
+            const statusEl = document.getElementById('structure-status');
+            const resultEl = document.getElementById('structure-result');
+            
+            statusEl.className = 'status info';
+            statusEl.textContent = '正在测试...';
+            resultEl.innerHTML = '';
+            
+            try {
+                if (!loadedData) {
+                    throw new Error('请先运行"测试data.js"');
+                }
+                
+                const data = loadedData['各模块渗透率'];
+                
+                // 创建表格显示数据
+                let html = '<table>';
+                html += '<tr><th>一级模块</th><th>二级模块</th><th>字段数</th><th>示例字段</th></tr>';
+                
+                data.forEach((row, index) => {
+                    if (index < 5) { // 只显示前5条
+                        const fields = Object.keys(row);
+                        const sampleFields = fields.slice(0, 5).join(', ');
+                        html += `<tr>
+                            <td>${row['一级模块'] || '(空)'}</td>
+                            <td>${row['二级模块']}</td>
+                            <td>${fields.length}</td>
+                            <td>${sampleFields}...</td>
+                        </tr>`;
+                    }
+                });
+                
+                html += '</table>';
+                
+                // 显示第一条完整数据
+                html += '<h3>第一条完整数据：</h3>';
+                html += '<pre>' + JSON.stringify(data[0], null, 2) + '</pre>';
+                
+                resultEl.innerHTML = html;
+                
+                statusEl.className = 'status success';
+                statusEl.textContent = '✓ 数据结构检查完成';
+                
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '✗ 测试失败';
+                resultEl.innerHTML = `<pre>错误: ${error.message}</pre>`;
+            }
+        }
+        
+        function testFieldMapping() {
+            const statusEl = document.getElementById('mapping-status');
+            const resultEl = document.getElementById('mapping-result');
+            
+            statusEl.className = 'status info';
+            statusEl.textContent = '正在测试...';
+            resultEl.textContent = '';
+            
+            try {
+                if (!loadedData) {
+                    throw new Error('请先运行"测试data.js"');
+                }
+                
+                const data = loadedData['各模块渗透率'];
+                const firstRow = data[0];
+                
+                // CSV字段名
+                const csvFields = Object.keys(firstRow).filter(k => k.includes('年'));
+                
+                // 期望的显示标签
+                const expectedLabels = [
+                    '25年3月', '25年4月', '25年5月', '25年6月',
+                    '25年7月', '25年8月', '25年9月', '25年10月',
+                    '25年11月', '25年12月', '26年1月'
+                ];
+                
+                let report = '=== CSV字段名 ===\n';
+                report += csvFields.join('\n') + '\n\n';
+                
+                report += '=== 期望的显示标签 ===\n';
+                report += expectedLabels.join('\n') + '\n\n';
+                
+                report += '=== 字段映射 ===\n';
+                const mapping = {
+                    '2025年3月': '25年3月',
+                    '2025年4月': '25年4月',
+                    '2025年5月': '25年5月',
+                    '2025年6月': '25年6月',
+                    '2025年7月': '25年7月',
+                    '2025年8月': '25年8月',
+                    '2025年9月': '25年9月',
+                    '2025年10月': '25年10月',
+                    '2025年11月': '25年11月',
+                    '2025年12月': '25年12月',
+                    '2026年1月': '26年1月'
+                };
+                
+                Object.keys(mapping).forEach(csvField => {
+                    const hasField = csvFields.includes(csvField);
+                    const status = hasField ? '✓' : '✗';
+                    report += `${status} ${csvField} → ${mapping[csvField]}\n`;
+                });
+                
+                report += '\n=== 示例数据值 ===\n';
+                csvFields.forEach(field => {
+                    report += `${field}: ${firstRow[field]}\n`;
+                });
+                
+                resultEl.textContent = report;
+                
+                statusEl.className = 'status success';
+                statusEl.textContent = '✓ 字段映射检查完成';
+                
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '✗ 测试失败';
+                resultEl.textContent = `错误: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

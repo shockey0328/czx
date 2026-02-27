@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试所有看板</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #FF6B35;
+            margin-top: 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        button {
+            background: #FF6B35;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #E85A2A;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>数据看板测试工具</h1>
+    
+    <div class="test-section">
+        <h2>1. 搜索数据看板（周度）</h2>
+        <div id="search-status" class="status info">等待测试...</div>
+        <button onclick="testDashboard('搜索数据看板（周度）', 'search-status', 'search-result')">测试</button>
+        <button onclick="window.open('搜索数据看板（周度）/index.html')">打开看板</button>
+        <pre id="search-result"></pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 核心数据看板（周度）</h2>
+        <div id="core-status" class="status info">等待测试...</div>
+        <button onclick="testDashboard('核心数据看板（周度）', 'core-status', 'core-result')">测试</button>
+        <button onclick="window.open('核心数据看板（周度）/index.html')">打开看板</button>
+        <pre id="core-result"></pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 各模块渗透率看板（月度）</h2>
+        <div id="penetration-status" class="status info">等待测试...</div>
+        <button onclick="testDashboard('各模块渗透率看板（月度）', 'penetration-status', 'penetration-result')">测试</button>
+        <button onclick="window.open('各模块渗透率看板（月度）/index.html')">打开看板</button>
+        <pre id="penetration-result"></pre>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 统一看板入口</h2>
+        <div id="unified-status" class="status info">等待测试...</div>
+        <button onclick="window.open('index.html')">打开统一看板</button>
+    </div>
+
+    <script>
+        async function testDashboard(folder, statusId, resultId) {
+            const statusEl = document.getElementById(statusId);
+            const resultEl = document.getElementById(resultId);
+            
+            statusEl.className = 'status info';
+            statusEl.textContent = '正在测试...';
+            resultEl.textContent = '';
+            
+            try {
+                // 检查data.js文件
+                const dataJsPath = `${folder}/data.js`;
+                const response = await fetch(dataJsPath);
+                
+                if (!response.ok) {
+                    throw new Error(`data.js文件不存在或无法访问: ${response.status}`);
+                }
+                
+                const content = await response.text();
+                
+                // 检查文件大小
+                const sizeKB = (content.length / 1024).toFixed(2);
+                
+                // 检查是否包含dashboardData
+                if (!content.includes('const dashboardData')) {
+                    throw new Error('data.js文件格式不正确，缺少dashboardData');
+                }
+                
+                // 检查是否有中文乱码
+                if (content.includes('��') || content.includes('锟斤拷')) {
+                    throw new Error('检测到编码问题，中文显示可能异常');
+                }
+                
+                // 尝试解析数据
+                const scriptEl = document.createElement('script');
+                scriptEl.textContent = content;
+                document.head.appendChild(scriptEl);
+                
+                if (typeof dashboardData === 'undefined') {
+                    throw new Error('无法加载dashboardData对象');
+                }
+                
+                const dataKeys = Object.keys(dashboardData);
+                const totalRecords = dataKeys.reduce((sum, key) => {
+                    return sum + (Array.isArray(dashboardData[key]) ? dashboardData[key].length : 0);
+                }, 0);
+                
+                // 清理
+                document.head.removeChild(scriptEl);
+                delete window.dashboardData;
+                
+                // 成功
+                statusEl.className = 'status success';
+                statusEl.textContent = '✓ 测试通过';
+                
+                resultEl.textContent = `文件大小: ${sizeKB} KB
+数据集数量: ${dataKeys.length}
+总记录数: ${totalRecords}
+数据集列表: ${dataKeys.join(', ')}`;
+                
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '✗ 测试失败';
+                resultEl.textContent = `错误: ${error.message}
+
+建议:
+1. 运行"更新数据.bat"重新生成data.js
+2. 检查CSV文件是否存在
+3. 确保文件编码正确`;
+            }
+        }
+        
+        // 页面加载时显示提示
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('测试工具已加载');
+            console.log('点击"测试"按钮检查各看板的data.js文件');
+        });
+    </script>
+</body>
+</html>
