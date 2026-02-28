@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试CDN加载</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ddd;
+        }
+        .success {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        .loading {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+        canvas {
+            max-width: 600px;
+            height: 300px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 CDN加载测试</h1>
+    
+    <div id="status"></div>
+    
+    <h2>测试图表</h2>
+    <canvas id="testChart"></canvas>
+    
+    <h2>详细日志</h2>
+    <div id="logs" style="background: #f5f5f5; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px;"></div>
+
+    <!-- 使用本地Chart.js -->
+    <script src="libs/chart.min.js"></script>
+    
+    <script>
+        const status = document.getElementById('status');
+        const logs = document.getElementById('logs');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            logs.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            console.log(message);
+        }
+        
+        function showStatus(message, type) {
+            status.innerHTML = `<div class="test-item ${type}">${message}</div>`;
+        }
+        
+        // 测试1：检查Chart.js是否加载
+        log('开始测试...');
+        
+        setTimeout(() => {
+            if (typeof Chart !== 'undefined') {
+                log('✅ Chart.js 加载成功！', 'success');
+                log(`Chart.js 版本: ${Chart.version}`);
+                showStatus('✅ Chart.js 加载成功！版本: ' + Chart.version, 'success');
+                
+                // 测试2：尝试创建图表
+                try {
+                    log('尝试创建测试图表...');
+                    const ctx = document.getElementById('testChart').getContext('2d');
+                    
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: ['1月', '2月', '3月', '4月', '5月'],
+                            datasets: [{
+                                label: '测试数据',
+                                data: [12, 19, 3, 5, 2],
+                                borderColor: '#FF6B35',
+                                backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                    
+                    log('✅ 图表创建成功！', 'success');
+                    showStatus('✅ 所有测试通过！Chart.js 工作正常。', 'success');
+                    
+                } catch (error) {
+                    log('❌ 图表创建失败: ' + error.message, 'error');
+                    showStatus('❌ 图表创建失败: ' + error.message, 'error');
+                }
+                
+            } else {
+                log('❌ Chart.js 未加载', 'error');
+                showStatus('❌ Chart.js 未加载 - CDN可能被阻止', 'error');
+                
+                // 提供解决方案
+                logs.innerHTML += `
+                    <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 8px;">
+                        <strong>可能的原因：</strong><br>
+                        1. 字节跳动CDN被防火墙阻止<br>
+                        2. 网络连接问题<br>
+                        3. 浏览器扩展阻止了脚本<br><br>
+                        <strong>解决方案：</strong><br>
+                        1. 检查浏览器控制台(F12)的Network标签<br>
+                        2. 尝试禁用浏览器扩展<br>
+                        3. 尝试使用其他浏览器<br>
+                        4. 考虑下载Chart.js到本地使用
+                    </div>
+                `;
+            }
+        }, 2000); // 等待2秒让CDN加载
+        
+        // 监听脚本加载错误
+        window.addEventListener('error', function(e) {
+            if (e.filename && e.filename.includes('chart')) {
+                log('❌ Chart.js 加载失败: ' + e.message, 'error');
+                showStatus('❌ Chart.js CDN 加载失败', 'error');
+            }
+        }, true);
+        
+        log('等待Chart.js加载...(2秒)');
+        showStatus('⏳ 正在测试 Chart.js 加载...', 'loading');
+    </script>
+</body>
+</html>
