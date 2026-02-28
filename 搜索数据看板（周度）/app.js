@@ -6,7 +6,7 @@ let allData = {
     retention: []
 };
 
-let currentWeek = 1;
+let currentWeek = 8; // 默认选择最新一周
 let currentSort = 'uv';
 let currentConversionRange = 21;
 let currentRetentionWeeks = 5;
