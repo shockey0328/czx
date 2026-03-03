@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分省数据看板</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部区域 -->
+        <header class="header">
+            <div class="header-left">
+                <h1>分省数据看板</h1>
+            </div>
+            <div class="header-right">
+                <select id="monthFilter" class="month-filter">
+                    <option value="26年2月">26年2月</option>
+                    <option value="26年1月">26年1月</option>
+                    <option value="25年12月">25年12月</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- 模块一：核心指标 -->
+        <section class="module module-1">
+            <h2 class="module-title">核心指标</h2>
+            <div class="cards-container" id="coreMetrics">
+                <!-- 动态生成卡片 -->
+            </div>
+        </section>
+
+        <!-- 模块二：省份排名 -->
+        <section class="module module-2">
+            <h2 class="module-title">省份排名</h2>
+            <div class="ranking-container">
+                <div class="ranking-chart">
+                    <h3>活跃用户排名</h3>
+                    <canvas id="activeUsersChart"></canvas>
+                </div>
+                <div class="ranking-chart">
+                    <h3>营收排名</h3>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="ranking-chart">
+                    <h3>ARPU排名</h3>
+                    <canvas id="arpuChart"></canvas>
+                </div>
+                <div class="ranking-chart">
+                    <h3>使用率排名</h3>
+                    <canvas id="usageRateChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块三：趋势分析 -->
+        <section class="module module-3">
+            <div class="module-header-inline">
+                <h2 class="module-title">趋势分析</h2>
+                <div class="province-filter-container">
+                    <select id="provinceFilter" class="province-filter">
+                        <option value="福建">福建</option>
+                        <option value="山东">山东</option>
+                        <option value="江苏">江苏</option>
+                        <option value="广东">广东</option>
+                        <option value="安徽">安徽</option>
+                        <option value="辽宁">辽宁</option>
+                        <option value="河南">河南</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 月度指标卡片 -->
+            <div class="monthly-cards-container" id="monthlyMetrics">
+                <!-- 动态生成 -->
+            </div>
+
+            <!-- 趋势分析标题和筛选 -->
+            <div class="trend-header">
+                <h3 class="trend-title">数据趋势</h3>
+                <div class="trend-tabs">
+                    <button class="trend-tab" data-period="recent3">近3个月</button>
+                    <button class="trend-tab" data-period="recent6">近6个月</button>
+                    <button class="trend-tab active" data-period="recent12">近12个月</button>
+                </div>
+            </div>
+
+            <!-- 三个趋势图表 -->
+            <div class="trend-charts-grid">
+                <div class="trend-chart-item">
+                    <h4>月活趋势</h4>
+                    <canvas id="activeUsersTrendChart"></canvas>
+                </div>
+                <div class="trend-chart-item">
+                    <h4>营收趋势</h4>
+                    <canvas id="revenueTrendChart"></canvas>
+                </div>
+                <div class="trend-chart-item">
+                    <h4>使用率趋势</h4>
+                    <canvas id="retentionTrendChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块四：AI数据分析 -->
+        <section class="module module-4">
+            <div class="ai-header">
+                <h2 class="module-title">AI数据分析</h2>
+                <button id="analyzeBtn" class="analyze-btn">
+                    <span class="btn-icon">🤖</span>
+                    <span class="btn-text">生成分析报告</span>
+                </button>
+            </div>
+            <div id="aiAnalysis" class="ai-analysis-container">
+                <div class="ai-placeholder">
+                    <div class="placeholder-icon">📊</div>
+                    <p>点击"生成分析报告"按钮，AI将为您分析各省核心数据情况、区域特点并提供可执行建议</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
