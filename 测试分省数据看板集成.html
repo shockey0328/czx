@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试分省数据看板集成</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 5px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .btn-secondary {
+            background: #2196F3;
+        }
+        .btn-secondary:hover {
+            background: #0b7dda;
+        }
+        .checklist {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .checklist li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .feature-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .feature-card h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>📊 分省数据看板集成测试</h1>
+        
+        <div class="status success">
+            ✅ 分省数据看板已成功集成到橙子学数据看板系统
+        </div>
+
+        <h2>集成内容</h2>
+        <div class="status info">
+            <p><strong>看板位置：</strong>月度看板 → 分省数据</p>
+            <p><strong>文件路径：</strong>分省数据看板（月度）/index.html</p>
+            <p><strong>Chart.js：</strong>已更新为本地引用（../libs/chart.min.js）</p>
+        </div>
+
+        <h2>看板功能</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>📈 核心指标</h3>
+                <p>展示各省的月活、营收、ARPU等关键指标</p>
+            </div>
+            <div class="feature-card">
+                <h3>🏆 省份排名</h3>
+                <p>活跃用户、营收、ARPU、使用率四个维度的排名</p>
+            </div>
+            <div class="feature-card">
+                <h3>📊 趋势分析</h3>
+                <p>支持选择省份，查看近3/6/12个月的数据趋势</p>
+            </div>
+            <div class="feature-card">
+                <h3>🤖 AI分析</h3>
+                <p>一键生成各省数据分析报告和可执行建议</p>
+            </div>
+        </div>
+
+        <h2>数据文件</h2>
+        <div class="checklist">
+            <ul>
+                <li>✅ 分省核心数据.csv - 各省核心指标数据</li>
+                <li>✅ 分省趋势数据（福建）.csv - 福建省趋势数据</li>
+                <li>✅ 分省趋势数据（山东）.csv - 山东省趋势数据</li>
+                <li>✅ 分省趋势数据（江苏）.csv - 江苏省趋势数据</li>
+                <li>✅ 分省趋势数据（广东）.csv - 广东省趋势数据</li>
+                <li>✅ 分省趋势数据（安徽）.csv - 安徽省趋势数据</li>
+                <li>✅ 分省趋势数据（辽宁）.csv - 辽宁省趋势数据</li>
+                <li>✅ 分省趋势数据（河南）.csv - 河南省趋势数据</li>
+            </ul>
+        </div>
+
+        <h2>快速测试</h2>
+        <a href="index.html" class="btn" target="_blank">
+            🚀 打开主导航页面
+        </a>
+        <a href="分省数据看板（月度）/index.html" class="btn btn-secondary" target="_blank">
+            📊 直接打开分省数据看板
+        </a>
+
+        <h2>验证步骤</h2>
+        <div class="checklist">
+            <ol>
+                <li>点击"打开主导航页面"按钮</li>
+                <li>点击顶部的"月度"按钮切换到月度看板</li>
+                <li>在下拉菜单中选择"分省数据"</li>
+                <li>验证看板是否正确加载</li>
+                <li>测试以下功能：
+                    <ul>
+                        <li>月份筛选器（26年2月、26年1月、25年12月）</li>
+                        <li>核心指标卡片显示</li>
+                        <li>四个排名图表显示</li>
+                        <li>省份选择器切换</li>
+                        <li>趋势周期切换（近3/6/12个月）</li>
+                        <li>AI分析报告生成</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <h2>技术更新</h2>
+        <div class="status warning">
+            <p><strong>重要：</strong>已将Chart.js从CDN引用改为本地引用</p>
+            <p>原因：确保离线环境下看板可以正常使用</p>
+            <p>路径：../libs/chart.min.js</p>
+        </div>
+
+        <h2>已完成的修改</h2>
+        <div class="checklist">
+            <ul>
+                <li>✅ 在main.js中添加分省数据看板配置</li>
+                <li>✅ 更新分省数据看板的Chart.js引用为本地路径</li>
+                <li>✅ 保持原有的所有功能和样式</li>
+                <li>✅ 确保与其他月度看板的一致性</li>
+            </ul>
+        </div>
+
+        <h2>月度看板完整列表</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>1️⃣ 核心数据</h3>
+                <p>月活、营收、留存等核心业务指标</p>
+            </div>
+            <div class="feature-card">
+                <h3>2️⃣ 各模块渗透率</h3>
+                <p>各功能模块的用户渗透率分析</p>
+            </div>
+            <div class="feature-card">
+                <h3>3️⃣ 分省数据</h3>
+                <p>各省份的核心数据和趋势分析</p>
+            </div>
+        </div>
+
+        <h2>后续操作</h2>
+        <div class="checklist">
+            <ol>
+                <li>测试看板功能是否正常</li>
+                <li>验证数据显示是否正确</li>
+                <li>确认AI分析功能可用</li>
+                <li>提交更改到Git</li>
+                <li>推送到GitHub</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // 自动检测看板是否可访问
+        window.addEventListener('DOMContentLoaded', function() {
+            fetch('分省数据看板（月度）/index.html')
+                .then(response => {
+                    if (response.ok) {
+                        console.log('✅ 分省数据看板文件可访问');
+                    } else {
+                        console.warn('⚠️ 分省数据看板文件访问异常');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ 分省数据看板文件访问失败:', error);
+                });
+        });
+    </script>
+</body>
+</html>

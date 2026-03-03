@@ -22,6 +22,11 @@ const dashboardConfig = {
             name: '各模块渗透率',
             path: '各模块渗透率看板（月度）/index.html',
             type: 'static'
+        },
+        'province-monthly': {
+            name: '分省数据',
+            path: '分省数据看板（月度）/index.html',
+            type: 'static'
         }
     }
 };
