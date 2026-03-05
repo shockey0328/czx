@@ -345,7 +345,7 @@ function parseAnalysisResult(text) {
 }
 
 // 启动服务器
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`\n========================================`);
   console.log(`用户行为分析服务器运行在 http://localhost:${PORT}`);
   console.log(`请访问: http://localhost:${PORT}/dashboard-db.html`);
