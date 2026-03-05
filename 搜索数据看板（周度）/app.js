@@ -11,12 +11,37 @@ let currentSort = 'uv';
 let currentConversionRange = 21;
 let currentRetentionWeeks = 5;
 
-// 初始化
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadAllData();
-    initEventListeners();
-    updateAllCharts();
-});
+// 初始化 - 确保ECharts已加载
+function initApp() {
+    console.log('🚀 开始初始化应用...');
+    
+    // 检查ECharts是否可用
+    if (typeof echarts === 'undefined') {
+        console.error('❌ ECharts未加载，1秒后重试...');
+        setTimeout(initApp, 1000);
+        return;
+    }
+    
+    console.log('✅ ECharts可用，开始加载数据');
+    
+    loadAllData().then(() => {
+        console.log('✅ 数据加载完成，初始化事件监听器');
+        initEventListeners();
+        console.log('✅ 开始渲染图表');
+        updateAllCharts();
+        console.log('✅ 应用初始化完成');
+    }).catch(error => {
+        console.error('❌ 初始化失败:', error);
+    });
+}
+
+// DOM加载完成后初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    // DOM已经加载完成
+    initApp();
+}
 
 // 加载所有数据
 async function loadAllData() {
