@@ -11,17 +11,20 @@
             document.write('<base href="' + base + '">');
         })();
     </script>
-    <!-- ECharts库 - 多CDN备用（unpkg/cdnjs 优先，避免 jsdelivr 在国内超时） -->
+    <!-- ECharts库 - 优先同源 lib/ 避免浏览器跟踪防护拦截第三方 CDN -->
     <script>
         // 尝试加载ECharts与词云，全部就绪后设置标志，供下方脚本加载 app.js
         (function() {
             window.__searchDashboardLibsReady = false;
-            const echartsCdns = [
+            // 优先同源 lib/（相对路径由页面 <base> 解析），避免跟踪防护拦截第三方 CDN
+            var echartsUrls = [
+                'lib/echarts.min.js',
                 'https://unpkg.com/echarts@5.4.3/dist/echarts.min.js',
                 'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js',
                 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js'
             ];
-            const wordcloudCdns = [
+            var wordcloudUrls = [
+                'lib/echarts-wordcloud.min.js',
                 'https://unpkg.com/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js',
                 'https://cdnjs.cloudflare.com/ajax/libs/echarts-wordcloud/2.1.0-beta/echarts-wordcloud.min.js',
                 'https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js'
@@ -47,7 +50,8 @@
             }
 
             async function loadWordCloud() {
-                for (const cdn of wordcloudCdns) {
+                for (var i = 0; i < wordcloudUrls.length; i++) {
+                    var cdn = wordcloudUrls[i];
                     try {
                         console.log('尝试加载词云插件 from:', cdn);
                         await loadScript(cdn);
@@ -62,8 +66,9 @@
             }
 
             async function tryLoadECharts() {
-                let echartsLoaded = false;
-                for (const cdn of echartsCdns) {
+                var echartsLoaded = false;
+                for (var i = 0; i < echartsUrls.length; i++) {
+                    var cdn = echartsUrls[i];
                     try {
                         console.log('尝试加载ECharts from:', cdn);
                         await loadScript(cdn);

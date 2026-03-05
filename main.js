@@ -292,8 +292,9 @@ function loadDashboard(period, dashboardType) {
         return;
     }
     
-    // 搜索看板：先 fetch HTML 并注入 base 再放入 iframe，避免路径/编码导致资源加载失败
-    if (config.type === 'static' && dashboardType === 'search-weekly') {
+    // 搜索看板：线上(http/https)用 fetch+base+srcdoc 保证路径；本地(file:)用 iframe src 避免 fetch 不可用
+    var isLocalFile = (window.location.protocol === 'file:');
+    if (config.type === 'static' && dashboardType === 'search-weekly' && !isLocalFile) {
         var baseUrl = (window.location.origin || '') + '/' + config.path.replace(/[^/]*$/, '');
         fetch(config.path, { cache: 'no-store' })
             .then(function(r) {
