@@ -13,7 +13,7 @@ const dashboardConfig = {
         },
         'user-behavior-weekly': {
             name: '用户行为',
-            path: 'http://localhost:3001/dashboard-db.html',
+            path: 'https://czx-production.up.railway.app/dashboard-db.html',
             type: 'server',
             serverCommand: 'node server-with-db.js',
             serverPath: '用户行为看板（周度）'
