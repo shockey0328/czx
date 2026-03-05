@@ -10,6 +10,13 @@ const dashboardConfig = {
             name: '搜索数据',
             path: '搜索数据看板（周度）/index.html',
             type: 'static'
+        },
+        'user-behavior-weekly': {
+            name: '用户行为',
+            path: 'http://localhost:3001/dashboard-db.html',
+            type: 'server',
+            serverCommand: 'node server-with-db.js',
+            serverPath: '用户行为看板（周度）'
         }
     },
     monthly: {
@@ -158,6 +165,59 @@ function loadDashboard(period, dashboardType) {
             
             iframe.onerror = function() {
                 console.log('React应用未运行');
+            };
+            
+            document.body.appendChild(iframe);
+            
+            // 5秒后如果还没加载成功，移除iframe
+            setTimeout(() => {
+                if (iframe.style.display === 'none') {
+                    iframe.remove();
+                }
+            }, 5000);
+        }, 1000);
+        
+        return;
+    }
+    
+    // 如果是需要服务器的看板，显示提示信息
+    if (config.type === 'server') {
+        container.innerHTML = `
+            <div class="loading-container">
+                <div class="loading-text" style="max-width: 600px; text-align: center;">
+                    <h3 style="color: #FF6B35; margin-bottom: 20px;">${config.name}看板（需要服务器）</h3>
+                    <p style="margin-bottom: 15px;">此看板需要单独运行Node.js服务器</p>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: left;">
+                        <p style="font-weight: bold; margin-bottom: 10px;">运行步骤：</p>
+                        <ol style="line-height: 2;">
+                            <li>打开终端</li>
+                            <li>执行: <code style="background: #fff; padding: 2px 8px; border-radius: 4px;">cd ${config.serverPath}</code></li>
+                            <li>执行: <code style="background: #fff; padding: 2px 8px; border-radius: 4px;">npm install</code> (首次运行)</li>
+                            <li>执行: <code style="background: #fff; padding: 2px 8px; border-radius: 4px;">${config.serverCommand}</code></li>
+                            <li>等待服务启动后，刷新此页面</li>
+                        </ol>
+                    </div>
+                    <p style="margin-top: 15px; color: #666; font-size: 14px;">或者直接访问: <a href="${config.path}" target="_blank" style="color: #FF6B35;">${config.path}</a></p>
+                </div>
+            </div>
+        `;
+        
+        // 尝试加载服务器应用（如果已经运行）
+        setTimeout(() => {
+            const iframe = document.createElement('iframe');
+            iframe.src = config.path;
+            iframe.className = 'dashboard-frame';
+            iframe.style.display = 'none';
+            
+            iframe.onload = function() {
+                console.log(`${config.name}看板加载完成`);
+                iframe.style.display = 'block';
+                container.innerHTML = '';
+                container.appendChild(iframe);
+            };
+            
+            iframe.onerror = function() {
+                console.log('服务器应用未运行');
             };
             
             document.body.appendChild(iframe);

@@ -8,6 +8,7 @@
 - **月度核心数据看板** - 展示月度关键业务指标
 - **周度核心数据看板** - 四宫格布局的周度数据分析
 - **搜索数据看板** - 搜索行为和转化分析
+- **用户行为看板** - 基于AI的用户行为分析系统
 - **各模块渗透率看板** - 模块使用情况分析
 - **分省数据看板** - 各省份核心数据和趋势分析
 
@@ -90,7 +91,26 @@ powershell -ExecutionPolicy Bypass -File convert_csv_to_js_v2.ps1
 - 搜索功能留存
 - 热门搜索词云图
 
-### 5. 各模块渗透率看板
+### 5. 用户行为看板
+**路径：** `用户行为看板（周度）/dashboard-db.html`（需要服务器）
+
+**功能：**
+- 自动加载本地数据到高性能数据库
+- 时间段筛选和多用户ID查询
+- DeepSeek AI智能分析用户行为
+- 对话式交互界面
+- 支持标准分析和针对性问题分析
+- 橙色主题设计
+
+**启动方式：**
+```bash
+cd 用户行为看板（周度）
+npm install  # 首次运行
+node server-with-db.js
+# 访问 http://localhost:3001/dashboard-db.html
+```
+
+### 6. 各模块渗透率看板
 **路径：** `各模块渗透率看板（月度）/index.html`
 
 **功能：**
@@ -99,7 +119,7 @@ powershell -ExecutionPolicy Bypass -File convert_csv_to_js_v2.ps1
 - 一级模块筛选
 - 深色主题设计
 
-### 6. 分省数据看板
+### 7. 分省数据看板
 **路径：** `分省数据看板（月度）/index.html`
 
 **功能：**
@@ -136,6 +156,12 @@ czx-dashboard/
 ├── 搜索数据看板（周度）/
 │   ├── index.html                     # 搜索看板
 │   └── *.csv                          # CSV 数据文件
+├── 用户行为看板（周度）/
+│   ├── dashboard-db.html              # 用户行为看板
+│   ├── server-with-db.js              # Node.js服务器
+│   ├── database.js                    # 数据库逻辑
+│   ├── db-manager.js                  # 数据库管理工具
+│   └── data/                          # 数据存储目录
 ├── 各模块渗透率看板（月度）/
 │   ├── index.html                     # 渗透率看板
 │   ├── styles.css                     # 样式文件
