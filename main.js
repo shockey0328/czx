@@ -12,7 +12,7 @@ const dashboardConfig = {
             type: 'static'
         },
         'user-behavior-weekly': {
-            name: '用户行为',
+            name: '用户行为 (需启动服务器)',
             path: 'http://localhost:3001/dashboard-db.html',
             type: 'server',
             serverCommand: 'node server-with-db.js',
@@ -108,6 +108,10 @@ function loadDashboard(period, dashboardType) {
     currentDashboard = dashboardType;
     const container = document.getElementById('dashboardContainer');
     
+    console.log('=== 加载看板 ===');
+    console.log('周期:', period);
+    console.log('看板类型:', dashboardType);
+    
     // 显示加载动画
     container.innerHTML = `
         <div class="loading-container">
@@ -118,6 +122,7 @@ function loadDashboard(period, dashboardType) {
     
     // 获取看板路径
     const config = dashboardConfig[period][dashboardType];
+    console.log('看板配置:', config);
     if (!config) {
         container.innerHTML = `
             <div class="loading-container">
