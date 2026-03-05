@@ -185,79 +185,95 @@ function loadDashboard(period, dashboardType) {
         return;
     }
     
-    // 如果是需要服务器的看板，显示提示信息
+    // 如果是需要服务器的看板，先检测服务器状态
     if (config.type === 'server') {
+        // 先显示加载中
         container.innerHTML = `
             <div class="loading-container">
-                <div class="loading-text" style="max-width: 700px; text-align: center;">
-                    <h3 style="color: #FF6B35; margin-bottom: 20px;">🚀 ${config.name}看板</h3>
-                    <p style="margin-bottom: 20px; font-size: 16px; color: #666;">此看板需要启动Node.js服务器才能使用</p>
-                    
-                    <div style="background: #fff5f0; padding: 24px; border-radius: 12px; text-align: left; margin-bottom: 20px; border: 2px solid #FFE8DF;">
-                        <p style="font-weight: bold; margin-bottom: 15px; color: #FF6B35; font-size: 15px;">📋 启动步骤：</p>
-                        <ol style="line-height: 2.2; color: #333; padding-left: 20px;">
-                            <li>双击运行 <code style="background: #fff; padding: 3px 10px; border-radius: 4px; color: #FF6B35; font-weight: bold;">启动用户行为看板.bat</code></li>
-                            <li>等待看到 "服务器运行在 http://localhost:3001" 提示</li>
-                            <li>刷新此页面（按F5），或重新选择"用户行为"看板</li>
-                        </ol>
-                    </div>
-                    
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: left; margin-bottom: 20px;">
-                        <p style="font-weight: bold; margin-bottom: 12px; color: #666;">💡 手动启动（可选）：</p>
-                        <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333; margin-bottom: 8px;">
-                            cd ${config.serverPath}
-                        </div>
-                        <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333; margin-bottom: 8px;">
-                            npm install <span style="color: #999;">(首次运行)</span>
-                        </div>
-                        <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333;">
-                            ${config.serverCommand}
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
-                        <a href="${config.path}" target="_blank" style="display: inline-block; background: #FF6B35; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='#E85A2A'" onmouseout="this.style.background='#FF6B35'">
-                            🔗 直接访问看板
-                        </a>
-                        <button onclick="location.reload()" style="background: #fff; color: #FF6B35; border: 2px solid #FF6B35; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='#FFF5F2'" onmouseout="this.style.background='#fff'">
-                            🔄 刷新页面
-                        </button>
-                    </div>
-                    
-                    <p style="margin-top: 20px; color: #999; font-size: 13px;">
-                        ⚠️ 如果服务器已启动但仍显示此页面，请点击"刷新页面"按钮
-                    </p>
-                </div>
+                <div class="loading-spinner"></div>
+                <div class="loading-text">正在检测服务器状态...</div>
             </div>
         `;
         
-        // 尝试加载服务器应用（如果已经运行）
+        // 尝试加载服务器应用
+        const iframe = document.createElement('iframe');
+        iframe.src = config.path;
+        iframe.className = 'dashboard-frame';
+        iframe.style.display = 'none';
+        
+        let loaded = false;
+        
+        iframe.onload = function() {
+            loaded = true;
+            console.log(`${config.name}看板加载完成`);
+            iframe.style.display = 'block';
+            container.innerHTML = '';
+            container.appendChild(iframe);
+        };
+        
+        iframe.onerror = function() {
+            console.log('服务器应用未运行');
+            if (!loaded) {
+                showServerInstructions();
+            }
+        };
+        
+        document.body.appendChild(iframe);
+        
+        // 3秒后如果还没加载成功，显示启动说明
         setTimeout(() => {
-            const iframe = document.createElement('iframe');
-            iframe.src = config.path;
-            iframe.className = 'dashboard-frame';
-            iframe.style.display = 'none';
-            
-            iframe.onload = function() {
-                console.log(`${config.name}看板加载完成`);
-                iframe.style.display = 'block';
-                container.innerHTML = '';
-                container.appendChild(iframe);
-            };
-            
-            iframe.onerror = function() {
-                console.log('服务器应用未运行');
-            };
-            
-            document.body.appendChild(iframe);
-            
-            // 5秒后如果还没加载成功，移除iframe
-            setTimeout(() => {
-                if (iframe.style.display === 'none') {
-                    iframe.remove();
-                }
-            }, 5000);
-        }, 1000);
+            if (!loaded && iframe.style.display === 'none') {
+                iframe.remove();
+                showServerInstructions();
+            }
+        }, 3000);
+        
+        // 显示启动说明的函数
+        function showServerInstructions() {
+            container.innerHTML = `
+                <div class="loading-container">
+                    <div class="loading-text" style="max-width: 700px; text-align: center;">
+                        <h3 style="color: #FF6B35; margin-bottom: 20px;">🚀 ${config.name}看板</h3>
+                        <p style="margin-bottom: 20px; font-size: 16px; color: #666;">此看板需要启动Node.js服务器才能使用</p>
+                        
+                        <div style="background: #fff5f0; padding: 24px; border-radius: 12px; text-align: left; margin-bottom: 20px; border: 2px solid #FFE8DF;">
+                            <p style="font-weight: bold; margin-bottom: 15px; color: #FF6B35; font-size: 15px;">📋 启动步骤：</p>
+                            <ol style="line-height: 2.2; color: #333; padding-left: 20px;">
+                                <li>双击运行 <code style="background: #fff; padding: 3px 10px; border-radius: 4px; color: #FF6B35; font-weight: bold;">启动用户行为看板.bat</code></li>
+                                <li>等待看到 "服务器运行在 http://localhost:3001" 提示</li>
+                                <li>刷新此页面（按F5），或重新选择"用户行为"看板</li>
+                            </ol>
+                        </div>
+                        
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: left; margin-bottom: 20px;">
+                            <p style="font-weight: bold; margin-bottom: 12px; color: #666;">💡 手动启动（可选）：</p>
+                            <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333; margin-bottom: 8px;">
+                                cd ${config.serverPath}
+                            </div>
+                            <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333; margin-bottom: 8px;">
+                                npm install <span style="color: #999;">(首次运行)</span>
+                            </div>
+                            <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333;">
+                                ${config.serverCommand}
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
+                            <a href="${config.path}" target="_blank" style="display: inline-block; background: #FF6B35; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='#E85A2A'" onmouseout="this.style.background='#FF6B35'">
+                                🔗 直接访问看板
+                            </a>
+                            <button onclick="location.reload()" style="background: #fff; color: #FF6B35; border: 2px solid #FF6B35; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='#FFF5F2'" onmouseout="this.style.background='#fff'">
+                                🔄 刷新页面
+                            </button>
+                        </div>
+                        
+                        <p style="margin-top: 20px; color: #999; font-size: 13px;">
+                            ⚠️ 如果服务器已启动但仍显示此页面，请点击"刷新页面"按钮
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
         
         return;
     }
