@@ -1,9 +1,10 @@
-﻿cohort_week,cohort_size,week_0,week_1,week_2,week_3,week_4,week_5,week_6,week_7,week_8,week_9,week_10,week_11,week_12
-2026-01-01 ~ 2026-01-07,18714,100,21.39,16.28,13.08,9.19,4.87,2.67,3.29,null,null,null,null,null
-2026-01-08 ~ 2026-01-14,21825,100,24.46,15.84,9.46,4.89,2.25,2.71,null,null,null,null,null,null
-2026-01-15 ~ 2026-01-21,25221,100,22.49,10.86,4.78,2.28,2.64,null,null,null,null,null,null,null
-2026-01-22 ~ 2026-01-28,25165,100,16.61,5.4,2.4,3.12,null,null,null,null,null,null,null,null
-2026-01-29 ~ 2026-02-04,17745,100,10.96,3.83,3.92,null,null,null,null,null,null,null,null,null
-2026-02-05 ~ 2026-02-11,10211,100,9.38,7.35,null,null,null,null,null,null,null,null,null,null
-2026-02-12 ~ 2026-02-18,4751,100,14.35,null,null,null,null,null,null,null,null,null,null,null
-2026-02-19 ~ 2026-02-25,6579,100,null,null,null,null,null,null,null,null,null,null,null,null
+cohort_week,cohort_size,week_0,week_1,week_2,week_3,week_4,week_5,week_6,week_7,week_8,week_9,week_10,week_11,week_12
+2026-01-01 ~ 2026-01-07,41310,100,34.83,30.05,25.79,20.27,12.47,7.31,9.32,11.06,0,null,null,null
+2026-01-08 ~ 2026-01-14,33180,100,30.05,22.21,14.44,7.91,3.96,4.84,6.22,0,null,null,null,null
+2026-01-15 ~ 2026-01-21,33564,100,26.35,14.3,6.72,3.39,3.95,4.53,0,null,null,null,null,null
+2026-01-22 ~ 2026-01-28,31217,100,19.09,6.81,2.97,3.9,4.08,0,null,null,null,null,null,null
+2026-01-29 ~ 2026-02-04,21437,100,12.28,4.41,4.54,5.19,0,null,null,null,null,null,null,null
+2026-02-05 ~ 2026-02-11,11789,100,9.86,8.08,7.04,0,null,null,null,null,null,null,null,null
+2026-02-12 ~ 2026-02-18,5391,100,15.06,8.66,0,null,null,null,null,null,null,null,null,null
+2026-02-19 ~ 2026-02-25,7410,100,13.6,0,null,null,null,null,null,null,null,null,null,null
+2026-02-26 ~ 2026-03-04,8604,100,0,null,null,null,null,null,null,null,null,null,null,null
