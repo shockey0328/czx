@@ -1,0 +1,11 @@
+{
+  "name": "czx-dashboard",
+  "version": "1.0.0",
+  "description": "橙子学数据看板系统",
+  "scripts": {
+    "start": "cd 用户行为看板（周度） && node server-with-db.js"
+  },
+  "keywords": ["dashboard", "data-visualization"],
+  "author": "",
+  "license": "MIT"
+}
