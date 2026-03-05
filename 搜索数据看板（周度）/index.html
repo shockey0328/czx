@@ -4,8 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>搜索数据看板</title>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
+    <!-- ECharts库 - 多CDN备用 -->
+    <script>
+        // 尝试加载ECharts，使用多个CDN备用
+        (function() {
+            const cdns = [
+                'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js',
+                'https://unpkg.com/echarts@5.4.3/dist/echarts.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js'
+            ];
+            
+            let loaded = false;
+            let currentIndex = 0;
+            
+            function loadScript(url) {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = () => resolve(url);
+                    script.onerror = () => reject(url);
+                    document.head.appendChild(script);
+                });
+            }
+            
+            async function tryLoadECharts() {
+                for (const cdn of cdns) {
+                    try {
+                        console.log('尝试加载ECharts from:', cdn);
+                        await loadScript(cdn);
+                        console.log('✅ ECharts加载成功:', cdn);
+                        loaded = true;
+                        // 加载词云插件
+                        await loadWordCloud();
+                        break;
+                    } catch (e) {
+                        console.log('❌ ECharts加载失败:', cdn);
+                    }
+                }
+                
+                if (!loaded) {
+                    console.error('所有CDN都加载失败，请检查网络连接');
+                    alert('图表库加载失败，部分图表可能无法显示。请检查网络连接或刷新页面重试。');
+                }
+            }
+            
+            async function loadWordCloud() {
+                const wordcloudCdns = [
+                    'https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js',
+                    'https://unpkg.com/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js'
+                ];
+                
+                for (const cdn of wordcloudCdns) {
+                    try {
+                        console.log('尝试加载词云插件 from:', cdn);
+                        await loadScript(cdn);
+                        console.log('✅ 词云插件加载成功:', cdn);
+                        return;
+                    } catch (e) {
+                        console.log('❌ 词云插件加载失败:', cdn);
+                    }
+                }
+            }
+            
+            tryLoadECharts();
+        })();
+    </script>
     <style>
         * {
             margin: 0;
