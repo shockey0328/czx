@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用户行为看板加载</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        iframe {
+            width: 100%;
+            height: 800px;
+            border: 2px solid #FF6B35;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>用户行为看板加载测试</h1>
+    
+    <div class="info">
+        <h3>测试信息</h3>
+        <p><strong>目标URL:</strong> http://localhost:3001/dashboard-db.html</p>
+        <p><strong>当前时间:</strong> <span id="currentTime"></span></p>
+    </div>
+
+    <div id="status"></div>
+
+    <h3>iframe加载测试</h3>
+    <iframe id="testFrame" src="http://localhost:3001/dashboard-db.html"></iframe>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const iframe = document.getElementById('testFrame');
+        
+        // 显示当前时间
+        document.getElementById('currentTime').textContent = new Date().toLocaleString();
+
+        // 测试服务器连接
+        async function testServer() {
+            try {
+                const response = await fetch('http://localhost:3001/dashboard-db.html', {
+                    method: 'HEAD'
+                });
+                
+                if (response.ok) {
+                    statusDiv.innerHTML += '<div class="status success">✅ 服务器连接成功</div>';
+                } else {
+                    statusDiv.innerHTML += `<div class="status error">❌ 服务器响应错误: ${response.status}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML += `<div class="status error">❌ 无法连接到服务器: ${error.message}</div>`;
+            }
+        }
+
+        // iframe加载事件
+        iframe.onload = function() {
+            statusDiv.innerHTML += '<div class="status success">✅ iframe加载成功</div>';
+            console.log('iframe加载成功');
+        };
+
+        iframe.onerror = function(e) {
+            statusDiv.innerHTML += `<div class="status error">❌ iframe加载失败: ${e.message || '未知错误'}</div>`;
+            console.error('iframe加载失败:', e);
+        };
+
+        // 监听iframe内容加载
+        window.addEventListener('message', function(event) {
+            console.log('收到iframe消息:', event);
+        });
+
+        // 执行测试
+        testServer();
+
+        // 5秒后检查iframe状态
+        setTimeout(() => {
+            try {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                if (iframeDoc.body && iframeDoc.body.innerHTML.length > 0) {
+                    statusDiv.innerHTML += '<div class="status success">✅ iframe内容已加载</div>';
+                } else {
+                    statusDiv.innerHTML += '<div class="status warning">⚠️ iframe内容为空</div>';
+                }
+            } catch (e) {
+                statusDiv.innerHTML += `<div class="status warning">⚠️ 无法访问iframe内容（可能是跨域限制）: ${e.message}</div>`;
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

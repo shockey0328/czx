@@ -220,13 +220,14 @@ function loadDashboard(period, dashboardType) {
         
         document.body.appendChild(iframe);
         
-        // 3秒后如果还没加载成功，显示启动说明
+        // 10秒后如果还没加载成功，显示启动说明
         setTimeout(() => {
             if (!loaded && iframe.style.display === 'none') {
+                console.log('服务器加载超时，显示启动说明');
                 iframe.remove();
                 showServerInstructions();
             }
-        }, 3000);
+        }, 10000);
         
         // 显示启动说明的函数
         function showServerInstructions() {
