@@ -12,7 +12,7 @@ const dashboardConfig = {
             type: 'static'
         },
         'user-behavior-weekly': {
-            name: '用户行为 (需启动服务器)',
+            name: '用户行为',
             path: 'http://localhost:3001/dashboard-db.html',
             type: 'server',
             serverCommand: 'node server-with-db.js',
