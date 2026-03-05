@@ -6,7 +6,7 @@ let allData = {
     retention: []
 };
 
-let currentWeek = 8; // 默认选择最新一周
+let currentWeek = 9; // 默认选择最新一周
 let currentSort = 'uv';
 let currentConversionRange = 21;
 let currentRetentionWeeks = 5;
@@ -31,7 +31,7 @@ async function loadAllData() {
         console.log('可用的数据集:', Object.keys(dashboardData));
         
         // 加载每周搜索词数据
-        for (let i = 1; i <= 8; i++) {
+        for (let i = 1; i <= 9; i++) {
             const key = `第${i}周搜索词`;
             if (dashboardData[key]) {
                 allData.keywords[i] = dashboardData[key];
