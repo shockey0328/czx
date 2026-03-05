@@ -1,0 +1,26 @@
+# 排除大数据文件
+用户行为看板（周度）/data/
+用户行为看板（周度）/server-with-db.js
+
+# 排除文档和脚本
+*.md
+*.bat
+*.ps1
+*.xlsx
+*.csv
+
+# 排除Git和IDE配置
+.git/
+.vscode/
+.gitattributes
+
+# 排除Railway配置
+railway.json
+Procfile
+package.json
+package-lock.json
+
+# 排除测试文件
+test-*.html
+测试*.html
+*测试*.html

@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "czx-dashboard",
   "functions": {
     "用户行为看板（周度）/api/*.js": {
       "memory": 1024,
@@ -9,5 +8,20 @@
   },
   "rewrites": [
     { "source": "/user-behavior", "destination": "/用户行为看板（周度）/dashboard-vercel.html" }
+  ],
+  "ignoreCommand": "echo 'Skipping build step'",
+  "installCommand": "echo 'Skipping install'",
+  "buildCommand": "echo 'No build needed'",
+  "outputDirectory": ".",
+  "excludes": [
+    "用户行为看板（周度）/data/**",
+    "用户行为看板（周度）/server-with-db.js",
+    "**/*.xlsx",
+    "**/*.csv",
+    "**/*.md",
+    "**/*.bat",
+    "**/*.ps1",
+    ".git/**",
+    ".vscode/**"
   ]
 }

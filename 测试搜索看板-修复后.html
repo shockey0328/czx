@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试搜索看板 - 修复后</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #FF6B35;
+            margin-bottom: 15px;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .log-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 3px 0;
+            padding: 2px 0;
+        }
+        .log-entry.success { color: #28a745; }
+        .log-entry.error { color: #dc3545; }
+        .log-entry.info { color: #17a2b8; }
+        .btn {
+            background: #FF6B35;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #E85A2A;
+        }
+        iframe {
+            width: 100%;
+            height: 800px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-card">
+        <div class="test-title">🔧 搜索看板修复测试</div>
+        <div id="status"></div>
+        <div>
+            <button class="btn" onclick="testLocal()">测试本地版本</button>
+            <button class="btn" onclick="testOnline()">测试线上版本</button>
+            <button class="btn" onclick="clearLogs()">清空日志</button>
+        </div>
+        <div class="log-area" id="logArea"></div>
+    </div>
+
+    <div class="test-card">
+        <div class="test-title">📊 看板预览</div>
+        <iframe id="previewFrame" src=""></iframe>
+    </div>
+
+    <script>
+        const logArea = document.getElementById('logArea');
+        const statusDiv = document.getElementById('status');
+        const previewFrame = document.getElementById('previewFrame');
+
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logArea.appendChild(entry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function clearLogs() {
+            logArea.innerHTML = '';
+            addLog('日志已清空', 'info');
+        }
+
+        function updateStatus(message, type) {
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function testLocal() {
+            addLog('开始测试本地版本...', 'info');
+            updateStatus('正在加载本地版本...', 'info');
+            
+            const localUrl = './搜索数据看板（周度）/index.html';
+            previewFrame.src = localUrl;
+            
+            addLog(`加载URL: ${localUrl}`, 'info');
+            
+            // 监听iframe加载
+            previewFrame.onload = function() {
+                addLog('✅ 页面加载完成', 'success');
+                updateStatus('本地版本加载成功', 'success');
+                
+                // 尝试访问iframe内容（同源才能访问）
+                try {
+                    const iframeDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                    addLog('✅ 可以访问iframe内容', 'success');
+                    
+                    // 检查ECharts
+                    setTimeout(() => {
+                        const iframeWindow = previewFrame.contentWindow;
+                        if (iframeWindow.echarts) {
+                            addLog('✅ ECharts已加载', 'success');
+                        } else {
+                            addLog('❌ ECharts未加载', 'error');
+                        }
+                        
+                        // 检查数据
+                        if (iframeWindow.dashboardData) {
+                            addLog('✅ 数据已加载', 'success');
+                            addLog(`数据集数量: ${Object.keys(iframeWindow.dashboardData).length}`, 'info');
+                        } else {
+                            addLog('❌ 数据未加载', 'error');
+                        }
+                    }, 2000);
+                    
+                } catch (e) {
+                    addLog('⚠️ 无法访问iframe内容（跨域限制）', 'info');
+                }
+            };
+            
+            previewFrame.onerror = function() {
+                addLog('❌ 页面加载失败', 'error');
+                updateStatus('本地版本加载失败', 'error');
+            };
+        }
+
+        function testOnline() {
+            addLog('开始测试线上版本...', 'info');
+            updateStatus('正在加载线上版本...', 'info');
+            
+            const onlineUrl = 'https://czx-shockey0328s-projects.vercel.app/';
+            previewFrame.src = onlineUrl;
+            
+            addLog(`加载URL: ${onlineUrl}`, 'info');
+            
+            previewFrame.onload = function() {
+                addLog('✅ 页面加载完成', 'success');
+                updateStatus('线上版本加载成功', 'success');
+                addLog('⚠️ 线上版本无法检查内部状态（跨域限制）', 'info');
+                addLog('请在iframe中手动检查图表是否显示', 'info');
+            };
+            
+            previewFrame.onerror = function() {
+                addLog('❌ 页面加载失败', 'error');
+                updateStatus('线上版本加载失败', 'error');
+            };
+        }
+
+        // 页面加载时的初始化
+        addLog('测试工具已就绪', 'success');
+        addLog('请点击按钮开始测试', 'info');
+        updateStatus('等待测试...', 'info');
+    </script>
+</body>
+</html>
