@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+*.log
+
+# 数据文件（过大，不提交到Git）
+data/
+*.xlsx
+
+# 数据库文件
+*.db
+*.sqlite
