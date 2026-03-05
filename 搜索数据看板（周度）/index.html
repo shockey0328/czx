@@ -538,13 +538,23 @@
 
     <script src="data.js"></script>
     <script>
-        // 等待ECharts加载完成后再执行app.js
+        // 等待ECharts和词云插件都加载完成后再执行app.js
         function waitForECharts() {
-            if (typeof echarts !== 'undefined') {
-                console.log('ECharts已就绪，加载app.js');
-                const script = document.createElement('script');
-                script.src = 'app.js';
-                document.body.appendChild(script);
+            if (typeof echarts !== 'undefined' && echarts.graphic && echarts.graphic.LinearGradient) {
+                console.log('ECharts已就绪，检查词云插件...');
+                // 再等待一下确保词云插件也加载完成
+                setTimeout(() => {
+                    console.log('开始加载app.js');
+                    const script = document.createElement('script');
+                    script.src = 'app.js';
+                    script.onload = function() {
+                        console.log('app.js加载完成');
+                    };
+                    script.onerror = function() {
+                        console.error('app.js加载失败');
+                    };
+                    document.body.appendChild(script);
+                }, 500); // 等待500ms确保词云插件加载完成
             } else {
                 console.log('等待ECharts加载...');
                 setTimeout(waitForECharts, 100);

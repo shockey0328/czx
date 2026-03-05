@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试Railway用户行为看板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .status-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 4px solid #FF6B35;
+        }
+
+        .status-card h3 {
+            color: #FF6B35;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .status-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .url-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #FF6B35;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #E85A2A;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #FF6B35;
+            border: 2px solid #FF6B35;
+        }
+
+        .btn-secondary:hover {
+            background: #FFF5F2;
+        }
+
+        .iframe-container {
+            padding: 30px;
+            background: white;
+        }
+
+        .iframe-wrapper {
+            position: relative;
+            width: 100%;
+            height: 800px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #FF6B35;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .checklist {
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .checklist h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .checklist-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checklist-item label {
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Railway用户行为看板测试</h1>
+            <p>Git LFS推送完成，Railway正在自动部署</p>
+        </div>
+
+        <div class="status-section">
+            <div class="status-card">
+                <h3>✅ Git LFS推送状态</h3>
+                <p>所有大文件（约2GB）已成功推送到GitHub</p>
+                <div class="success-message">
+                    <strong>推送完成！</strong> Git状态显示：Your branch is up to date with 'origin/main'
+                </div>
+            </div>
+
+            <div class="status-card">
+                <h3>🔄 Railway部署状态</h3>
+                <p>Railway会自动检测GitHub更新并重新部署</p>
+                <div class="info-box">
+                    <strong>预计时间：</strong> 2-5分钟<br>
+                    <strong>部署内容：</strong> Node.js应用 + Git LFS数据文件（2GB）
+                </div>
+            </div>
+
+            <div class="status-card">
+                <h3>🔗 Railway访问地址</h3>
+                <div class="url-box">
+                    https://czx-production.up.railway.app/dashboard-db.html
+                </div>
+                <div class="button-group">
+                    <a href="https://czx-production.up.railway.app/dashboard-db.html" target="_blank" class="btn btn-primary">
+                        🔗 直接访问看板
+                    </a>
+                    <button onclick="loadInIframe()" class="btn btn-secondary">
+                        📱 在下方加载
+                    </button>
+                    <button onclick="location.reload()" class="btn btn-secondary">
+                        🔄 刷新页面
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="iframe-container">
+            <h3 style="margin-bottom: 20px; color: #333;">📊 看板预览</h3>
+            <div class="iframe-wrapper" id="iframeWrapper">
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>点击"在下方加载"按钮查看看板</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="checklist">
+            <h3>✅ 测试清单</h3>
+            <div class="checklist-item">
+                <input type="checkbox" id="check1">
+                <label for="check1">访问Railway地址，页面能正常打开</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check2">
+                <label for="check2">输入用户ID（例如：test_user_001）</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check3">
+                <label for="check3">选择日期范围（2026-02-26 到 2026-03-04）</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check4">
+                <label for="check4">点击"查询数据"，能看到用户行为数据</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check5">
+                <label for="check5">点击"AI分析"，AI分析结果正常显示</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check6">
+                <label for="check6">打开主看板（index.html），选择"用户行为"看板</label>
+            </div>
+            <div class="checklist-item">
+                <input type="checkbox" id="check7">
+                <label for="check7">主看板中的iframe能正常加载Railway地址</label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function loadInIframe() {
+            const wrapper = document.getElementById('iframeWrapper');
+            const loading = document.getElementById('loading');
+            
+            // 显示加载动画
+            loading.innerHTML = `
+                <div class="spinner"></div>
+                <p>正在加载Railway看板...</p>
+            `;
+            
+            // 创建iframe
+            const iframe = document.createElement('iframe');
+            iframe.src = 'https://czx-production.up.railway.app/dashboard-db.html';
+            
+            iframe.onload = function() {
+                loading.style.display = 'none';
+            };
+            
+            iframe.onerror = function() {
+                loading.innerHTML = `
+                    <p style="color: #dc3545;">❌ 加载失败</p>
+                    <p style="margin-top: 10px;">可能原因：</p>
+                    <ul style="text-align: left; margin-top: 10px;">
+                        <li>Railway还在部署中（请等待2-5分钟）</li>
+                        <li>网络连接问题</li>
+                        <li>CORS跨域限制</li>
+                    </ul>
+                    <button onclick="loadInIframe()" class="btn btn-primary" style="margin-top: 20px;">
+                        重试
+                    </button>
+                `;
+            };
+            
+            wrapper.appendChild(iframe);
+            
+            // 5秒后如果还在加载，提示可能需要等待
+            setTimeout(() => {
+                if (loading.style.display !== 'none') {
+                    loading.innerHTML += `
+                        <p style="margin-top: 15px; color: #666;">
+                            如果长时间加载，可能Railway还在部署中<br>
+                            建议直接点击"直接访问看板"按钮在新标签页打开
+                        </p>
+                    `;
+                }
+            }, 5000);
+        }
+
+        // 自动检查所有复选框的状态
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const allChecked = Array.from(document.querySelectorAll('input[type="checkbox"]')).every(cb => cb.checked);
+                if (allChecked) {
+                    alert('🎉 恭喜！所有测试项目都已完成！\n\n用户行为看板Railway部署成功！');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
