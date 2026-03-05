@@ -195,39 +195,52 @@ function loadDashboard(period, dashboardType) {
             </div>
         `;
         
-        // 尝试加载服务器应用
-        const iframe = document.createElement('iframe');
-        iframe.src = config.path;
-        iframe.className = 'dashboard-frame';
-        iframe.style.display = 'none';
+        console.log('开始检测服务器:', config.path);
         
-        let loaded = false;
+        // 使用fetch检测服务器是否运行
+        fetch(config.path, { method: 'HEAD', mode: 'no-cors' })
+            .then(() => {
+                console.log('服务器检测成功，加载iframe');
+                loadServerIframe();
+            })
+            .catch((error) => {
+                console.log('服务器检测失败:', error);
+                // 即使fetch失败，也尝试加载iframe（可能是CORS问题）
+                loadServerIframe();
+            });
         
-        iframe.onload = function() {
-            loaded = true;
-            console.log(`${config.name}看板加载完成`);
-            iframe.style.display = 'block';
+        // 加载iframe的函数
+        function loadServerIframe() {
+            const iframe = document.createElement('iframe');
+            iframe.src = config.path;
+            iframe.className = 'dashboard-frame';
+            
+            // 直接显示iframe，不等待onload
             container.innerHTML = '';
             container.appendChild(iframe);
-        };
-        
-        iframe.onerror = function() {
-            console.log('服务器应用未运行');
-            if (!loaded) {
-                showServerInstructions();
-            }
-        };
-        
-        document.body.appendChild(iframe);
-        
-        // 10秒后如果还没加载成功，显示启动说明
-        setTimeout(() => {
-            if (!loaded && iframe.style.display === 'none') {
-                console.log('服务器加载超时，显示启动说明');
-                iframe.remove();
-                showServerInstructions();
-            }
-        }, 10000);
+            
+            console.log('iframe已添加到页面');
+            
+            // 5秒后检查iframe是否加载成功
+            setTimeout(() => {
+                try {
+                    // 尝试访问iframe内容（如果成功说明同源）
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc && iframeDoc.body) {
+                        console.log('iframe内容可访问');
+                    }
+                } catch (e) {
+                    // 跨域错误是正常的，说明iframe已加载
+                    console.log('iframe已加载（跨域）');
+                }
+                
+                // 如果iframe的src为空或加载失败，显示启动说明
+                if (!iframe.src || iframe.src === 'about:blank') {
+                    console.log('iframe加载失败，显示启动说明');
+                    showServerInstructions();
+                }
+            }, 5000);
+        }
         
         // 显示启动说明的函数
         function showServerInstructions() {

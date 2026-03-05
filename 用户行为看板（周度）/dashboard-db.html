@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>用户行为看板 - 数据库版</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #fff5f0 0%, #ffe8dc 100%);
+      min-height: 100vh;
+      padding: 20px;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 163, 102, 0.1) 0%, transparent 70%);
+      animation: rotate 30s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+      color: white;
+      padding: 24px 32px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(255, 107, 53, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+      animation: headerGlow 8s ease-in-out infinite;
+    }
+
+    @keyframes headerGlow {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(-20px, -20px); }
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .header p {
+      font-size: 13px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    .card {
+      background: white;
+      padding: 20px 24px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(255, 163, 102, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #FF6B35 0%, #FFA366 100%);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(255, 107, 53, 0.15);
+      border-color: rgba(255, 163, 102, 0.3);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, #fff9f7 0%, #fff0eb 100%);
+      border-radius: 12px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+      position: relative;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: default;
+    }
+
+    .stat-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 16px;
+      padding: 2px;
+      background: linear-gradient(135deg, #FFE8DC, #FFA366);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+
+    .stat-item:hover::before {
+      opacity: 1;
+    }
+
+    .stat-item:hover {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 8px 24px rgba(255, 107, 53, 0.2);
+    }
+
+    .stat-number {
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 2px;
+      transition: transform 0.3s;
+    }
+
+    .stat-item:hover .stat-number {
+      transform: scale(1.08);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .form-item label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .form-item input,
+    .form-item textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e8e8e8;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+
+    .form-item input:focus,
+    .form-item textarea:focus {
+      outline: none;
+      border-color: #FF6B35;
+      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+    }
+
+    /* 聊天输入框特殊样式 */
+    #chatInput {
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      resize: none;
+      transition: all 0.3s ease;
+      background: #fafafa;
+    }
+
+    #chatInput:hover {
+      border-color: #d0d0d0;
+      background: #ffffff;
+    }
+
+    #chatInput:focus {
+      border-color: #FFA366;
+      background: #ffffff;
+      box-shadow: 0 0 0 4px rgba(255, 163, 102, 0.08);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+      color: white;
+      border: none;
+      padding: 13px 28px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .btn:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(255, 107, 53, 0.45);
+    }
+
+    .btn:active {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.35);
+    }
+
+    .btn:disabled {
+      background: linear-gradient(135deg, #ccc 0%, #ddd 100%);
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn:disabled::before {
+      display: none;
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .status.success {
+      background: #f6ffed;
+      color: #52c41a;
+      border: 1px solid #b7eb8f;
+    }
+
+    .status.error {
+      background: #fff2f0;
+      color: #ff4d4f;
+      border: 1px solid #ffccc7;
+    }
+
+    .status.loading {
+      background: #fff9f7;
+      color: #FF6B35;
+      border: 1px solid #ffd8c4;
+    }
+
+    .chat {
+      background: white;
+      border-radius: 16px;
+      height: 650px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      background: linear-gradient(to bottom, #fafafa 0%, #f5f5f5 100%);
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: #FFA366;
+      border-radius: 4px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb:hover {
+      background: #FF6B35;
+    }
+
+    .chat-input {
+      padding: 20px;
+      border-top: 2px solid #f0f0f0;
+      background: white;
+    }
+
+    .analysis-mode {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .analysis-mode label {
+      font-size: 14px;
+      color: #666;
+      font-weight: 600;
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mode-option {
+      padding: 10px 18px;
+      border: 2px solid #e8e8e8;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mode-option::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #FF6B35 0%, #FFA366 100%);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .mode-option:hover {
+      border-color: #FFA366;
+      color: #FF6B35;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.15);
+    }
+
+    .mode-option:hover::after {
+      transform: scaleX(1);
+    }
+
+    .mode-option.active {
+      background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 6px 16px rgba(255, 107, 53, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .mode-option.active::after {
+      display: none;
+    }
+
+    .message {
+      margin-bottom: 20px;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message-ai {
+      text-align: left;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .message-user {
+      text-align: right;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+      border: 2px solid #fff;
+      background: white;
+      object-fit: cover;
+    }
+
+    .message-bubble {
+      display: inline-block;
+      padding: 14px 20px;
+      border-radius: 16px;
+      max-width: 85%;
+      font-size: 14px;
+      line-height: 1.7;
+      position: relative;
+    }
+
+    .message-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .message-ai .message-bubble {
+      background: white;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 163, 102, 0.15);
+    }
+
+    .message-ai .message-bubble::before {
+      content: '';
+      position: absolute;
+      left: -8px;
+      top: 12px;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 8px 8px 8px 0;
+      border-color: transparent white transparent transparent;
+      filter: drop-shadow(-2px 0 2px rgba(0, 0, 0, 0.05));
+    }
+
+    .message-user .message-bubble {
+      background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+      color: white;
+      box-shadow: 0 4px 16px rgba(255, 107, 53, 0.35);
+    }
+
+    .message-user .message-bubble::before {
+      content: '';
+      position: absolute;
+      right: -8px;
+      top: 12px;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 8px 0 8px 8px;
+      border-color: transparent transparent transparent #FFA366;
+      filter: drop-shadow(2px 0 2px rgba(255, 107, 53, 0.2));
+    }
+
+    .analysis-section {
+      background: linear-gradient(135deg, #fff9f7 0%, #fff5f0 100%);
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 14px;
+      border: 2px solid #ffe8dc;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .analysis-section::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(180deg, #FF6B35 0%, #FFA366 100%);
+      border-radius: 14px 0 0 14px;
+    }
+
+    .analysis-section:hover {
+      border-color: #ffd8c4;
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.1);
+    }
+
+    .analysis-section h4 {
+      color: #FF6B35;
+      margin-bottom: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .analysis-section h4::before {
+      content: '▸';
+      font-size: 18px;
+      color: #FFA366;
+    }
+
+    .analysis-content {
+      color: #333;
+      font-size: 14px;
+      line-height: 1.9;
+      white-space: pre-wrap;
+      padding-left: 4px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(255, 107, 53, 0.2);
+      border-top: 3px solid #FF6B35;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+
+
+    /* 滚动条美化 */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f5f5f5;
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #FF6B35 0%, #FFA366 100%);
+      border-radius: 5px;
+      transition: background 0.3s;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #ff5722 0%, #FF6B35 100%);
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .header {
+        padding: 20px;
+      }
+
+      .header h1 {
+        font-size: 22px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .chat {
+        height: 500px;
+      }
+
+      .message-bubble {
+        max-width: 90%;
+      }
+
+      .analysis-mode {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .mode-selector {
+        width: 100%;
+      }
+
+      .mode-option {
+        flex: 1;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-content">
+        <h1>用户行为看板 - 数据库版</h1>
+        <p>基于高性能数据库的用户行为分析系统</p>
+      </div>
+    </div>
+
+  <div class="card">
+    <div class="stats" id="statsContainer">
+      <div class="stat-item">
+        <div class="stat-number" id="totalUsers">-</div>
+        <div class="stat-label">总用户数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="totalRecords">-</div>
+        <div class="stat-label">总记录数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" id="availableDays">-</div>
+        <div class="stat-label">可用天数</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-item">
+        <label>起始日期：</label>
+        <input type="date" id="startDate" value="2026-02-26">
+      </div>
+      <div class="form-item">
+        <label>结束日期：</label>
+        <input type="date" id="endDate" value="2026-03-04">
+      </div>
+      <div class="form-item">
+        <label>用户ID：</label>
+        <input type="text" id="userIds" placeholder="多个用户ID用逗号隔开" value="">
+      </div>
+    </div>
+    
+    <div id="dataStatus" class="status">等待加载统计信息...</div>
+    <button class="btn" onclick="loadStats()">刷新统计</button>
+  </div>
+
+  <div class="chat">
+    <div class="chat-messages" id="chatMessages">
+      <div class="message message-ai">
+        <img src="小橙子.png" alt="小橙子" class="avatar">
+        <div class="message-content">
+          <div class="message-bubble">
+            你好！我是基于数据库的用户行为分析助手。数据已预加载到高性能数据库中，查询速度更快。请输入用户ID和需求描述进行分析。
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input">
+      <div class="analysis-mode">
+        <label>分析模式：</label>
+        <div class="mode-selector">
+          <div class="mode-option active" data-mode="standard" onclick="selectMode('standard')">
+            常规性分析
+          </div>
+          <div class="mode-option" data-mode="specific" onclick="selectMode('specific')">
+            针对性分析
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: flex-end;">
+        <textarea id="chatInput" rows="4" placeholder="请描述您想了解的用户行为，例如：分析用户的完整使用路径、查看高频操作习惯、识别流失环节..." style="flex: 1; min-height: 100px;"></textarea>
+        <button class="btn" id="sendBtn" onclick="sendMessage()" style="height: fit-content;">分析</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let dbStats = null;
+    let analysisMode = 'standard'; // 默认为常规分析
+
+    function selectMode(mode) {
+      analysisMode = mode;
+      
+      // 更新UI
+      document.querySelectorAll('.mode-option').forEach(option => {
+        option.classList.remove('active');
+      });
+      document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+      
+      // 更新输入框提示
+      const chatInput = document.getElementById('chatInput');
+      if (mode === 'standard') {
+        chatInput.placeholder = '请描述您想了解的用户行为，例如：分析用户的完整使用路径、查看高频操作习惯、识别流失环节...';
+      } else {
+        chatInput.placeholder = '请输入具体问题，例如：为什么用户在搜索后流失？哪个环节转化率低？用户为何反复点击某按钮？';
+      }
+    }
+
+    function updateStatus(message, type) {
+      const statusDiv = document.getElementById('dataStatus');
+      statusDiv.textContent = message;
+      statusDiv.className = 'status ' + (type || '');
+    }
+
+    function addMessage(text, isUser = false, analysis = null) {
+      const chatMessages = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message ' + (isUser ? 'message-user' : 'message-ai');
+      
+      let content = '';
+      
+      // AI消息添加头像
+      if (!isUser) {
+        content += `<img src="小橙子.png" alt="小橙子" class="avatar">`;
+        content += `<div class="message-content">`;
+      }
+      
+      content += `<div class="message-bubble">${text}</div>`;
+      
+      if (analysis) {
+        // 如果只有trajectory有内容，说明是针对性问题分析
+        if (analysis.trajectory && !analysis.habits && !analysis.issues && !analysis.suggestions) {
+          content += `
+            <div class="analysis-section">
+              <div class="analysis-content">${analysis.trajectory}</div>
+            </div>
+          `;
+        } else {
+          // 标准四模块分析
+          content += `
+            <div class="analysis-section">
+              <h4>一、用户完整行为轨迹（时间线简述）</h4>
+              <div class="analysis-content">${analysis.trajectory || '暂无数据'}</div>
+            </div>
+            <div class="analysis-section">
+              <h4>二、用户使用习惯与特征</h4>
+              <div class="analysis-content">${analysis.habits || '暂无数据'}</div>
+            </div>
+            <div class="analysis-section">
+              <h4>三、产品问题与体验卡点（重点）</h4>
+              <div class="analysis-content">${analysis.issues || '暂无数据'}</div>
+            </div>
+            <div class="analysis-section">
+              <h4>四、产品&运营优化建议</h4>
+              <div class="analysis-content">${analysis.suggestions || '暂无数据'}</div>
+            </div>
+          `;
+        }
+      }
+      
+      if (!isUser) {
+        content += `</div>`; // 关闭 message-content
+      }
+      
+      messageDiv.innerHTML = content;
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function loadStats() {
+      updateStatus('正在加载统计信息...', 'loading');
+      
+      try {
+        const response = await fetch('http://localhost:3001/api/stats');
+        const result = await response.json();
+        
+        if (result.success) {
+          dbStats = result.stats;
+          
+          document.getElementById('totalUsers').textContent = dbStats.totalUsers.toLocaleString();
+          document.getElementById('totalRecords').textContent = dbStats.totalRecords.toLocaleString();
+          document.getElementById('availableDays').textContent = dbStats.availableDates.length;
+          
+          let statusMsg = `数据库就绪！`;
+          if (dbStats.dateRange) {
+            statusMsg += ` 数据范围: ${dbStats.dateRange.start} 到 ${dbStats.dateRange.end}`;
+          }
+          updateStatus(statusMsg, 'success');
+          
+          addMessage(`数据库统计信息已更新！共有 ${dbStats.totalUsers} 个用户，${dbStats.totalRecords.toLocaleString()} 条记录，覆盖 ${dbStats.availableDates.length} 天。`);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error('加载统计信息失败:', error);
+        updateStatus('加载统计信息失败: ' + error.message, 'error');
+        addMessage('加载统计信息失败: ' + error.message);
+      }
+    }
+
+    async function sendMessage() {
+      const chatInput = document.getElementById('chatInput');
+      const userMessage = chatInput.value.trim();
+      
+      if (!userMessage) return;
+      
+      const userIds = document.getElementById('userIds').value.trim();
+      if (!userIds) {
+        addMessage('请先输入用户ID');
+        return;
+      }
+      
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      
+      addMessage(userMessage, true);
+      chatInput.value = '';
+      
+      // 显示分析中状态
+      const loadingMsg = document.createElement('div');
+      loadingMsg.className = 'message message-ai';
+      loadingMsg.id = 'loadingMessage';
+      loadingMsg.innerHTML = `
+        <img src="小橙子.png" alt="小橙子" class="avatar">
+        <div class="message-content">
+          <div class="message-bubble">
+            <span class="spinner"></span>正在分析用户行为数据...
+          </div>
+        </div>
+      `;
+      document.getElementById('chatMessages').appendChild(loadingMsg);
+      document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+      
+      document.getElementById('sendBtn').disabled = true;
+      
+      try {
+        const response = await fetch('http://localhost:3001/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: userIds.split(',').map(id => id.trim()).filter(id => id),
+            startDate,
+            endDate,
+            description: userMessage,
+            analysisMode: analysisMode  // 添加分析模式参数
+          })
+        });
+        
+        const result = await response.json();
+        
+        // 移除加载消息
+        const loadingElement = document.getElementById('loadingMessage');
+        if (loadingElement) loadingElement.remove();
+        
+        if (result.success) {
+          addMessage(`分析完成！基于 ${result.dataCount} 条用户行为记录的分析结果：`, false, result.analysis);
+        } else {
+          addMessage('分析失败：' + result.error);
+        }
+      } catch (error) {
+        // 移除加载消息
+        const loadingElement = document.getElementById('loadingMessage');
+        if (loadingElement) loadingElement.remove();
+        
+        console.error('分析失败:', error);
+        addMessage('分析失败：' + error.message);
+      } finally {
+        document.getElementById('sendBtn').disabled = false;
+      }
+    }
+
+    // 回车发送
+    document.getElementById('chatInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // 页面加载时自动加载统计信息
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(loadStats, 500);
+    });
+  </script>
+  </div>
+</body>
+</html>

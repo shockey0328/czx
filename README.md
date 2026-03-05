@@ -29,20 +29,38 @@
 
 ### 本地运行
 
-1. **克隆仓库**
+#### 方法一：完整系统启动（推荐 - 包含用户行为看板）
+
+1. **一键启动所有服务**
 ```bash
-git clone https://github.com/yourusername/czx-dashboard.git
-cd czx-dashboard
+# 双击运行
+启动完整看板系统.bat
 ```
 
-2. **直接打开**
-```bash
-# 打开主看板
-start index.html
+2. **访问看板**
+```
+在浏览器中打开: http://localhost:8000/index.html
+```
 
-# 或使用 Python 启动本地服务器
+**重要说明：**
+- 主看板必须通过HTTP服务器访问（不能直接双击index.html）
+- 用户行为看板需要Node.js服务器支持
+- 其他看板（核心数据、搜索数据等）可直接访问
+
+#### 方法二：仅启动主看板（不含用户行为看板）
+
+1. **启动HTTP服务器**
+```bash
+# 使用Python
 python -m http.server 8000
-# 然后访问 http://localhost:8000
+
+# 或双击运行
+启动看板.bat
+```
+
+2. **访问看板**
+```
+在浏览器中打开: http://localhost:8000/index.html
 ```
 
 3. **更新数据**
