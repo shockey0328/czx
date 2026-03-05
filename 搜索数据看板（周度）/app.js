@@ -352,56 +352,62 @@ function updateKeywordsCharts() {
         }]
     });
 
-    // 词云图
-    const wordCloudChart = echarts.init(document.getElementById('wordCloudChart'));
+    // 词云图（若词云插件未加载则显示提示，不阻塞其他图表）
+    const wordCloudEl = document.getElementById('wordCloudChart');
+    const wordCloudChart = echarts.init(wordCloudEl);
     const wordCloudData = top100.map(item => ({
         name: item.keywords,
         value: parseInt(item[currentSort])
     }));
 
-    wordCloudChart.setOption({
-        tooltip: {
-            show: true,
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            borderColor: '#FF6B35',
-            borderWidth: 1,
-            textStyle: { color: '#333' },
-            formatter: function(params) {
-                return `${params.name}<br/>${currentSort.toUpperCase()}: ${params.value}`;
-            }
-        },
-        series: [{
-            type: 'wordCloud',
-            shape: 'circle',
-            sizeRange: [14, 60],
-            rotationRange: [0, 0],
-            rotationStep: 0,
-            gridSize: 10,
-            drawOutOfBound: false,
-            layoutAnimation: true,
-            textStyle: {
-                fontFamily: 'sans-serif',
-                fontWeight: 'bold',
-                color: function() {
-                    const colors = ['#FF6B35', '#FFA366', '#FF8C5A', '#FFB088', '#FF9B6B', '#E85A2A'];
-                    return colors[Math.floor(Math.random() * colors.length)];
+    try {
+        wordCloudChart.setOption({
+            tooltip: {
+                show: true,
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderColor: '#FF6B35',
+                borderWidth: 1,
+                textStyle: { color: '#333' },
+                formatter: function(params) {
+                    return `${params.name}<br/>${currentSort.toUpperCase()}: ${params.value}`;
                 }
             },
-            emphasis: {
-                focus: 'self',
+            series: [{
+                type: 'wordCloud',
+                shape: 'circle',
+                sizeRange: [14, 60],
+                rotationRange: [0, 0],
+                rotationStep: 0,
+                gridSize: 10,
+                drawOutOfBound: false,
+                layoutAnimation: true,
                 textStyle: {
-                    shadowBlur: 10,
-                    shadowColor: '#FF6B35'
-                }
-            },
-            data: wordCloudData
-        }]
-    });
+                    fontFamily: 'sans-serif',
+                    fontWeight: 'bold',
+                    color: function() {
+                        const colors = ['#FF6B35', '#FFA366', '#FF8C5A', '#FFB088', '#FF9B6B', '#E85A2A'];
+                        return colors[Math.floor(Math.random() * colors.length)];
+                    }
+                },
+                emphasis: {
+                    focus: 'self',
+                    textStyle: {
+                        shadowBlur: 10,
+                        shadowColor: '#FF6B35'
+                    }
+                },
+                data: wordCloudData
+            }]
+        });
+    } catch (e) {
+        console.warn('词云图渲染失败（可能未加载词云插件）:', e);
+        wordCloudEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;padding:20px;text-align:center;">词云插件加载失败，请刷新页面重试</div>';
+    }
 
     // 响应式
     window.addEventListener('resize', () => {
         topChart.resize();
-        wordCloudChart.resize();
+        if (wordCloudChart && !wordCloudEl.querySelector('div')) wordCloudChart.resize();
     });
 }
 

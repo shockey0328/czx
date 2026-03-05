@@ -4,19 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>搜索数据看板</title>
-    <!-- ECharts库 - 多CDN备用 -->
+    <!-- ECharts库 - 多CDN备用（unpkg/cdnjs 优先，避免 jsdelivr 在国内超时） -->
     <script>
-        // 尝试加载ECharts，使用多个CDN备用
+        // 尝试加载ECharts与词云，全部就绪后设置标志，供下方脚本加载 app.js
         (function() {
-            const cdns = [
-                'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js',
+            window.__searchDashboardLibsReady = false;
+            const echartsCdns = [
                 'https://unpkg.com/echarts@5.4.3/dist/echarts.min.js',
-                'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js'
+                'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js',
+                'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js'
             ];
-            
-            let loaded = false;
-            let currentIndex = 0;
-            
+            const wordcloudCdns = [
+                'https://unpkg.com/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/echarts-wordcloud/2.1.0-beta/echarts-wordcloud.min.js',
+                'https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js'
+            ];
+
             function loadScript(url) {
                 return new Promise((resolve, reject) => {
                     const script = document.createElement('script');
@@ -26,46 +29,48 @@
                     document.head.appendChild(script);
                 });
             }
-            
-            async function tryLoadECharts() {
-                for (const cdn of cdns) {
-                    try {
-                        console.log('尝试加载ECharts from:', cdn);
-                        await loadScript(cdn);
-                        console.log('✅ ECharts加载成功:', cdn);
-                        loaded = true;
-                        // 加载词云插件
-                        await loadWordCloud();
-                        break;
-                    } catch (e) {
-                        console.log('❌ ECharts加载失败:', cdn);
-                    }
-                }
-                
-                if (!loaded) {
-                    console.error('所有CDN都加载失败，请检查网络连接');
-                    alert('图表库加载失败，部分图表可能无法显示。请检查网络连接或刷新页面重试。');
-                }
+
+            function markReady() {
+                window.__searchDashboardLibsReady = true;
             }
-            
+
             async function loadWordCloud() {
-                const wordcloudCdns = [
-                    'https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js',
-                    'https://unpkg.com/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js'
-                ];
-                
                 for (const cdn of wordcloudCdns) {
                     try {
                         console.log('尝试加载词云插件 from:', cdn);
                         await loadScript(cdn);
                         console.log('✅ 词云插件加载成功:', cdn);
-                        return;
+                        return true;
                     } catch (e) {
                         console.log('❌ 词云插件加载失败:', cdn);
                     }
                 }
+                console.warn('词云插件全部CDN加载失败，词云图将不显示');
+                return false;
             }
-            
+
+            async function tryLoadECharts() {
+                let echartsLoaded = false;
+                for (const cdn of echartsCdns) {
+                    try {
+                        console.log('尝试加载ECharts from:', cdn);
+                        await loadScript(cdn);
+                        console.log('✅ ECharts加载成功:', cdn);
+                        echartsLoaded = true;
+                        await loadWordCloud();
+                        markReady();
+                        return;
+                    } catch (e) {
+                        console.log('❌ ECharts加载失败:', cdn);
+                    }
+                }
+                if (!echartsLoaded) {
+                    console.error('所有CDN都加载失败，请检查网络连接');
+                    alert('图表库加载失败，部分图表可能无法显示。请检查网络连接或刷新页面重试。');
+                }
+                markReady();
+            }
+
             tryLoadECharts();
         })();
     </script>
@@ -538,41 +543,30 @@
 
     <script src="data.js"></script>
     <script>
-        // 等待ECharts和词云插件都加载完成后再执行app.js
-        let echartsReady = false;
+        // 必须等 ECharts 与词云都就绪（__searchDashboardLibsReady）后再加载 app.js，避免词云未注册导致图表报错
         let appJsLoaded = false;
-        
-        function waitForECharts() {
-            if (typeof echarts !== 'undefined' && echarts.graphic && echarts.graphic.LinearGradient) {
-                console.log('✅ ECharts已就绪');
-                echartsReady = true;
-                // 再等待一下确保词云插件也加载完成
-                setTimeout(() => {
-                    console.log('✅ 词云插件已就绪，开始加载app.js');
-                    loadAppJS();
-                }, 800); // 增加等待时间到800ms
-            } else {
-                console.log('⏳ 等待ECharts加载...');
-                setTimeout(waitForECharts, 100);
+
+        function waitForLibs() {
+            if (window.__searchDashboardLibsReady && typeof echarts !== 'undefined' && echarts.graphic && echarts.graphic.LinearGradient) {
+                console.log('ECharts已就绪，加载app.js');
+                loadAppJS();
+                return;
             }
+            console.log('等待ECharts加载...');
+            setTimeout(waitForLibs, 100);
         }
-        
+
         function loadAppJS() {
             if (appJsLoaded) return;
             appJsLoaded = true;
-            
             const script = document.createElement('script');
             script.src = 'app.js';
-            script.onload = function() {
-                console.log('✅ app.js加载完成');
-            };
-            script.onerror = function() {
-                console.error('❌ app.js加载失败');
-            };
+            script.onload = function() { console.log('✅ app.js加载完成'); };
+            script.onerror = function() { console.error('❌ app.js加载失败'); };
             document.body.appendChild(script);
         }
-        
-        waitForECharts();
+
+        waitForLibs();
     </script>
 </body>
 </html>
