@@ -29,6 +29,10 @@ function initApp() {
         initEventListeners();
         console.log('✅ 开始渲染图表');
         updateAllCharts();
+        // iframe 内容器可能尚未获得尺寸，延迟触发 resize 确保图表正确显示
+        setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+        }, 400);
         console.log('✅ 应用初始化完成');
     }).catch(error => {
         console.error('❌ 初始化失败:', error);

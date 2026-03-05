@@ -292,7 +292,46 @@ function loadDashboard(period, dashboardType) {
         return;
     }
     
-    // 创建iframe加载静态看板
+    // 搜索看板：先 fetch HTML 并注入 base 再放入 iframe，避免路径/编码导致资源加载失败
+    if (config.type === 'static' && dashboardType === 'search-weekly') {
+        var baseUrl = (window.location.origin || '') + '/' + config.path.replace(/[^/]*$/, '');
+        fetch(config.path, { cache: 'no-store' })
+            .then(function(r) {
+                if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+                return r.text();
+            })
+            .then(function(html) {
+                var baseTag = '<base href="' + baseUrl + '">';
+                if (html.indexOf('<head>') !== -1) {
+                    html = html.replace('<head>', '<head>\n    ' + baseTag);
+                } else {
+                    html = baseTag + '\n' + html;
+                }
+                container.innerHTML = '';
+                var iframe = document.createElement('iframe');
+                iframe.className = 'dashboard-frame';
+                iframe.srcdoc = html;
+                iframe.onload = function() { console.log(config.name + '看板加载完成'); };
+                var link = document.createElement('a');
+                link.href = config.path;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.textContent = '在新窗口打开搜索看板';
+                link.style.cssText = 'position:absolute;top:12px;right:16px;z-index:10;font-size:13px;color:#ff7043;padding:6px 12px;background:#fff;border:1px solid #ff7043;border-radius:6px;text-decoration:none;';
+                var wrap = document.createElement('div');
+                wrap.style.cssText = 'position:relative;width:100%;height:100%;';
+                wrap.appendChild(iframe);
+                wrap.appendChild(link);
+                container.appendChild(wrap);
+            })
+            .catch(function(err) {
+                console.error('搜索看板加载失败:', err);
+                container.innerHTML = '<div class="loading-container"><div class="loading-text">看板加载失败：' + (err.message || '网络错误') + '</div><a href="' + config.path + '" target="_blank" rel="noopener" style="color:#ff7043;margin-top:12px;">在新窗口打开</a></div>';
+            });
+        return;
+    }
+
+    // 其他静态看板：直接 iframe 加载
     setTimeout(() => {
         const iframe = document.createElement('iframe');
         iframe.src = config.path;
@@ -307,7 +346,6 @@ function loadDashboard(period, dashboardType) {
                 </div>
             `;
         };
-        
         container.innerHTML = '';
         container.appendChild(iframe);
     }, 300);
