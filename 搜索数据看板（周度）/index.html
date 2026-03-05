@@ -537,6 +537,20 @@
     </div>
 
     <script src="data.js"></script>
-    <script src="app.js"></script>
+    <script>
+        // 等待ECharts加载完成后再执行app.js
+        function waitForECharts() {
+            if (typeof echarts !== 'undefined') {
+                console.log('ECharts已就绪，加载app.js');
+                const script = document.createElement('script');
+                script.src = 'app.js';
+                document.body.appendChild(script);
+            } else {
+                console.log('等待ECharts加载...');
+                setTimeout(waitForECharts, 100);
+            }
+        }
+        waitForECharts();
+    </script>
 </body>
 </html>
