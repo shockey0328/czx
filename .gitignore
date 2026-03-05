@@ -40,7 +40,7 @@ yarn-error.log*
 *-backup.html
 *.bak
 
-# 用户行为看板大文件
-用户行为看板（周度）/data/
-用户行为看板（周度）/*.xlsx
+# 用户行为看板运行时文件
 用户行为看板（周度）/node_modules/
+用户行为看板（周度）/*.db
+用户行为看板（周度）/*.sqlite
