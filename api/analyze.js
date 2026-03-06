@@ -58,7 +58,38 @@ czx（橙子学）是一款主要面向学生及家长的H5产品，提供优质
 
 输出要求：必须包含上述四个模块，标题完整；不要使用表格；不要输出原始埋点数据；语言精炼、客观、业务导向。`;
   }
-  return prompt + `\n\n用户行为日志数据：\n${logsText}`;
+  return { prompt: prompt + `\n\n用户行为日志数据：\n${logsText}`, hasSpecific };
+}
+
+function parseAnalysisResult(text) {
+  const sections = { trajectory: '', habits: '', issues: '', suggestions: '' };
+  const lines = text.split('\n');
+  let currentSection = '';
+  for (const line of lines) {
+    if (line.match(/一[、．.].*用户.*行为.*轨迹/i) || line.match(/^#+\s*一[、．.]/)) {
+      currentSection = 'trajectory';
+      continue;
+    }
+    if (line.match(/二[、．.].*使用.*习惯/i) || line.match(/^#+\s*二[、．.]/)) {
+      currentSection = 'habits';
+      continue;
+    }
+    if (line.match(/三[、．.].*问题.*卡点/i) || line.match(/^#+\s*三[、．.]/)) {
+      currentSection = 'issues';
+      continue;
+    }
+    if (line.match(/四[、．.].*优化.*建议/i) || line.match(/^#+\s*四[、．.]/)) {
+      currentSection = 'suggestions';
+      continue;
+    }
+    if (currentSection && line.trim()) {
+      sections[currentSection] += line + '\n';
+    }
+  }
+  if (!sections.trajectory && !sections.habits && !sections.issues && !sections.suggestions) {
+    sections.trajectory = text;
+  }
+  return sections;
 }
 
 async function callDeepSeek(prompt) {
@@ -104,12 +135,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: '没有提供用户行为日志数据（logs）' });
     }
 
-    const prompt = buildPrompt(logs, userDescription || '');
-    const analysis = await callDeepSeek(prompt);
+    const { prompt, hasSpecific } = buildPrompt(logs, userDescription || '');
+    const raw = await callDeepSeek(prompt);
+    const dataCount = Array.isArray(logs) ? logs.length : 0;
+
+    const analysis = hasSpecific
+      ? { trajectory: raw, habits: '', issues: '', suggestions: '' }
+      : parseAnalysisResult(raw);
 
     return res.status(200).json({
       success: true,
-      analysis
+      analysis,
+      dataCount
     });
   } catch (error) {
     console.error('分析错误:', error);

@@ -12,8 +12,8 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #fff5f0 0%, #ffe8dc 50%, #ffddd0 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -21,104 +21,195 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+            background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
             color: white;
-            padding: 30px;
-            text-align: center;
+            padding: 24px 32px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.25);
         }
 
         .header h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
         }
 
         .header p {
-            font-size: 16px;
+            font-size: 13px;
             opacity: 0.9;
         }
 
-        .query-section {
-            padding: 30px;
-            background: #f8f9fa;
-            border-bottom: 2px solid #e9ecef;
+        .card {
+            background: white;
+            padding: 20px 24px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 163, 102, 0.1);
         }
 
-        .form-group {
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
             margin-bottom: 20px;
         }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #333;
+        .stat-item {
+            text-align: center;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #fff9f7 0%, #fff0eb 100%);
+            border-radius: 12px;
+            border: 2px solid transparent;
         }
 
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
+        .stat-number {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-item label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
             font-size: 14px;
         }
 
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #FF6B35;
+        .form-item input,
+        .form-item textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e8e8e8;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
         }
 
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
+        .form-item input:focus,
+        .form-item textarea:focus {
+            outline: none;
+            border-color: #FF6B35;
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+        }
+
+        .status {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+
+        .status.error {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+        }
+
+        .status.loading {
+            background: #fff9f7;
+            color: #FF6B35;
+            border: 1px solid #ffd8c4;
         }
 
         .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: #FF6B35;
+            background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
             color: white;
+            border: none;
+            padding: 13px 28px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
         }
 
-        .btn-primary:hover {
-            background: #E85A2A;
+        .btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 53, 0.45);
         }
 
-        .btn-secondary {
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .results-card {
             background: white;
+            padding: 24px;
+            border-radius: 16px;
+            margin-top: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 163, 102, 0.1);
+        }
+
+        .results-card h3 {
             color: #FF6B35;
-            border: 2px solid #FF6B35;
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #fff0eb;
         }
 
-        .btn-secondary:hover {
-            background: #FFF5F2;
+        .analysis-section {
+            margin-bottom: 24px;
         }
 
-        .results-section {
-            padding: 30px;
+        .analysis-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .analysis-section h4 {
+            font-size: 15px;
+            color: #FF6B35;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .analysis-content {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #333;
+            white-space: pre-wrap;
         }
 
         .loading {
             text-align: center;
-            padding: 40px;
+            padding: 40px 20px;
             color: #666;
         }
 
@@ -126,10 +217,10 @@
             border: 4px solid #f3f3f3;
             border-top: 4px solid #FF6B35;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 48px;
+            height: 48px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+            margin: 0 auto 16px;
         }
 
         @keyframes spin {
@@ -137,288 +228,169 @@
             100% { transform: rotate(360deg); }
         }
 
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .data-table th {
-            background: #f8f9fa;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .data-table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .analysis-section {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 12px;
-        }
-
-        .analysis-section h3 {
-            color: #FF6B35;
-            margin-bottom: 15px;
-        }
-
-        .analysis-content {
-            white-space: pre-wrap;
-            line-height: 1.8;
-            color: #333;
-        }
-
-        .alert {
+        .alert-error {
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border-left: 4px solid #17a2b8;
-        }
-
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border-left: 4px solid #28a745;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border-left: 4px solid #dc3545;
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+            margin-top: 16px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔍 用户行为看板</h1>
-            <p>Vercel Serverless版 - 数据来自GitHub Releases</p>
+            <h1>用户行为看板 - Vercel版</h1>
+            <p>数据来自 GitHub Releases，AI 分析由 DeepSeek 提供</p>
         </div>
 
-        <div class="query-section">
-            <div class="alert alert-info">
-                <strong>💡 提示：</strong> 此版本使用Vercel Serverless Functions，数据从GitHub Releases动态加载。
+        <div class="card">
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalUsers">—</div>
+                    <div class="stat-label">总用户数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="totalRecords">—</div>
+                    <div class="stat-label">总记录数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="availableDays">7</div>
+                    <div class="stat-label">可用天数</div>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>用户ID（多个用户用逗号分隔）</label>
-                <input type="text" id="userIds" placeholder="例如：user001,user002">
+            <div class="form-row">
+                <div class="form-item">
+                    <label>起始日期：</label>
+                    <input type="date" id="startDate" value="2026-02-26" min="2026-02-26" max="2026-03-04">
+                </div>
+                <div class="form-item">
+                    <label>结束日期：</label>
+                    <input type="date" id="endDate" value="2026-03-04" min="2026-02-26" max="2026-03-04">
+                </div>
+                <div class="form-item">
+                    <label>用户ID：</label>
+                    <input type="text" id="userIds" placeholder="多个用户ID用逗号隔开">
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>开始日期</label>
-                <input type="date" id="startDate" value="2026-02-26" min="2026-02-26" max="2026-03-04">
+            <div class="form-row">
+                <div class="form-item" style="grid-column: 1 / -1;">
+                    <label>分析描述（可选）：</label>
+                    <textarea id="description" rows="3" placeholder="描述你想了解的问题，例如：分析用户完整使用路径、为什么在支付页流失…"></textarea>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>结束日期</label>
-                <input type="date" id="endDate" value="2026-03-04" min="2026-02-26" max="2026-03-04">
-            </div>
-
-            <div class="form-group">
-                <label>分析描述（可选）</label>
-                <textarea id="description" rows="3" placeholder="描述你想了解的问题，例如：为什么用户在支付页面流失？"></textarea>
-            </div>
-
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="queryData()">🔍 查询数据</button>
-                <button class="btn btn-secondary" onclick="analyzeData()">🤖 AI分析</button>
-            </div>
+            <div id="dataStatus" class="status success">数据来自 GitHub Releases，范围 2026-02-26 至 2026-03-04</div>
+            <button class="btn" id="analyzeBtn" onclick="runAnalysis()">分析</button>
         </div>
 
-        <div class="results-section" id="results">
-            <div class="alert alert-info">
-                <strong>📋 使用说明：</strong>
-                <ol style="margin-top: 10px; margin-left: 20px;">
-                    <li>输入用户ID（必填）</li>
-                    <li>选择日期范围（2026-02-26 至 2026-03-04）</li>
-                    <li>点击"查询数据"查看用户行为记录</li>
-                    <li>点击"AI分析"获取智能分析报告</li>
-                </ol>
-            </div>
+        <div id="resultsWrap" style="display: none;" class="results-card">
+            <h3>AI 分析报告</h3>
+            <div id="results"></div>
         </div>
+        <div id="errorWrap" style="display: none;" class="alert-error"></div>
     </div>
 
     <script>
-        let currentData = [];
-
-        async function queryData() {
+        async function runAnalysis() {
             const userIdsInput = document.getElementById('userIds').value.trim();
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
+            const description = document.getElementById('description').value.trim();
+            const resultsWrap = document.getElementById('resultsWrap');
             const results = document.getElementById('results');
+            const errorWrap = document.getElementById('errorWrap');
+            const btn = document.getElementById('analyzeBtn');
 
             if (!userIdsInput) {
-                results.innerHTML = '<div class="alert alert-error">请输入用户ID</div>';
+                errorWrap.style.display = 'block';
+                errorWrap.textContent = '请输入用户ID';
+                resultsWrap.style.display = 'none';
                 return;
             }
 
             const userIds = userIdsInput.split(',').map(id => id.trim()).filter(id => id);
-
-            results.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>正在从GitHub Releases加载数据...</p>
-                    <p style="font-size: 14px; color: #999; margin-top: 10px;">首次加载可能需要10-30秒</p>
-                </div>
-            `;
+            errorWrap.style.display = 'none';
+            resultsWrap.style.display = 'block';
+            results.innerHTML = '<div class="loading"><div class="spinner"></div><p>正在拉取数据并生成分析…</p></div>';
+            btn.disabled = true;
 
             try {
-                const response = await fetch('/api/getData', {
+                const getRes = await fetch('/api/getData', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        userIds,
-                        startDate,
-                        endDate
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userIds, startDate, endDate })
                 });
-
-                const text = await response.text();
-                let result;
+                const getText = await getRes.text();
+                let getResult;
                 try {
-                    result = JSON.parse(text);
+                    getResult = JSON.parse(getText);
                 } catch (e) {
-                    results.innerHTML = `<div class="alert alert-error">接口返回异常（非 JSON），请检查 Vercel 部署与 /api/getData 是否正常。状态: ${response.status}</div>`;
+                    throw new Error('获取数据接口异常，状态: ' + getRes.status);
+                }
+                if (!getResult.success) {
+                    throw new Error(getResult.error || '获取数据失败');
+                }
+                const data = getResult.data || [];
+                if (data.length === 0) {
+                    results.innerHTML = '<p style="color:#666;">未找到指定用户在该日期范围内的行为数据，请检查用户ID与日期。</p>';
+                    btn.disabled = false;
                     return;
                 }
 
-                if (!result.success) {
-                    results.innerHTML = `<div class="alert alert-error">查询失败：${result.error}</div>`;
-                    return;
+                const analyzeRes = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ logs: data, userDescription: description })
+                });
+                const analyzeText = await analyzeRes.text();
+                let analyzeResult;
+                try {
+                    analyzeResult = JSON.parse(analyzeText);
+                } catch (e) {
+                    throw new Error('分析接口异常，状态: ' + analyzeRes.status);
+                }
+                if (!analyzeResult.success) {
+                    throw new Error(analyzeResult.error || '分析失败');
                 }
 
-                currentData = result.data;
+                const analysis = analyzeResult.analysis;
+                const dataCount = analyzeResult.dataCount != null ? analyzeResult.dataCount : data.length;
 
-                if (currentData.length === 0) {
+                if (typeof analysis === 'string') {
+                    results.innerHTML = '<div class="analysis-section"><div class="analysis-content">' + analysis.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                } else if (analysis.trajectory && !analysis.habits && !analysis.issues && !analysis.suggestions) {
+                    results.innerHTML = '<div class="analysis-section"><h4>分析结果</h4><div class="analysis-content">' + (analysis.trajectory || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                } else {
                     results.innerHTML = `
-                        <div class="alert alert-info">
-                            <strong>未找到数据</strong><br>
-                            用户ID：${userIds.join(', ')}<br>
-                            日期范围：${startDate} 至 ${endDate}
+                        <p style="margin-bottom:20px;color:#666;font-size:14px;">基于 ${dataCount} 条行为记录</p>
+                        <div class="analysis-section">
+                            <h4>一、用户完整行为轨迹（时间线简述）</h4>
+                            <div class="analysis-content">${(analysis.trajectory || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                        </div>
+                        <div class="analysis-section">
+                            <h4>二、用户使用习惯与特征</h4>
+                            <div class="analysis-content">${(analysis.habits || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                        </div>
+                        <div class="analysis-section">
+                            <h4>三、产品问题与体验卡点（重点）</h4>
+                            <div class="analysis-content">${(analysis.issues || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                        </div>
+                        <div class="analysis-section">
+                            <h4>四、产品&运营优化建议</h4>
+                            <div class="analysis-content">${(analysis.suggestions || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
                         </div>
                     `;
-                    return;
                 }
-
-                let html = `
-                    <div class="alert alert-success">
-                        <strong>✅ 查询成功</strong><br>
-                        找到 ${result.totalRecords} 条记录<br>
-                        加载的日期：${result.loadedDates.join(', ')}
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>时间</th>
-                                <th>用户ID</th>
-                                <th>事件类型</th>
-                                <th>URL</th>
-                                <th>元素</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                currentData.slice(0, 100).forEach(record => {
-                    html += `
-                        <tr>
-                            <td>${record.xyio_client_time || ''}</td>
-                            <td>${record.user_id || ''}</td>
-                            <td>${record.log_event_type || ''}</td>
-                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${record.url || ''}</td>
-                            <td>${record.element_content || record.element_name || ''}</td>
-                        </tr>
-                    `;
-                });
-
-                html += `
-                        </tbody>
-                    </table>
-                `;
-
-                if (currentData.length > 100) {
-                    html += `<p style="margin-top: 15px; color: #666;">显示前100条记录，共${currentData.length}条</p>`;
-                }
-
-                results.innerHTML = html;
-
-            } catch (error) {
-                console.error('查询错误:', error);
-                results.innerHTML = `<div class="alert alert-error">查询失败：${error.message}</div>`;
-            }
-        }
-
-        async function analyzeData() {
-            if (currentData.length === 0) {
-                alert('请先查询数据');
-                return;
-            }
-
-            const description = document.getElementById('description').value.trim();
-            const results = document.getElementById('results');
-
-            const currentHTML = results.innerHTML;
-            results.innerHTML = currentHTML + `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>AI正在分析用户行为...</p>
-                </div>
-            `;
-
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        logs: currentData,
-                        userDescription: description
-                    })
-                });
-
-                const text = await response.text();
-                let result;
-                try {
-                    result = JSON.parse(text);
-                } catch (e) {
-                    results.innerHTML = currentHTML + `<div class="alert alert-error">分析接口返回异常（非 JSON），请检查 DEEPSEEK_API_KEY 与 /api/analyze。状态: ${response.status}</div>`;
-                    return;
-                }
-
-                if (!result.success) {
-                    results.innerHTML = currentHTML + `<div class="alert alert-error">分析失败：${result.error}</div>`;
-                    return;
-                }
-
-                results.innerHTML = currentHTML + `
-                    <div class="analysis-section">
-                        <h3>🤖 AI分析报告</h3>
-                        <div class="analysis-content">${result.analysis}</div>
-                    </div>
-                `;
-
-            } catch (error) {
-                console.error('分析错误:', error);
-                results.innerHTML = currentHTML + `<div class="alert alert-error">分析失败：${error.message}</div>`;
+            } catch (err) {
+                errorWrap.style.display = 'block';
+                errorWrap.textContent = err.message || '请求失败';
+                results.innerHTML = '';
+            } finally {
+                btn.disabled = false;
             }
         }
     </script>
