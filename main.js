@@ -296,7 +296,8 @@ function loadDashboard(period, dashboardType) {
     var isLocalFile = (window.location.protocol === 'file:');
     if (config.type === 'static' && dashboardType === 'search-weekly' && !isLocalFile) {
         var baseUrl = (window.location.origin || '') + '/' + config.path.replace(/[^/]*$/, '');
-        fetch(config.path, { cache: 'no-store' })
+        var fetchUrl = config.path + (config.path.indexOf('?') >= 0 ? '&' : '?') + '_t=' + Date.now();
+        fetch(fetchUrl, { cache: 'no-store' })
             .then(function(r) {
                 if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
                 return r.text();
