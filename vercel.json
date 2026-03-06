@@ -10,6 +10,14 @@
   "rewrites": [
     { "source": "/user-behavior", "destination": "/用户行为看板（周度）/dashboard-vercel.html" }
   ],
+  "headers": [
+    {
+      "source": "/搜索数据看板（周度）/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
+      ]
+    }
+  ],
   "installCommand": "echo 'Skipping install'",
   "buildCommand": "echo 'No build needed'",
   "outputDirectory": "."

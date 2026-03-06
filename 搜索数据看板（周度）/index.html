@@ -16,6 +16,7 @@
         // 尝试加载ECharts与词云，全部就绪后设置标志，供下方脚本加载 app.js
         (function() {
             window.__searchDashboardLibsReady = false;
+            console.log('[搜索看板] 同源 lib 优先加载 (v2)');
             // 优先同源 lib/（相对路径由页面 <base> 解析），避免跟踪防护拦截第三方 CDN
             var echartsUrls = [
                 'lib/echarts.min.js',
