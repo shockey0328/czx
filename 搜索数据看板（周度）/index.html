@@ -16,20 +16,10 @@
         // 尝试加载ECharts与词云，全部就绪后设置标志，供下方脚本加载 app.js
         (function() {
             window.__searchDashboardLibsReady = false;
-            console.log('[搜索看板] 同源 lib 优先加载 (v2)');
-            // 优先同源 lib/（相对路径由页面 <base> 解析），避免跟踪防护拦截第三方 CDN
-            var echartsUrls = [
-                'lib/echarts.min.js',
-                'https://unpkg.com/echarts@5.4.3/dist/echarts.min.js',
-                'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js',
-                'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js'
-            ];
-            var wordcloudUrls = [
-                'lib/echarts-wordcloud.min.js',
-                'https://unpkg.com/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js',
-                'https://cdnjs.cloudflare.com/ajax/libs/echarts-wordcloud/2.1.0-beta/echarts-wordcloud.min.js',
-                'https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js'
-            ];
+            console.log('[搜索看板] 仅加载同源 lib，避免跟踪防护拦截');
+            // 仅使用同源 lib/，不请求任何第三方 CDN，彻底避免 Tracking Prevention
+            var echartsUrls = ['lib/echarts.min.js'];
+            var wordcloudUrls = ['lib/echarts-wordcloud.min.js'];
 
             function loadScript(url, timeoutMs) {
                 timeoutMs = timeoutMs || 15000;
@@ -83,8 +73,8 @@
                     }
                 }
                 if (!echartsLoaded) {
-                    console.error('所有CDN都加载失败，请检查网络连接');
-                    alert('图表库加载失败，部分图表可能无法显示。请检查网络连接或刷新页面重试。');
+                    console.error('同源 lib/echarts.min.js 加载失败，请确认部署包含 lib 目录');
+                    document.body.insertAdjacentHTML('afterbegin', '<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#c00;color:#fff;padding:12px 24px;text-align:center;">图表库(lib/echarts.min.js)加载失败，请刷新页面。若仍失败，请确认站点已正确部署 lib 目录。</div>');
                 }
                 markReady();
             }
@@ -564,6 +554,16 @@
     </div>
 
     <script src="data.js"></script>
+    <script>
+        (function(){
+            if (typeof dashboardData === 'undefined') {
+                console.error('[搜索看板] data.js 未加载，dashboardData 不存在');
+                document.body.insertAdjacentHTML('afterbegin', '<div id="data-load-error" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#c00;color:#fff;padding:12px 24px;text-align:center;font-size:14px;">数据文件(data.js)未加载，请检查网络或刷新页面。若持续出现，请确认 data.js 与 index.html 在同一目录。</div>');
+            } else {
+                console.log('[搜索看板] data.js 已加载，键:', Object.keys(dashboardData));
+            }
+        })();
+    </script>
     <script>
         // 必须等 ECharts 与词云都就绪（__searchDashboardLibsReady）后再加载 app.js，避免词云未注册导致图表报错
         let appJsLoaded = false;
