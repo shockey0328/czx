@@ -292,48 +292,7 @@ function loadDashboard(period, dashboardType) {
         return;
     }
     
-    // 搜索看板：线上(http/https)用 fetch+base+srcdoc 保证路径；本地(file:)用 iframe src 避免 fetch 不可用
-    var isLocalFile = (window.location.protocol === 'file:');
-    if (config.type === 'static' && dashboardType === 'search-weekly' && !isLocalFile) {
-        var baseUrl = (window.location.origin || '') + '/' + config.path.replace(/[^/]*$/, '');
-        var fetchUrl = config.path + (config.path.indexOf('?') >= 0 ? '&' : '?') + '_t=' + Date.now();
-        fetch(fetchUrl, { cache: 'no-store' })
-            .then(function(r) {
-                if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
-                return r.text();
-            })
-            .then(function(html) {
-                var baseTag = '<base href="' + baseUrl + '">';
-                if (html.indexOf('<head>') !== -1) {
-                    html = html.replace('<head>', '<head>\n    ' + baseTag);
-                } else {
-                    html = baseTag + '\n' + html;
-                }
-                container.innerHTML = '';
-                var iframe = document.createElement('iframe');
-                iframe.className = 'dashboard-frame';
-                iframe.srcdoc = html;
-                iframe.onload = function() { console.log(config.name + '看板加载完成'); };
-                var link = document.createElement('a');
-                link.href = config.path;
-                link.target = '_blank';
-                link.rel = 'noopener';
-                link.textContent = '在新窗口打开搜索看板';
-                link.style.cssText = 'position:absolute;top:12px;right:16px;z-index:10;font-size:13px;color:#ff7043;padding:6px 12px;background:#fff;border:1px solid #ff7043;border-radius:6px;text-decoration:none;';
-                var wrap = document.createElement('div');
-                wrap.style.cssText = 'position:relative;width:100%;height:100%;';
-                wrap.appendChild(iframe);
-                wrap.appendChild(link);
-                container.appendChild(wrap);
-            })
-            .catch(function(err) {
-                console.error('搜索看板加载失败:', err);
-                container.innerHTML = '<div class="loading-container"><div class="loading-text">看板加载失败：' + (err.message || '网络错误') + '</div><a href="' + config.path + '" target="_blank" rel="noopener" style="color:#ff7043;margin-top:12px;">在新窗口打开</a></div>';
-            });
-        return;
-    }
-
-    // 其他静态看板：直接 iframe 加载
+    // 静态看板（含搜索看板）：统一用 iframe src 加载，保证 data.js/app.js 同源执行、数据与图表正常展示
     setTimeout(() => {
         const iframe = document.createElement('iframe');
         iframe.src = config.path;
