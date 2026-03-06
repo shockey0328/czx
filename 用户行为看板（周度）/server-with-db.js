@@ -13,8 +13,8 @@ const db = new UserBehaviorDB();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
 
+// API 路由必须放在 express.static 之前，否则 /api/* 可能被静态目录占用导致 404
 // 获取用户行为数据
 app.post('/api/getData', async (req, res) => {
   console.log('\n=== 收到数据请求 ===');
@@ -343,6 +343,9 @@ function parseAnalysisResult(text) {
 
   return sections;
 }
+
+// 静态文件放在最后，避免 /api 被当作目录请求
+app.use(express.static(__dirname));
 
 // 启动服务器
 app.listen(PORT, '0.0.0.0', async () => {

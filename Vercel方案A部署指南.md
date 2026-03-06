@@ -81,9 +81,8 @@ git push origin main
 3. **配置环境变量**
    - 点击"Environment Variables"
    - 添加：
-     ```
-     DEEPSEEK_API_KEY = sk-22da5c080db84c23b4a5c8c54e922763
-     ```
+     - `DEEPSEEK_API_KEY`：DeepSeek API 密钥（必填）
+     - `GITHUB_RELEASE_BASE_URL`（可选）：若 Release 不是默认地址，填完整下载前缀，如 `https://github.com/你的用户名/czx/releases/download/data-v1.0`
 
 4. **部署**
    - 点击"Deploy"
@@ -100,16 +99,15 @@ https://your-project.vercel.app/user-behavior
 
 ## 📁 新增文件说明
 
-### 1. API文件
+### 1. API 文件（整站部署时使用根目录 api）
 
-**用户行为看板（周度）/api/getData.js**
-- 从GitHub Releases读取数据
-- 支持日期范围筛选
-- 支持多用户查询
+**根目录 api/getData.js**
+- 从 GitHub Releases 读取数据（默认 `data-v1.0`）
+- 支持日期范围筛选、多用户查询
+- 可选环境变量：`GITHUB_RELEASE_BASE_URL`（若 Release 地址不同可覆盖）
 
-**用户行为看板（周度）/api/analyze.js**
-- AI分析接口（已存在，无需修改）
-- 调用DeepSeek API
+**根目录 api/analyze.js**
+- 接收前端传入的 `logs` + `userDescription`，调用 DeepSeek 返回分析结果
 
 ### 2. 前端文件
 

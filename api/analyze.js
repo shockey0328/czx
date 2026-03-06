@@ -1,7 +1,5 @@
-// Vercel Serverless - AI 分析（从云存储拉取数据后调用 DeepSeek）
-// 环境变量：DATA_BASE_URL（云存储根）、DEEPSEEK_API_KEY
-
-import { fetchUserBehavior } from './cloudData.js';
+// Vercel Serverless - 方案 A：AI 分析（前端传入 logs，调用 DeepSeek）
+// 环境变量：DEEPSEEK_API_KEY
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -10,49 +8,14 @@ function cors(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
-function parseAnalysisResult(text) {
-  const sections = { trajectory: '', habits: '', issues: '', suggestions: '' };
-  const lines = text.split('\n');
-  let currentSection = '';
-  for (const line of lines) {
-    if (line.match(/一[、．.].*用户.*行为.*轨迹/i) || line.match(/^#+\s*一[、．.]/)) {
-      currentSection = 'trajectory';
-      continue;
-    }
-    if (line.match(/二[、．.].*使用.*习惯/i) || line.match(/^#+\s*二[、．.]/)) {
-      currentSection = 'habits';
-      continue;
-    }
-    if (line.match(/三[、．.].*问题.*卡点/i) || line.match(/^#+\s*三[、．.]/)) {
-      currentSection = 'issues';
-      continue;
-    }
-    if (line.match(/四[、．.].*优化.*建议/i) || line.match(/^#+\s*四[、．.]/)) {
-      currentSection = 'suggestions';
-      continue;
-    }
-    if (currentSection && line.trim()) {
-      sections[currentSection] += line + '\n';
-    }
-  }
-  if (!sections.trajectory && !sections.habits && !sections.issues && !sections.suggestions) {
-    sections.trajectory = text;
-  }
-  return sections;
-}
-
-function buildPrompt(userData, userDescription, analysisMode) {
-  const logsText = userData.map(log => JSON.stringify(log)).join('\n');
-  let useSpecificMode = false;
-  if (analysisMode === 'specific') useSpecificMode = true;
-  else if (analysisMode === 'standard') useSpecificMode = false;
-  else {
-    useSpecificMode = !!userDescription && (
-      /为什么|问题|卡点|流失|转化|异常|错误|定位/.test(userDescription) ||
-      (userDescription.includes('分析') && userDescription.length < 20)
-    );
-  }
-
+function buildPrompt(logs, userDescription) {
+  const logsText = Array.isArray(logs)
+    ? logs.map(log => JSON.stringify(log)).join('\n')
+    : String(logs);
+  const hasSpecific = userDescription && (
+    /为什么|问题|卡点|流失|转化|异常|错误|定位/.test(userDescription) ||
+    (userDescription.includes('分析') && userDescription.length < 20)
+  );
   const base = `你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。
 
 产品背景：
@@ -62,7 +25,7 @@ czx（橙子学）是一款主要面向学生及家长的H5产品，提供优质
 输出简洁、专业、可直接放在用户日志看板上的分析内容，面向产品、运营，用于定位问题、发现使用习惯、优化产品。`;
 
   let prompt;
-  if (useSpecificMode && userDescription) {
+  if (hasSpecific && userDescription) {
     prompt = `${base}
 
 用户关注的具体问题：${userDescription}
@@ -95,8 +58,7 @@ czx（橙子学）是一款主要面向学生及家长的H5产品，提供优质
 
 输出要求：必须包含上述四个模块，标题完整；不要使用表格；不要输出原始埋点数据；语言精炼、客观、业务导向。`;
   }
-
-  return { prompt: prompt + `\n\n用户行为日志数据：\n${logsText}`, useSpecificMode };
+  return prompt + `\n\n用户行为日志数据：\n${logsText}`;
 }
 
 async function callDeepSeek(prompt) {
@@ -137,46 +99,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = req.body || {};
-    let userData = [];
-    let userDescription = body.description || body.userDescription || '';
-    const analysisMode = body.analysisMode || 'auto';
-
-    // 方式一：前端传 userIds + startDate + endDate，从云存储拉取数据
-    const userIds = body.userIds;
-    const startDate = body.startDate;
-    const endDate = body.endDate;
-    if (userIds && Array.isArray(userIds) && userIds.length > 0 && startDate && endDate) {
-      userData = await fetchUserBehavior(userIds, startDate, endDate);
-      if (userData.length === 0) {
-        return res.status(200).json({
-          success: true,
-          analysis: {
-            trajectory: '未找到用户行为数据',
-            habits: '无法分析用户习惯',
-            issues: '无数据可分析',
-            suggestions: '请检查用户ID和日期范围是否正确'
-          },
-          dataCount: 0
-        });
-      }
-    } else if (body.logs && Array.isArray(body.logs) && body.logs.length > 0) {
-      // 方式二：前端直接传 logs（兼容旧用法）
-      userData = body.logs;
-    } else {
-      return res.status(400).json({ success: false, error: '请提供 userIds/startDate/endDate 或 logs' });
+    const { logs, userDescription } = req.body || {};
+    if (!logs || (Array.isArray(logs) && logs.length === 0)) {
+      return res.status(400).json({ success: false, error: '没有提供用户行为日志数据（logs）' });
     }
 
-    const { prompt, useSpecificMode } = buildPrompt(userData, userDescription, analysisMode);
-    const raw = await callDeepSeek(prompt);
-    const analysis = useSpecificMode
-      ? { trajectory: raw, habits: '', issues: '', suggestions: '' }
-      : parseAnalysisResult(raw);
+    const prompt = buildPrompt(logs, userDescription || '');
+    const analysis = await callDeepSeek(prompt);
 
     return res.status(200).json({
       success: true,
-      analysis,
-      dataCount: userData.length
+      analysis
     });
   } catch (error) {
     console.error('分析错误:', error);

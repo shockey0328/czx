@@ -291,7 +291,14 @@
                     })
                 });
 
-                const result = await response.json();
+                const text = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    results.innerHTML = `<div class="alert alert-error">接口返回异常（非 JSON），请检查 Vercel 部署与 /api/getData 是否正常。状态: ${response.status}</div>`;
+                    return;
+                }
 
                 if (!result.success) {
                     results.innerHTML = `<div class="alert alert-error">查询失败：${result.error}</div>`;
@@ -388,7 +395,14 @@
                     })
                 });
 
-                const result = await response.json();
+                const text = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (e) {
+                    results.innerHTML = currentHTML + `<div class="alert alert-error">分析接口返回异常（非 JSON），请检查 DEEPSEEK_API_KEY 与 /api/analyze。状态: ${response.status}</div>`;
+                    return;
+                }
 
                 if (!result.success) {
                     results.innerHTML = currentHTML + `<div class="alert alert-error">分析失败：${result.error}</div>`;

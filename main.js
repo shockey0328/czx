@@ -13,10 +13,9 @@ const dashboardConfig = {
         },
         'user-behavior-weekly': {
             name: '用户行为',
-            path: 'https://czx-production.up.railway.app/dashboard-db.html',
-            type: 'server',
-            serverCommand: 'node server-with-db.js',
-            serverPath: '用户行为看板（周度）'
+            // Vercel 部署时用 /user-behavior（方案 A）；本地或需 Railway 时可在下方改用 type: 'server' 与 Railway URL
+            path: '/user-behavior',
+            type: 'static'
         }
     },
     monthly: {
@@ -214,11 +213,15 @@ function loadDashboard(period, dashboardType) {
             const iframe = document.createElement('iframe');
             iframe.src = config.path;
             iframe.className = 'dashboard-frame';
-            
-            // 直接显示iframe，不等待onload
             container.innerHTML = '';
-            container.appendChild(iframe);
-            
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'position:relative; width:100%; height:100%;';
+            wrap.appendChild(iframe);
+            var tip = document.createElement('div');
+            tip.style.cssText = 'position:absolute; bottom:12px; left:50%; transform:translateX(-50%); z-index:10; font-size:12px; color:#666; background:rgba(255,255,255,0.95); padding:8px 16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); text-align:center;';
+            tip.innerHTML = '若上方显示 <strong>Application failed to respond</strong>，说明 Railway 服务未就绪。可本地运行：<code style="background:#f5f5f5;padding:2px 6px;">cd 用户行为看板（周度）</code> 再 <code style="background:#f5f5f5;padding:2px 6px;">npm start</code>，然后打开 <a href="http://localhost:3001/dashboard-db.html" target="_blank" rel="noopener" style="color:#ff7043;">http://localhost:3001/dashboard-db.html</a>';
+            wrap.appendChild(tip);
+            container.appendChild(wrap);
             console.log('iframe已添加到页面');
             
             // 5秒后检查iframe是否加载成功
