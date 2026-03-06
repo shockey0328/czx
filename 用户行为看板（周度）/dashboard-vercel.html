@@ -207,6 +207,12 @@
             white-space: pre-wrap;
         }
 
+        .report-body { white-space: normal; }
+        .report-h3 { font-size: 16px; color: #FF6B35; margin: 16px 0 10px; font-weight: 700; }
+        .report-h3:first-child { margin-top: 0; }
+        .report-h4 { font-size: 14px; color: #333; margin: 14px 0 8px; font-weight: 600; }
+        .report-bullet { margin: 6px 0 6px 1em; padding-left: 6px; }
+
         .loading {
             text-align: center;
             padding: 40px 20px;
@@ -283,7 +289,7 @@
                 </div>
             </div>
 
-            <div id="dataStatus" class="status success">数据来自 GitHub Releases，范围 2026-02-26 至 2026-03-04</div>
+            <div id="dataStatus" class="status success">数据来自 GitHub Releases，范围 2026-02-26 至 2026-03-04。为减少超时，建议起始与结束日期选同一天。</div>
             <button class="btn" id="analyzeBtn" onclick="runAnalysis()">分析</button>
         </div>
 
@@ -329,10 +335,13 @@
                 try {
                     getResult = JSON.parse(getText);
                 } catch (e) {
-                    throw new Error('获取数据接口异常，状态: ' + getRes.status);
+                    throw new Error('获取数据接口异常，状态: ' + getRes.status + (getText ? '，' + getText.slice(0, 200) : ''));
                 }
                 if (!getResult.success) {
                     throw new Error(getResult.error || '获取数据失败');
+                }
+                if (getRes.status >= 400) {
+                    throw new Error(getResult.error || ('接口异常，状态: ' + getRes.status));
                 }
                 const data = getResult.data || [];
                 if (data.length === 0) {
@@ -360,10 +369,18 @@
                 const analysis = analyzeResult.analysis;
                 const dataCount = analyzeResult.dataCount != null ? analyzeResult.dataCount : data.length;
 
+                function simpleMarkdown(html) {
+                    let s = (html || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    s = s.replace(/^### (.+)$/gm, '<h3 class="report-h3">$1</h3>');
+                    s = s.replace(/^#### (.+)$/gm, '<h4 class="report-h4">$1</h4>');
+                    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                    s = s.replace(/^\* (.+)$/gm, '<div class="report-bullet">• $1</div>');
+                    return s.replace(/\n/g, '<br>');
+                }
                 if (typeof analysis === 'string') {
-                    results.innerHTML = '<div class="analysis-section"><div class="analysis-content">' + analysis.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                    results.innerHTML = '<div class="analysis-section"><div class="analysis-content report-body">' + simpleMarkdown(analysis) + '</div></div>';
                 } else if (analysis.trajectory && !analysis.habits && !analysis.issues && !analysis.suggestions) {
-                    results.innerHTML = '<div class="analysis-section"><h4>分析结果</h4><div class="analysis-content">' + (analysis.trajectory || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                    results.innerHTML = '<div class="analysis-section"><div class="analysis-content report-body">' + simpleMarkdown(analysis.trajectory) + '</div></div>';
                 } else {
                     results.innerHTML = `
                         <p style="margin-bottom:20px;color:#666;font-size:14px;">基于 ${dataCount} 条行为记录</p>

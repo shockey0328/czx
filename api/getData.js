@@ -44,6 +44,23 @@ export default async function handler(req, res) {
     }
 
     const datesToLoad = AVAILABLE_DATES.filter(d => d >= startDate && d <= endDate);
+    // Vercel 有执行时间与内存限制，单日文件约 200–300MB，多日易超时/内存不足
+    if (datesToLoad.length > 1) {
+      return res.status(400).json({
+        success: false,
+        error: '为避免超时与内存限制，请仅选择 1 天日期（起始日期与结束日期设为同一天）再试。'
+      });
+    }
+    if (datesToLoad.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        totalRecords: 0,
+        loadedDates: [],
+        message: '所选日期范围内无数据'
+      });
+    }
+
     const userIdSet = new Set(userIds.map(String));
     const results = [];
     const loadedDates = [];
@@ -51,8 +68,14 @@ export default async function handler(req, res) {
     for (const date of datesToLoad) {
       const url = `${GITHUB_RELEASE_BASE}/${date}.json`;
       try {
-        const resp = await fetch(url);
-        if (!resp.ok) continue;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+        const resp = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!resp.ok) {
+          console.warn(`拉取 ${url} 状态: ${resp.status}`);
+          continue;
+        }
         const data = await resp.json();
         const userGroups = data.userGroups || {};
         for (const uid of userIdSet) {
@@ -61,7 +84,12 @@ export default async function handler(req, res) {
         }
         loadedDates.push(date);
       } catch (e) {
-        console.warn(`拉取 ${url} 失败:`, e.message);
+        const msg = e.name === 'AbortError' ? '请求超时（单日文件较大）' : e.message;
+        console.warn(`拉取 ${url} 失败:`, msg);
+        return res.status(500).json({
+          success: false,
+          error: '拉取数据失败：' + msg + '。单日文件约 200–300MB，若仍失败可稍后重试或缩小数据文件后重新上传 Release。'
+        });
       }
     }
 
