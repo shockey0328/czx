@@ -52,10 +52,22 @@ async function main() {
       console.log('重建索引...');
       await db.rebuildIndexes();
       break;
+
+    case 'import':
+      console.log('从 Excel 重新导入（含新增日期）...');
+      await db.forceImportFromExcel();
+      break;
+
+    case 'import-new':
+      console.log('仅导入新增日期的 Excel（不重跑已有日期）...');
+      await db.importNewFromExcel();
+      break;
       
     default:
       console.log('用法:');
       console.log('  node db-manager.js init          # 初始化数据库');
+      console.log('  node db-manager.js import       # 从所有 Excel 重新导入（全量）');
+      console.log('  node db-manager.js import-new   # 仅导入新增日期的 Excel（推荐日常使用）');
       console.log('  node db-manager.js stats         # 查看统计信息');
       console.log('  node db-manager.js query <用户ID> [开始日期] [结束日期]  # 查询用户数据');
       console.log('  node db-manager.js rebuild       # 重建索引');

@@ -4,7 +4,8 @@
 const GITHUB_RELEASE_BASE = process.env.GITHUB_RELEASE_BASE_URL || 'https://github.com/shockey0328/czx/releases/download/data-v1.0';
 
 const AVAILABLE_DATES = [
-  '2026-02-26', '2026-02-27', '2026-02-28', '2026-03-01', '2026-03-02', '2026-03-03', '2026-03-04'
+  '2026-02-26', '2026-02-27', '2026-02-28', '2026-03-01', '2026-03-02', '2026-03-03', '2026-03-04', '2026-03-05',
+  '2026-03-06', '2026-03-07', '2026-03-08'
 ];
 
 function cors(res) {

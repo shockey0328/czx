@@ -210,7 +210,7 @@ vercel dev
    const AVAILABLE_DATES = [
      '2026-02-26',
      // ... 添加新日期
-     '2026-03-05'
+     '2026-03-08'
    ];
    ```
 
@@ -222,6 +222,18 @@ vercel dev
    ```
 
 4. **Vercel自动部署**
+
+### 本地从 Excel 生成 JSON（仅导入新增日期）
+
+1. **索引与 data 不一致时**（例如 data 下已有某日 JSON 但 date_index 未包含）：先执行  
+   `node db-manager.js rebuild`  
+   再执行下面的步骤。
+
+2. 将新日期的 Excel 放到「用户行为看板（周度）」目录后，在该目录执行：
+   - 一般情况：`node db-manager.js import-new`
+   - 单日 Excel 较大（如 3 月 8 日约 46MB）：`node --max-old-space-size=4096 db-manager.js import-new`，或双击 **仅导入新增日期-大内存.bat**
+
+3. 生成的 `data/YYYY-MM-DD.json` 需上传到 GitHub Release；若 `api/getData.js` 的 `AVAILABLE_DATES` 已包含该日期则无需改代码，推送后 Vercel 自动部署。详见同目录下 **数据状态说明.md**。
 
 ---
 

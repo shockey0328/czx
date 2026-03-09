@@ -2,7 +2,7 @@
 
 ## 方案说明
 
-使用GitHub Releases存储大数据文件，Vercel从GitHub下载数据。
+使用GitHub Releases存储大数据文件，Vercel 从 GitHub 下载数据。
 
 ### 优势
 - ✅ 完全免费
@@ -12,113 +12,89 @@
 
 ---
 
-## 操作步骤
+## 当前需上传的数据文件（更新至 3 月 7 日）
 
-### 1. 创建Release
+线上 `api/getData.js` 已支持 2026-02-26 ～ 2026-03-08。请将本地已生成的 JSON 上传到同一 Release，线上即可选到对应日期。
 
-1. **访问GitHub仓库**
-   ```
-   https://github.com/shockey0328/czx
-   ```
-
-2. **点击"Releases"**
-   - 在仓库页面右侧找到"Releases"
-   - 或直接访问：https://github.com/shockey0328/czx/releases
-
-3. **点击"Create a new release"**
-
-4. **填写Release信息**
-   - Tag version: `data-v1.0`
-   - Release title: `用户行为数据 v1.0`
-   - Description: `包含2026年2月26日至3月4日的用户行为数据（7个JSON文件）`
-
-5. **上传数据文件**
-   - 点击"Attach binaries by dropping them here or selecting them"
-   - 选择以下文件上传：
-     ```
-     用户行为看板（周度）/data/2026-02-26.json
-     用户行为看板（周度）/data/2026-02-27.json
-     用户行为看板（周度）/data/2026-02-28.json
-     用户行为看板（周度）/data/2026-03-01.json
-     用户行为看板（周度）/data/2026-03-02.json
-     用户行为看板（周度）/data/2026-03-03.json
-     用户行为看板（周度）/data/2026-03-04.json
-     ```
-
-6. **发布Release**
-   - 点击"Publish release"
+| 日期 | 本地路径 |
+|------|----------|
+| 2026-02-26 | `用户行为看板（周度）/data/2026-02-26.json` |
+| 2026-02-27 | `用户行为看板（周度）/data/2026-02-27.json` |
+| 2026-02-28 | `用户行为看板（周度）/data/2026-02-28.json` |
+| 2026-03-01 | `用户行为看板（周度）/data/2026-03-01.json` |
+| 2026-03-02 | `用户行为看板（周度）/data/2026-03-02.json` |
+| 2026-03-03 | `用户行为看板（周度）/data/2026-03-03.json` |
+| 2026-03-04 | `用户行为看板（周度）/data/2026-03-04.json` |
+| 2026-03-05 | `用户行为看板（周度）/data/2026-03-05.json` |
+| 2026-03-06 | `用户行为看板（周度）/data/2026-03-06.json` |
+| 2026-03-07 | `用户行为看板（周度）/data/2026-03-07.json` |
+| 2026-03-08 | `用户行为看板（周度）/data/2026-03-08.json`（若已生成再上传） |
 
 ---
 
-## 获取文件URL
+## 方式一：网页上传（推荐）
 
-发布后，每个文件都会有一个公开的下载链接：
+1. **打开 Releases 页面**
+   - https://github.com/shockey0328/czx/releases
+
+2. **若已有 data-v1.0**
+   - 点击该 Release → “Edit release”
+   - 在页面底部 “Attach binaries” 处**追加**上传上述 11 个（或 12 个）JSON 文件；若同名的已存在，可先删除旧资产再上传新的。
+
+3. **若还没有 Release**
+   - 点击 “Create a new release”
+   - Tag: `data-v1.0`（或新建如 `data-v1.1`）
+   - Title: `用户行为数据 v1.0`
+   - Description: `2026-02-26 ～ 2026-03-07（及 03-08 若已生成）`
+   - 上传上述所有 JSON 文件后点击 “Publish release”
+
+4. **无需改代码**
+   - `api/getData.js` 的 `AVAILABLE_DATES` 已包含 02-26～03-08，上传后 Vercel 自动用当前 Release 的下载地址拉取。
+
+---
+
+## 方式二：GitHub CLI 上传
+
+在**仓库根目录**（即 `橙子学数据看板` 下）执行：
+
+```bash
+# 安装并登录 GitHub CLI：https://cli.github.com/
+gh auth login
+
+# 创建或更新 Release 并上传当前 11 个数据文件（不含 03-08 则去掉最后一行）
+gh release create data-v1.0 --title "用户行为数据 v1.0" --notes "2026-02-26 至 2026-03-07 用户行为 JSON" ^
+  "用户行为看板（周度）/data/2026-02-26.json" ^
+  "用户行为看板（周度）/data/2026-02-27.json" ^
+  "用户行为看板（周度）/data/2026-02-28.json" ^
+  "用户行为看板（周度）/data/2026-03-01.json" ^
+  "用户行为看板（周度）/data/2026-03-02.json" ^
+  "用户行为看板（周度）/data/2026-03-03.json" ^
+  "用户行为看板（周度）/data/2026-03-04.json" ^
+  "用户行为看板（周度）/data/2026-03-05.json" ^
+  "用户行为看板（周度）/data/2026-03-06.json" ^
+  "用户行为看板（周度）/data/2026-03-07.json"
+```
+
+若已存在 `data-v1.0`，可先删除该 Release 再执行上述命令，或使用 `gh release upload data-v1.0 文件路径...` 追加资产。
+
+---
+
+## 获取文件 URL
+
+发布后，文件下载链接形如：
 
 ```
 https://github.com/shockey0328/czx/releases/download/data-v1.0/2026-02-26.json
-https://github.com/shockey0328/czx/releases/download/data-v1.0/2026-02-27.json
-https://github.com/shockey0328/czx/releases/download/data-v1.0/2026-02-28.json
-https://github.com/shockey0328/czx/releases/download/data-v1.0/2026-03-01.json
-https://github.com/shockey0328/czx/releases/download/data-v1.0/2026-03-02.json
-https://github.com/shockey0328/czx/releases/download/data-v1.0/2026-03-03.json
-https://github.com/shockey0328/czx/releases/download/data-v1.0/2026-03-04.json
+...
+https://github.com/shockey0328/czx/releases/download/data-v1.0/2026-03-07.json
 ```
+
+Vercel 环境变量 `GITHUB_RELEASE_BASE_URL` 不填时默认使用 `.../releases/download/data-v1.0`，无需修改。
 
 ---
 
 ## 注意事项
 
-### 上传时间
-- 7个文件总大小约2GB
-- 上传时间取决于网速
-- 预计10-30分钟
-
-### 文件限制
-- 单个文件最大2GB ✅（你的文件都在300MB左右）
-- Release总大小无限制
-- 下载次数无限制
-
-### 更新数据
-以后要更新数据时：
-1. 创建新的Release（如data-v1.1）
-2. 上传新的数据文件
-3. 更新Vercel代码中的URL
-
----
-
-## 快速上传脚本
-
-如果你安装了GitHub CLI，可以使用命令行上传：
-
-```bash
-# 安装GitHub CLI（如果还没安装）
-# https://cli.github.com/
-
-# 登录
-gh auth login
-
-# 创建Release并上传文件
-gh release create data-v1.0 \
-  --title "用户行为数据 v1.0" \
-  --notes "包含2026年2月26日至3月4日的用户行为数据" \
-  "用户行为看板（周度）/data/2026-02-26.json" \
-  "用户行为看板（周度）/data/2026-02-27.json" \
-  "用户行为看板（周度）/data/2026-02-28.json" \
-  "用户行为看板（周度）/data/2026-03-01.json" \
-  "用户行为看板（周度）/data/2026-03-02.json" \
-  "用户行为看板（周度）/data/2026-03-03.json" \
-  "用户行为看板（周度）/data/2026-03-04.json"
-```
-
----
-
-## 下一步
-
-上传完成后，我会：
-1. 创建Vercel版本的API
-2. 从GitHub Releases读取数据
-3. 部署到Vercel
-
----
-
-**开始上传吧！完成后告诉我，我会继续配置Vercel。**
+- 单文件约 200–300MB，总上传时间视网速约 10–60 分钟。
+- 单文件最大 2GB，当前文件均符合。
+- 以后新增日期：本地 `import-new` 生成新 JSON 后，在同上 Release 里追加上传对应文件即可；若改用新 Tag（如 data-v1.1），需在 Vercel 中设置 `GITHUB_RELEASE_BASE_URL` 指向新 Tag。

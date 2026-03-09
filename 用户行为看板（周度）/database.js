@@ -81,14 +81,19 @@ class UserBehaviorDB {
     console.log(`导入完成！总记录数: ${totalRecords}`);
   }
 
-  // 读取Excel文件
+  // 读取Excel文件（大文件时使用 buffer + dense 降低内存）
   readExcelFile(filePath) {
     try {
-      const workbook = XLSX.readFile(filePath);
+      const buf = fs.readFileSync(filePath);
+      const workbook = XLSX.read(buf, { type: 'buffer', cellStyles: false });
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) return [];
       const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      
-      if (!worksheet['!ref']) return [];
+      let worksheet = workbook.Sheets[sheetName];
+      if (!worksheet && workbook.Sheets) {
+        const firstKey = Object.keys(workbook.Sheets)[0];
+        worksheet = workbook.Sheets[firstKey];
+      }
+      if (!worksheet || !worksheet['!ref']) return [];
       
       const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
       
@@ -135,12 +140,12 @@ class UserBehaviorDB {
       userGroups[userId].push(record);
     });
     
-    // 保存到文件
+    // 保存到文件（不格式化以省内存、省磁盘、加快写入）
     fs.writeFileSync(dateFile, JSON.stringify({
       date,
       recordCount: data.length,
       userGroups
-    }, null, 2));
+    }));
     
     // 更新索引
     this.dateIndex.set(date, dateFile);
@@ -323,6 +328,55 @@ class UserBehaviorDB {
     
     await this.saveIndexes();
     console.log('索引重建完成');
+  }
+
+  // 强制从当前目录所有 Excel 重新导入（用于新增日期如 3月5日）
+  async forceImportFromExcel() {
+    console.log('强制从 Excel 重新导入...');
+    this.userIndex.clear();
+    this.dateIndex.clear();
+    await this.importFromExcel();
+    console.log(`导入完成。用户数: ${this.userIndex.size}, 日期数: ${this.dateIndex.size}`);
+  }
+
+  // 仅导入「新增日期」：先加载已有索引，只处理 data/ 里尚不存在的日期对应 Excel
+  async importNewFromExcel() {
+    console.log('仅导入新增日期的 Excel...');
+    await this.loadIndexes();
+    const excelFiles = fs.readdirSync(__dirname).filter(f =>
+      f.includes('用户行为日志') && f.endsWith('.xlsx') && !f.startsWith('~$')
+    );
+    const toProcess = [];
+    for (const fileName of excelFiles) {
+      const dateMatch = fileName.match(/(\d{2,4})年(\d{1,2})月(\d{1,2})日/);
+      if (dateMatch) {
+        let year = dateMatch[1];
+        if (year.length === 2) year = '20' + year;
+        const date = `${year}-${dateMatch[2].padStart(2, '0')}-${dateMatch[3].padStart(2, '0')}`;
+        if (!this.dateIndex.has(date)) toProcess.push({ fileName, date });
+      }
+    }
+    if (toProcess.length === 0) {
+      console.log('没有新增日期需要导入（所有 Excel 对应日期已存在）。');
+      return;
+    }
+    console.log(`发现 ${toProcess.length} 个新增日期: ${toProcess.map(p => p.date).join(', ')}`);
+    let totalRecords = 0;
+    for (const { fileName, date } of toProcess) {
+      try {
+        console.log(`处理文件: ${fileName}`);
+        const filePath = path.join(__dirname, fileName);
+        const data = this.readExcelFile(filePath);
+        if (data.length > 0) {
+          await this.saveDataByDate(date, data);
+          totalRecords += data.length;
+        }
+      } catch (error) {
+        console.error(`处理文件失败: ${fileName}`, error.message);
+      }
+    }
+    await this.saveIndexes();
+    console.log(`导入完成。本次新增 ${totalRecords} 条记录，当前共 ${this.dateIndex.size} 天。`);
   }
 }
 
