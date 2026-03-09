@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import XLSX from 'xlsx';
+import csv from 'csv-parser';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -81,11 +82,64 @@ class UserBehaviorDB {
     console.log(`导入完成！总记录数: ${totalRecords}`);
   }
 
+  // 将单行数据标准化为统一字段（Excel/CSV 共用）
+  _normalizeRow(row, logHeaderOnce = false) {
+    if (logHeaderOnce && row && Object.keys(row).length) {
+      console.log('  原始字段名:', Object.keys(row).slice(0, 10));
+    }
+    return {
+      xyio_client_time: row.xyio_client_time ?? row['客户端时间'] ?? row.client_time ?? row.time ?? '',
+      user_id: row.user_id ?? row['用户ID'] ?? row.userId ?? row.USER_ID ?? '',
+      device_id: row.device_id ?? row['设备ID'] ?? row.deviceId ?? '',
+      url: row.url ?? row.request_url ?? row['请求URL'] ?? row.URL ?? row.page_url ?? '',
+      referrer: row.referrer ?? row['来源页面'] ?? row.ref ?? '',
+      source: row.source ?? row.product_source_id ?? row['产品来源'] ?? row.src ?? '',
+      platform: row.platform ?? row['平台'] ?? row.os ?? '',
+      element_class_name: row.element_class_name ?? row.html_element_class_name ?? row['元素类名'] ?? row.class_name ?? '',
+      element_content: row.element_content ?? row.html_element_content ?? row['元素内容'] ?? row.content ?? '',
+      element_id: row.element_id ?? row.html_element_id ?? row['元素ID'] ?? row.id ?? '',
+      element_name: row.element_name ?? row.html_element_name ?? row['元素名称'] ?? row.name ?? '',
+      log_event_type: row.log_event_type ?? row['事件类型'] ?? row.event_type ?? row.event ?? '',
+      xyio_backend_time: row.xyio_backend_time ?? row['后端时间'] ?? row.backend_time ?? row.server_time ?? '',
+      dt: row.dt ?? row['日期'] ?? row.date ?? ''
+    };
+  }
+
+  // 读取 CSV 文件（流式解析，大文件不卡顿，推荐 40MB+ 用 CSV）
+  readCSVFile(filePath) {
+    return new Promise((resolve, reject) => {
+      const rows = [];
+      let first = true;
+      fs.createReadStream(filePath)
+        .pipe(csv())
+        .on('data', (row) => {
+          if (first) {
+            console.log('  原始字段名:', Object.keys(row).slice(0, 10));
+            first = false;
+          }
+          rows.push(this._normalizeRow(row, false));
+        })
+        .on('end', () => {
+          console.log(`  已解析 ${rows.length} 行（CSV）`);
+          resolve(rows);
+        })
+        .on('error', (err) => reject(new Error(`读取 CSV 失败: ${err.message}`)));
+    });
+  }
+
   // 读取Excel文件（大文件时使用 buffer + dense 降低内存）
   readExcelFile(filePath) {
     try {
+      console.log('  读取文件中...');
       const buf = fs.readFileSync(filePath);
-      const workbook = XLSX.read(buf, { type: 'buffer', cellStyles: false });
+      const sizeMB = (buf.length / 1024 / 1024).toFixed(1);
+      console.log(`  已读取 ${sizeMB} MB，正在解析 Excel（大文件可能需 1～5 分钟）...`);
+      let workbook;
+      try {
+        workbook = XLSX.read(buf, { type: 'buffer', cellStyles: false });
+      } catch (parseErr) {
+        throw new Error(`Excel 解析失败，可能是文件损坏或格式不被支持: ${parseErr.message}`);
+      }
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) return [];
       const sheetName = workbook.SheetNames[0];
       let worksheet = workbook.Sheets[sheetName];
@@ -95,32 +149,15 @@ class UserBehaviorDB {
       }
       if (!worksheet || !worksheet['!ref']) return [];
       
-      const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-      
-      // 标准化字段名
-      return data.map(row => {
-        // 打印原始数据的前几个字段，用于调试
-        if (data.indexOf(row) === 0) {
-          console.log('  原始字段名:', Object.keys(row).slice(0, 10));
-        }
-        
-        return {
-          xyio_client_time: row.xyio_client_time || row['客户端时间'] || row.client_time || row.time || '',
-          user_id: row.user_id || row['用户ID'] || row.userId || row.USER_ID || '',
-          device_id: row.device_id || row['设备ID'] || row.deviceId || '',
-          url: row.url || row.request_url || row['请求URL'] || row.URL || row.page_url || '',
-          referrer: row.referrer || row['来源页面'] || row.ref || '',
-          source: row.source || row.product_source_id || row['产品来源'] || row.src || '',
-          platform: row.platform || row['平台'] || row.os || '',
-          element_class_name: row.element_class_name || row.html_element_class_name || row['元素类名'] || row.class_name || '',
-          element_content: row.element_content || row.html_element_content || row['元素内容'] || row.content || '',
-          element_id: row.element_id || row.html_element_id || row['元素ID'] || row.id || '',
-          element_name: row.element_name || row.html_element_name || row['元素名称'] || row.name || '',
-          log_event_type: row.log_event_type || row['事件类型'] || row.event_type || row.event || '',
-          xyio_backend_time: row.xyio_backend_time || row['后端时间'] || row.backend_time || row.server_time || '',
-          dt: row.dt || row['日期'] || row.date || ''
-        };
-      });
+      console.log('  正在转换为 JSON 行...');
+      let data;
+      try {
+        data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      } catch (jsonErr) {
+        throw new Error(`表格转 JSON 失败（可能内存不足）: ${jsonErr.message}`);
+      }
+      console.log(`  已解析 ${data.length} 行，正在标准化字段...`);
+      return data.map((row, i) => this._normalizeRow(row, i === 0));
     } catch (error) {
       throw new Error(`读取Excel文件失败: ${error.message}`);
     }
@@ -129,6 +166,7 @@ class UserBehaviorDB {
   // 按日期保存数据（分片存储）
   async saveDataByDate(date, data) {
     const dateFile = path.join(this.dbPath, `${date}.json`);
+    console.log(`  正在按用户分组并写入 ${date}.json...`);
     
     // 按用户ID分组，便于后续查询
     const userGroups = {};
@@ -274,28 +312,37 @@ class UserBehaviorDB {
     );
   }
 
-  // 加载索引
+  // 加载索引（分别加载，避免一个失败导致全部为空、进而被误判为“全部要重新导入”）
   async loadIndexes() {
-    try {
-      // 加载用户索引
-      const userIndexFile = path.join(this.indexPath, 'user_index.json');
-      if (fs.existsSync(userIndexFile)) {
+    // 先加载日期索引（小文件，且「仅导入新增」主要依赖它）
+    const dateIndexFile = path.join(this.indexPath, 'date_index.json');
+    if (fs.existsSync(dateIndexFile)) {
+      try {
+        const raw = fs.readFileSync(dateIndexFile, 'utf8').trim();
+        if (raw) {
+          const dateIndexData = JSON.parse(raw);
+          Object.entries(dateIndexData).forEach(([date, filePath]) => {
+            this.dateIndex.set(date, filePath);
+          });
+          console.log(`  已加载日期索引: ${this.dateIndex.size} 天`);
+        }
+      } catch (e) {
+        console.error('加载 date_index.json 失败:', e.message);
+      }
+    }
+
+    // 再加载用户索引（大文件，失败时仅影响查询，不影响「仅导入新增」）
+    const userIndexFile = path.join(this.indexPath, 'user_index.json');
+    if (fs.existsSync(userIndexFile)) {
+      try {
         const userIndexData = JSON.parse(fs.readFileSync(userIndexFile, 'utf8'));
         Object.entries(userIndexData).forEach(([userId, dates]) => {
           this.userIndex.set(userId, new Set(dates));
         });
+        console.log(`  已加载用户索引: ${this.userIndex.size} 个用户`);
+      } catch (e) {
+        console.error('加载 user_index.json 失败:', e.message, '（仅导入新增日期仍可继续，完成后会重建用户索引）');
       }
-      
-      // 加载日期索引
-      const dateIndexFile = path.join(this.indexPath, 'date_index.json');
-      if (fs.existsSync(dateIndexFile)) {
-        const dateIndexData = JSON.parse(fs.readFileSync(dateIndexFile, 'utf8'));
-        Object.entries(dateIndexData).forEach(([date, filePath]) => {
-          this.dateIndex.set(date, filePath);
-        });
-      }
-    } catch (error) {
-      console.error('加载索引失败:', error.message);
     }
   }
 
@@ -364,9 +411,18 @@ class UserBehaviorDB {
     let totalRecords = 0;
     for (const { fileName, date } of toProcess) {
       try {
-        console.log(`处理文件: ${fileName}`);
-        const filePath = path.join(__dirname, fileName);
-        const data = this.readExcelFile(filePath);
+        const baseName = fileName.replace(/\.xlsx$/i, '');
+        const csvName = `${baseName}.csv`;
+        const csvPath = path.join(__dirname, csvName);
+        const xlsxPath = path.join(__dirname, fileName);
+        let data;
+        if (fs.existsSync(csvPath)) {
+          console.log(`处理文件: ${csvName}（CSV 流式解析，大文件更快）`);
+          data = await this.readCSVFile(csvPath);
+        } else {
+          console.log(`处理文件: ${fileName}`);
+          data = this.readExcelFile(xlsxPath);
+        }
         if (data.length > 0) {
           await this.saveDataByDate(date, data);
           totalRecords += data.length;
