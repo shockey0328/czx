@@ -12,6 +12,7 @@ const { RangePicker } = DatePicker;
 function Dashboard() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'day'), dayjs()]);
   const [userIds, setUserIds] = useState('');
+  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [analysisData, setAnalysisData] = useState(null);
 
@@ -23,11 +24,13 @@ function Dashboard() {
 
     setLoading(true);
     try {
-      const response = await axios.post('/api/analyze', {
+      const payload = {
         startDate: dateRange[0].format('YYYY-MM-DD'),
         endDate: dateRange[1].format('YYYY-MM-DD'),
         userIds: userIds.split(',').map(id => id.trim()).filter(id => id)
-      });
+      };
+      if (description.trim()) payload.description = description.trim();
+      const response = await axios.post('/api/analyze', payload);
       
       setAnalysisData(response.data);
       message.success('分析完成');
@@ -66,7 +69,20 @@ function Dashboard() {
                 style={{ width: '100%', maxWidth: 400 }}
               />
             </div>
-            
+          </div>
+          <div className="filter-row" style={{ marginTop: 12 }}>
+            <div className="filter-item" style={{ flex: 1, maxWidth: '100%' }}>
+              <label>分析描述（可选）：</label>
+              <Input.TextArea
+                placeholder="描述你想了解的问题，例如：分析用户完整使用路径、为什么在支付页流失、转化关键节点有哪些…"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+          <div className="filter-row" style={{ marginTop: 12 }}>
             <Button
               type="primary"
               icon={<SearchOutlined />}

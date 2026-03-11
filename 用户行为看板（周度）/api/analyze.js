@@ -43,15 +43,10 @@ function parseAnalysisResult(text) {
 
 function buildPrompt(userData, userDescription, analysisMode) {
   const logsText = userData.map(log => JSON.stringify(log)).join('\n');
-  let useSpecificMode = false;
-  if (analysisMode === 'specific') useSpecificMode = true;
-  else if (analysisMode === 'standard') useSpecificMode = false;
-  else {
-    useSpecificMode = !!userDescription && (
-      /为什么|问题|卡点|流失|转化|异常|错误|定位/.test(userDescription) ||
-      (userDescription.includes('分析') && userDescription.length < 20)
-    );
-  }
+  const hasUserQuestion = !!userDescription && userDescription.trim().length > 0;
+
+  // 只要用户填写了「分析描述」，就以用户问题为主、优先回答
+  let useSpecificMode = analysisMode === 'specific' || (hasUserQuestion && analysisMode !== 'standard');
 
   const base = `你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。
 
@@ -62,38 +57,48 @@ czx（橙子学）是一款主要面向学生及家长的H5产品，提供优质
 输出简洁、专业、可直接放在用户日志看板上的分析内容，面向产品、运营，用于定位问题、发现使用习惯、优化产品。`;
 
   let prompt;
-  if (useSpecificMode && userDescription) {
+  if (useSpecificMode && hasUserQuestion) {
+    // 用户有明确分析描述：整篇报告必须围绕该问题展开
     prompt = `${base}
 
-用户关注的具体问题：${userDescription}
+【重要】用户本次希望分析的问题/需求如下，请整篇报告紧扣此问题展开，不要写成泛泛的时间线流水账：
+「${userDescription.trim()}」
 
-请针对用户提出的问题，从用户行为日志中进行深度分析：
+请针对上述问题，从用户行为日志中进行深度分析，按以下结构组织（若某部分与用户问题无关可简述）：
 
-1. 问题定位：从日志中找出与问题相关的关键行为，识别异常模式或流程中断点，定位问题发生的具体环节
-2. 原因分析：分析导致问题的可能原因，从用户行为路径中找出线索，结合产品流程推断问题根源
-3. 数据支撑：列举具体的日志证据，统计相关行为的频次和模式，量化问题的影响范围
-4. 解决建议：提供针对性的优化方案，给出可落地的改进措施，建议需要进一步验证的假设
+1. 问题定位与行为梳理：从日志中找出与用户问题相关的关键行为、路径和节点，必要时用简短时间线支撑
+2. 原因与证据：结合日志推断可能原因，并列举具体埋点/行为作为依据
+3. 数据支撑：相关行为的频次、顺序、异常模式，量化能说明问题的部分
+4. 建议与结论：针对用户问题的可落地优化或结论
 
-注意：紧扣用户提出的问题进行分析，只写有日志依据的内容，不编造，语言精炼、客观、业务导向`;
+注意：必须围绕用户提出的「${userDescription.trim().slice(0, 50)}${userDescription.trim().length > 50 ? '…' : ''}」展开，只写有日志依据的内容，不编造，语言精炼、客观、业务导向。`;
   } else {
-    const extra = userDescription ? `\n用户特别关注：${userDescription}\n\n` : '';
+    // 未填分析描述或明确选择标准模式：四段式通用报告；若仍有「用户特别关注」则各段都需回应
+    const extra = hasUserQuestion
+      ? `
+
+【用户特别关注】本次分析需重点回应以下问题，四个模块中都要体现与该问题相关的内容，不要忽略：
+「${userDescription.trim()}」
+
+`
+      : '';
     prompt = `${base}${extra}
 
 请严格按照以下格式输出，每个模块必须以指定的标题开头：
 
 一、用户完整行为轨迹（时间线简述）
-[按时间顺序描述用户行为：从哪里进入、访问次数、浏览页面顺序、关键点击与事件、最后退出位置]
+[按时间顺序描述用户行为：从哪里进入、访问次数、浏览页面顺序、关键点击与事件、最后退出位置${hasUserQuestion ? '；并指出与用户关注问题相关的行为节点' : ''}]
 
 二、用户使用习惯与特征
-[高频页面、高频操作、操作节奏、典型偏好]
+[高频页面、高频操作、操作节奏、典型偏好${hasUserQuestion ? '；结合用户关注点说明' : ''}]
 
 三、产品问题与体验卡点（重点）
-[流程中断与返回、反复点击、长时间无操作、关键步骤未完成等；只写有日志依据的内容]
+[流程中断与返回、反复点击、长时间无操作、关键步骤未完成等；只写有日志依据的内容${hasUserQuestion ? '；重点分析与用户关注问题相关的卡点' : ''}]
 
 四、产品&运营优化建议
-[流程简化、引导加强、页面/按钮调整、流失召回与转化提升等]
+[流程简化、引导加强、页面/按钮调整、流失召回与转化提升等${hasUserQuestion ? '；优先给出针对用户关注问题的建议' : ''}]
 
-输出要求：必须包含上述四个模块，标题完整；不要使用表格；不要输出原始埋点数据；语言精炼、客观、业务导向。`;
+输出要求：必须包含上述四个模块，标题完整；不要使用表格；不要输出原始埋点数据；语言精炼、客观、业务导向。${hasUserQuestion ? '整篇分析必须围绕并回答「用户特别关注」中的问题。' : ''}`;
   }
 
   return { prompt: prompt + `\n\n用户行为日志数据：\n${logsText}`, useSpecificMode };

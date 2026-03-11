@@ -21,6 +21,8 @@ export default async function handler(req, res) {
   }
   try {
     const stats = await fetchStats();
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
     return res.status(200).json({ success: true, stats });
   } catch (error) {
     console.error('获取统计失败:', error);

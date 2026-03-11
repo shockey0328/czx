@@ -46,3 +46,13 @@ yarn-error.log*
 用户行为看板（周度）/*.sqlite
 .vercel
 .env*.local
+
+# 用户行为看板大文件（改由 GitHub Release 提供，不提交到仓库）
+用户行为看板（周度）/data/*.json
+用户行为看板（周度）/*.xlsx
+用户行为看板（周度）/*.csv
+# 半角括号路径（避免大 CSV/Excel 被提交）
+用户行为看板(周度)/*.xlsx
+用户行为看板(周度)/*.csv
+**/用户行为日志*.csv
+**/用户行为日志*.xlsx

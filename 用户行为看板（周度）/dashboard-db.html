@@ -862,6 +862,21 @@
           document.getElementById('totalRecords').textContent = dbStats.totalRecords.toLocaleString();
           document.getElementById('availableDays').textContent = dbStats.availableDates.length;
           
+          // 用 API 返回的日期范围更新日期选择器，使新增日期（如 2026-03-10）可选并默认展示最新
+          if (dbStats.dateRange && dbStats.dateRange.start && dbStats.dateRange.end) {
+            var elStart = document.getElementById('startDate');
+            var elEnd = document.getElementById('endDate');
+            if (elStart) {
+              elStart.min = dbStats.dateRange.start;
+              elStart.max = dbStats.dateRange.end;
+            }
+            if (elEnd) {
+              elEnd.min = dbStats.dateRange.start;
+              elEnd.max = dbStats.dateRange.end;
+              elEnd.value = dbStats.dateRange.end; // 默认结束日期为最新一天，便于查看新增数据
+            }
+          }
+          
           let statusMsg = `数据库就绪！`;
           if (dbStats.dateRange) {
             statusMsg += ` 数据范围: ${dbStats.dateRange.start} 到 ${dbStats.dateRange.end}`;

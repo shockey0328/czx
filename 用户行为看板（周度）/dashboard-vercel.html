@@ -262,7 +262,7 @@
                     <div class="stat-label">总记录数</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number" id="availableDays">11</div>
+                    <div class="stat-number" id="availableDays">—</div>
                     <div class="stat-label">可用天数</div>
                 </div>
             </div>
@@ -270,11 +270,11 @@
             <div class="form-row">
                 <div class="form-item">
                     <label>起始日期：</label>
-                    <input type="date" id="startDate" value="2026-02-26" min="2026-02-26" max="2026-03-07">
+                    <input type="date" id="startDate" value="2026-02-26" min="2026-02-26" max="2026-03-09">
                 </div>
                 <div class="form-item">
                     <label>结束日期：</label>
-                    <input type="date" id="endDate" value="2026-03-07" min="2026-02-26" max="2026-03-07">
+                    <input type="date" id="endDate" value="2026-03-09" min="2026-02-26" max="2026-03-09">
                 </div>
                 <div class="form-item">
                     <label>用户ID：</label>
@@ -289,7 +289,7 @@
                 </div>
             </div>
 
-            <div id="dataStatus" class="status success">数据来自 GitHub Releases，范围 2026-02-26 至 2026-03-07（含 3 月 5～7 日）。为减少超时，建议起始与结束日期选同一天。</div>
+            <div id="dataStatus" class="status success">数据来自 GitHub Releases，范围 2026-02-26 至 2026-03-09。为减少超时，建议起始与结束日期选同一天。</div>
             <button class="btn" id="analyzeBtn" onclick="runAnalysis()">分析</button>
         </div>
 
@@ -301,6 +301,36 @@
     </div>
 
     <script>
+        // 页面加载时从后端拉取统计与日期范围，更新展示
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                if (!res.ok) return;
+                const json = await res.json();
+                if (!json.success || !json.stats) return;
+                const s = json.stats;
+                const elUsers = document.getElementById('totalUsers');
+                const elRecords = document.getElementById('totalRecords');
+                const elDays = document.getElementById('availableDays');
+                const elStart = document.getElementById('startDate');
+                const elEnd = document.getElementById('endDate');
+                const elStatus = document.getElementById('dataStatus');
+                if (elUsers && s.totalUsers != null) elUsers.textContent = Number(s.totalUsers).toLocaleString();
+                if (elRecords && s.totalRecords != null) elRecords.textContent = Number(s.totalRecords).toLocaleString();
+                if (elDays && s.availableDates && s.availableDates.length) elDays.textContent = s.availableDates.length;
+                if (s.dateRange && s.dateRange.start && s.dateRange.end) {
+                    if (elStart) { elStart.min = s.dateRange.start; elStart.max = s.dateRange.end; elStart.value = s.dateRange.start; }
+                    if (elEnd) { elEnd.min = s.dateRange.start; elEnd.max = s.dateRange.end; elEnd.value = s.dateRange.end; }
+                    if (elStatus) elStatus.textContent = '数据来自 GitHub Releases，范围 ' + s.dateRange.start + ' 至 ' + s.dateRange.end + '。为减少超时，建议起始与结束日期选同一天。';
+                }
+            } catch (e) { /* 忽略，使用页面默认值 */ }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadStats);
+        } else {
+            loadStats();
+        }
+
         async function runAnalysis() {
             const userIdsInput = document.getElementById('userIds').value.trim();
             const startDate = document.getElementById('startDate').value;

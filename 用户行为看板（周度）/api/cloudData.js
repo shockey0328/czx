@@ -29,7 +29,7 @@ export async function fetchStats() {
     throw new Error('未配置 DATA_BASE_URL，请在 Vercel 环境变量中设置云存储数据根地址');
   }
   const url = `${base}stats.json`;
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`获取统计失败: ${res.status} ${url}`);
   }
@@ -52,7 +52,7 @@ export async function fetchUserBehavior(userIds, startDate, endDate) {
   for (const date of dates) {
     const fileUrl = `${base}${date}.json`;
     try {
-      const res = await fetch(fileUrl);
+      const res = await fetch(fileUrl, { cache: 'no-store' });
       if (!res.ok) continue;
       const data = await res.json();
       const userGroups = data.userGroups || {};

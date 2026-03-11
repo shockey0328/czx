@@ -126,8 +126,14 @@ app.post('/api/getData', async (req, res) => {
   }
 });
 
-// 启动时预加载数据
+// 启动时是否预加载：设为 true 会预加载所有 Excel（大文件易卡住），false 则按请求按需加载
+const PRELOAD_ON_STARTUP = process.env.PRELOAD_DATA === '1';
+
 async function preloadData() {
+  if (!PRELOAD_ON_STARTUP) {
+    console.log('已跳过预加载（按需加载）。若需启动时预加载，请设置环境变量 PRELOAD_DATA=1');
+    return;
+  }
   console.log('开始预加载数据...');
   try {
     const files = fs.readdirSync(__dirname).filter(f => 
