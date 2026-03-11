@@ -72,6 +72,12 @@ body {
     border-color: #FFA366;
 }
 
+.data-status {
+    font-size: 13px;
+    color: #666;
+    max-width: 280px;
+}
+
 @media (max-width: 768px) {
     .header {
         padding: 20px;
@@ -129,6 +135,34 @@ body {
     gap: 20px;
 }
 
+.core-metrics-toggle {
+    grid-column: 1 / -1;
+    padding: 10px 20px;
+    border: 2px solid #FF6B35;
+    border-radius: 8px;
+    background: #fff;
+    color: #FF6B35;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.core-metrics-toggle:hover {
+    background: #fff5f0;
+}
+
+.core-metrics-extra {
+    grid-column: 1 / -1;
+    display: none;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 20px;
+}
+
+.core-metrics-extra.expanded {
+    display: grid;
+}
+
 .metric-card {
     background: #FF8C5A;
     padding: 20px;
@@ -152,7 +186,13 @@ body {
 .metric-value {
     font-size: 28px;
     font-weight: bold;
-    margin-bottom: 15px;
+    margin-bottom: 4px;
+}
+
+.metric-label-sub {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-bottom: 12px;
 }
 
 .metric-details {
@@ -230,6 +270,10 @@ body {
         gap: 15px;
     }
 
+    .core-metrics-extra {
+        grid-template-columns: 1fr;
+    }
+
     .metric-card {
         padding: 18px;
     }
@@ -251,10 +295,36 @@ body {
 }
 
 /* 模块二：排名图表 */
+.ranking-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.ranking-tab {
+    padding: 8px 16px;
+    border: 2px solid #FF6B35;
+    border-radius: 8px;
+    background: #fff;
+    color: #FF6B35;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ranking-tab:hover {
+    background: #fff5f0;
+}
+
+.ranking-tab.active {
+    background: #FF6B35;
+    color: #fff;
+}
+
 .ranking-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 25px;
+    display: block;
 }
 
 .ranking-chart {
@@ -414,7 +484,7 @@ body {
 .trend-tab {
     padding: 8px 20px;
     border: 2px solid #FF6B35;
-    border-radius: 16px;
+    border-radius: 8px;
     background: white;
     color: #FF6B35;
     font-size: 14px;

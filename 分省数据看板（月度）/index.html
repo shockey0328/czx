@@ -8,6 +8,8 @@
     <!-- 使用本地Chart.js -->
     <script src="../libs/chart.min.js"></script>
     <script src="../libs/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- 34省趋势数据：与 index 同目录，运行 node 趋势分析/build_trend_data.js 生成 -->
+    <script src="trend-data.js"></script>
 </head>
 <body>
     <div class="container">
@@ -17,6 +19,7 @@
                 <h1>分省数据看板</h1>
             </div>
             <div class="header-right">
+                <span id="dataStatus" class="data-status"></span>
                 <select id="monthFilter" class="month-filter">
                     <option value="26年2月">26年2月</option>
                     <option value="26年1月">26年1月</option>
@@ -33,25 +36,19 @@
             </div>
         </section>
 
-        <!-- 模块二：省份排名 -->
+        <!-- 模块二：省份排名（默认活跃用户，可切换） -->
         <section class="module module-2">
             <h2 class="module-title">省份排名</h2>
+            <div class="ranking-tabs">
+                <button type="button" class="ranking-tab active" data-ranking="activeUsers">活跃用户排名</button>
+                <button type="button" class="ranking-tab" data-ranking="revenue">营收排名</button>
+                <button type="button" class="ranking-tab" data-ranking="arpu">ARPU排名</button>
+                <button type="button" class="ranking-tab" data-ranking="usage">使用率排名</button>
+            </div>
             <div class="ranking-container">
                 <div class="ranking-chart">
-                    <h3>活跃用户排名</h3>
-                    <canvas id="activeUsersChart"></canvas>
-                </div>
-                <div class="ranking-chart">
-                    <h3>营收排名</h3>
-                    <canvas id="revenueChart"></canvas>
-                </div>
-                <div class="ranking-chart">
-                    <h3>ARPU排名</h3>
-                    <canvas id="arpuChart"></canvas>
-                </div>
-                <div class="ranking-chart">
-                    <h3>使用率排名</h3>
-                    <canvas id="usageRateChart"></canvas>
+                    <h3 id="rankingChartTitle">活跃用户排名</h3>
+                    <canvas id="rankingChart"></canvas>
                 </div>
             </div>
         </section>
@@ -62,6 +59,7 @@
                 <h2 class="module-title">趋势分析</h2>
                 <div class="province-filter-container">
                     <select id="provinceFilter" class="province-filter">
+                        <!-- 由 JS 根据 trend-data.js（34省）或默认7省填充 -->
                         <option value="福建">福建</option>
                         <option value="山东">山东</option>
                         <option value="江苏">江苏</option>

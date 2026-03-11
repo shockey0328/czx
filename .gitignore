@@ -35,6 +35,7 @@ yarn-error.log*
 *.tmp
 *.temp
 .cache/
+~$*
 
 # Backup files
 *-backup.html

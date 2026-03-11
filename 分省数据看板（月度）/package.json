@@ -1,0 +1,11 @@
+{
+  "name": "province-dashboard-monthly",
+  "private": true,
+  "description": "分省数据看板（月度）— 生成趋势数据用",
+  "scripts": {
+    "build-trend": "node 趋势分析/build_trend_data.js"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

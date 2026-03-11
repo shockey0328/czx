@@ -1,5 +1,5 @@
-// 核心数据
-const coreData = {
+// 核心数据（可由 trend-data.js 的 coreDataFromTrend 合并扩展为34省）
+let coreData = {
     '25年12月': {
         '山东': { 活跃用户: 2726700, 新用户: 1594400, 老用户: 1132300, 订单营收: 6382300, 深度访问率: 89, 使用率: 72, ARPU: 234, 同比活跃: -13, 环比活跃: 6, 同比新用户: -45, 环比新用户: 32, 同比老用户: 25, 环比老用户: 31, 同比营收: 25, 环比营收: 31, 同比深度: -6, 环比深度: 3, 同比使用率: 6, 环比使用率: 4, 同比ARPU: 45, 环比ARPU: 31 },
         '广东': { 活跃用户: 1320000, 新用户: 749400, 老用户: 570600, 订单营收: 6097500, 深度访问率: 85, 使用率: 61, ARPU: 462, 同比活跃: 16, 环比活跃: 30, 同比新用户: -9, 环比新用户: 48, 同比老用户: 22, 环比老用户: 34, 同比营收: 22, 环比营收: 34, 同比深度: -3, 环比深度: 2, 同比使用率: 19, 环比使用率: 12, 同比ARPU: 5, 环比ARPU: 12 },
@@ -28,8 +28,8 @@ const coreData = {
     }
 };
 
-// 趋势数据 - 按省份组织
-const provinceTrendData = {
+// 趋势数据 - 按省份组织（若加载了 trend-data.js 则会被替换为34省数据）
+let provinceTrendData = {
     '福建': [
         { 月份: '25年1月', 活跃用户: 13318, 营收: 26066, ARPU: 1.96, 使用率: 69 },
         { 月份: '25年2月', 活跃用户: 6662, 营收: 17046, ARPU: 2.56, 使用率: 60 },
@@ -144,20 +144,68 @@ const provinceTrendData = {
     ]
 };
 
+// 若已加载 trend-data.js（全国34省趋势数据），合并到 coreData 并采用其省份/月份列表
+// 使用 window.XXX 判断，兼容 file:// 与 const 不挂全局的情况
+let PROVINCE_LIST = ['福建', '山东', '江苏', '广东', '安徽', '辽宁', '河南'];
+let MONTH_LIST = ['26年2月', '26年1月', '25年12月'];
+var trendProvinces = typeof window !== 'undefined' && window.TREND_PROVINCES;
+if (trendProvinces && trendProvinces.length > 0) {
+    PROVINCE_LIST = trendProvinces;
+    if (window.provinceTrendData) {
+        provinceTrendData = window.provinceTrendData;
+    }
+    if (window.coreDataFromTrend) {
+        Object.keys(window.coreDataFromTrend).forEach(m => {
+            coreData[m] = coreData[m] || {};
+            Object.assign(coreData[m], window.coreDataFromTrend[m]);
+        });
+    }
+    if (window.TREND_MONTHS && window.TREND_MONTHS.length > 0) {
+        MONTH_LIST = [...window.TREND_MONTHS].reverse(); // 倒序：最新月份在前（26年2月→26年1月→25年12月…）
+    }
+}
+
 let trendCharts = {};
 let currentPeriod = 'recent12';
 let rankingCharts = {};
+let currentRankingType = 'activeUsers'; // 默认活跃用户排名，可切换：revenue / arpu / usage
+const RANKING_TOP_N = PROVINCE_LIST.length > 10 ? 15 : 7;
+const CORE_METRICS_TOP_N = 6; // 核心指标默认展示活跃用户前6省，其余折叠
+let coreMetricsExpanded = false;
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     const monthFilter = document.getElementById('monthFilter');
     const provinceFilter = document.getElementById('provinceFilter');
+
+    // 根据 PROVINCE_LIST / MONTH_LIST 填充下拉（月份倒序，默认选最新月）
+    provinceFilter.innerHTML = PROVINCE_LIST.map(p => `<option value="${p}">${p}</option>`).join('');
+    monthFilter.innerHTML = MONTH_LIST.map(m => `<option value="${m}">${m}</option>`).join('');
+    monthFilter.value = MONTH_LIST[0]; // 默认最新一个月
+    const defaultProvince = getProvinceWithMaxActive(monthFilter.value);
+    provinceFilter.value = defaultProvince || PROVINCE_LIST[0];
+
+    var statusEl = document.getElementById('dataStatus');
+    if (statusEl) {
+        statusEl.textContent = PROVINCE_LIST.length > 10
+            ? '已加载全国' + PROVINCE_LIST.length + '省数据'
+            : '未检测到 trend-data.js，请在本目录运行: node 趋势分析/build_trend_data.js';
+    }
     
     monthFilter.addEventListener('change', () => {
         updateCoreMetrics(monthFilter.value);
         updateRankingCharts(monthFilter.value);
         updateMonthlyMetrics(provinceFilter.value, monthFilter.value);
         updateTrendCharts(provinceFilter.value, currentPeriod, monthFilter.value);
+    });
+
+    document.querySelectorAll('.ranking-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            document.querySelectorAll('.ranking-tab').forEach(t => t.classList.remove('active'));
+            e.target.classList.add('active');
+            currentRankingType = e.target.dataset.ranking;
+            updateRankingCharts(monthFilter.value);
+        });
     });
     
     provinceFilter.addEventListener('change', () => {
@@ -180,6 +228,20 @@ document.addEventListener('DOMContentLoaded', () => {
     updateTrendCharts(provinceFilter.value, currentPeriod, monthFilter.value);
 });
 
+// 当月活跃用户最高的省份（用于趋势分析省份默认选中）
+function getProvinceWithMaxActive(month) {
+    const data = coreData[month];
+    if (!data) return null;
+    let maxP = null, maxV = -Infinity;
+    Object.entries(data).forEach(([p, m]) => {
+        if (m && (m.活跃用户 != null) && m.活跃用户 > maxV) {
+            maxV = m.活跃用户;
+            maxP = p;
+        }
+    });
+    return maxP;
+}
+
 // 更新看板
 function updateDashboard() {
     const selectedMonth = document.getElementById('monthFilter').value;
@@ -187,132 +249,132 @@ function updateDashboard() {
     updateRankingCharts(selectedMonth);
 }
 
-// 模块一：更新核心指标
+// 模块一：更新核心指标（默认展示活跃用户前6省，其余折叠，点击展开/收起）
 function updateCoreMetrics(month) {
     const container = document.getElementById('coreMetrics');
     container.innerHTML = '';
-    
+    coreMetricsExpanded = false;
+
     const data = coreData[month];
-    const provinces = ['山东', '江苏', '广东', '安徽', '辽宁', '河南', '福建'];
-    
-    provinces.forEach(province => {
-        if (data[province]) {
-            const metrics = data[province];
-            const card = createMetricCard(province, metrics);
-            container.appendChild(card);
-        }
+    if (!data) return;
+    const sorted = Object.entries(data)
+        .filter(([p]) => data[p] != null)
+        .sort((a, b) => (b[1].活跃用户 || 0) - (a[1].活跃用户 || 0));
+    const topProvinces = sorted.slice(0, CORE_METRICS_TOP_N).map(([p]) => p);
+    const restProvinces = sorted.slice(CORE_METRICS_TOP_N).map(([p]) => p);
+    const total = sorted.length;
+
+    topProvinces.forEach(province => {
+        const card = createMetricCard(province, data[province]);
+        container.appendChild(card);
     });
+
+    if (restProvinces.length === 0) return;
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'core-metrics-toggle';
+    toggleBtn.textContent = `展开查看全部（共${total}省）`;
+    toggleBtn.addEventListener('click', () => {
+        coreMetricsExpanded = !coreMetricsExpanded;
+        extraWrap.classList.toggle('expanded', coreMetricsExpanded);
+        toggleBtn.textContent = coreMetricsExpanded ? '收起' : `展开查看全部（共${total}省）`;
+    });
+    container.appendChild(toggleBtn);
+
+    const extraWrap = document.createElement('div');
+    extraWrap.className = 'core-metrics-extra';
+    restProvinces.forEach(province => {
+        const card = createMetricCard(province, data[province]);
+        extraWrap.appendChild(card);
+    });
+    container.appendChild(extraWrap);
 }
 
 function createMetricCard(province, metrics) {
     const card = document.createElement('div');
     card.className = 'metric-card';
-    
+    const n = (v) => (v == null ? 0 : Number(v));
+    const pct = (yo, mo) => {
+        const y = n(yo), m = n(mo);
+        const ys = formatDecimal(y), ms = formatDecimal(m);
+        return `<span class="metric-change ${y >= 0 ? 'positive' : 'negative'}">同比${y > 0 ? '+' : ''}${ys}%</span>
+            <span class="metric-change ${m >= 0 ? 'positive' : 'negative'}">环比${m > 0 ? '+' : ''}${ms}%</span>`;
+    };
+    const pp = (yo, mo) => {
+        const y = n(yo), m = n(mo);
+        const ys = formatDecimal(y), ms = formatDecimal(m);
+        return `<span class="metric-change ${y >= 0 ? 'positive' : 'negative'}">同比${y > 0 ? '+' : ''}${ys}pp</span>
+            <span class="metric-change ${m >= 0 ? 'positive' : 'negative'}">环比${m > 0 ? '+' : ''}${ms}pp</span>`;
+    };
+    const useRate = metrics.使用率 != null ? formatDecimal(metrics.使用率) : '0.00';
+    const arpuVal = metrics.ARPU != null ? formatDecimal(metrics.ARPU) : '-';
     card.innerHTML = `
         <h3>${province}</h3>
         <div class="metric-value">${formatNumber(metrics.活跃用户)}</div>
+        <div class="metric-label-sub">活跃用户</div>
         <div class="metric-details">
-            <div class="metric-row">
-                <span class="metric-label">新用户:</span>
-                <span class="metric-data">${formatNumber(metrics.新用户)}</span>
-                <span class="metric-change ${metrics.同比新用户 >= 0 ? 'positive' : 'negative'}">同比${metrics.同比新用户 > 0 ? '+' : ''}${metrics.同比新用户}%</span>
-                <span class="metric-change ${metrics.环比新用户 >= 0 ? 'positive' : 'negative'}">环比${metrics.环比新用户 > 0 ? '+' : ''}${metrics.环比新用户}%</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">老用户:</span>
-                <span class="metric-data">${formatNumber(metrics.老用户)}</span>
-                <span class="metric-change ${metrics.同比老用户 >= 0 ? 'positive' : 'negative'}">同比${metrics.同比老用户 > 0 ? '+' : ''}${metrics.同比老用户}%</span>
-                <span class="metric-change ${metrics.环比老用户 >= 0 ? 'positive' : 'negative'}">环比${metrics.环比老用户 > 0 ? '+' : ''}${metrics.环比老用户}%</span>
-            </div>
             <div class="metric-row">
                 <span class="metric-label">订单营收:</span>
                 <span class="metric-data">${formatNumber(metrics.订单营收)}</span>
-                <span class="metric-change ${metrics.同比营收 >= 0 ? 'positive' : 'negative'}">同比${metrics.同比营收 > 0 ? '+' : ''}${metrics.同比营收}%</span>
-                <span class="metric-change ${metrics.环比营收 >= 0 ? 'positive' : 'negative'}">环比${metrics.环比营收 > 0 ? '+' : ''}${metrics.环比营收}%</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">深度访问率:</span>
-                <span class="metric-data">${metrics.深度访问率}%</span>
-                <span class="metric-change ${metrics.同比深度 >= 0 ? 'positive' : 'negative'}">同比${metrics.同比深度 > 0 ? '+' : ''}${metrics.同比深度}pp</span>
-                <span class="metric-change ${metrics.环比深度 >= 0 ? 'positive' : 'negative'}">环比${metrics.环比深度 > 0 ? '+' : ''}${metrics.环比深度}pp</span>
+                ${pct(metrics.同比营收, metrics.环比营收)}
             </div>
             <div class="metric-row">
                 <span class="metric-label">使用率:</span>
-                <span class="metric-data">${metrics.使用率}%</span>
-                <span class="metric-change ${metrics.同比使用率 >= 0 ? 'positive' : 'negative'}">同比${metrics.同比使用率 > 0 ? '+' : ''}${metrics.同比使用率}pp</span>
-                <span class="metric-change ${metrics.环比使用率 >= 0 ? 'positive' : 'negative'}">环比${metrics.环比使用率 > 0 ? '+' : ''}${metrics.环比使用率}pp</span>
+                <span class="metric-data">${useRate}%</span>
+                ${pp(metrics.同比使用率, metrics.环比使用率)}
             </div>
             <div class="metric-row">
                 <span class="metric-label">ARPU:</span>
-                <span class="metric-data">${metrics.ARPU}</span>
-                <span class="metric-change ${metrics.同比ARPU >= 0 ? 'positive' : 'negative'}">同比${metrics.同比ARPU > 0 ? '+' : ''}${metrics.同比ARPU}%</span>
-                <span class="metric-change ${metrics.环比ARPU >= 0 ? 'positive' : 'negative'}">环比${metrics.环比ARPU > 0 ? '+' : ''}${metrics.环比ARPU}%</span>
+                <span class="metric-data">${arpuVal}</span>
+                ${pct(metrics.同比ARPU, metrics.环比ARPU)}
             </div>
         </div>
     `;
-    
     return card;
 }
 
-// 模块二：更新排名图表
+// 模块二：更新排名图表（仅渲染当前选中的一种排名）
 function updateRankingCharts(month) {
     const data = coreData[month];
-    
-    // 销毁旧图表
+    if (!data) return;
+
+    const titles = { activeUsers: '活跃用户排名', revenue: '营收排名', arpu: 'ARPU排名', usage: '使用率排名' };
+    const titleEl = document.getElementById('rankingChartTitle');
+    if (titleEl) titleEl.textContent = titles[currentRankingType] || titles.activeUsers;
+
     Object.values(rankingCharts).forEach(chart => chart && chart.destroy());
     rankingCharts = {};
-    
-    // 活跃用户排名
-    const activeUsersData = Object.entries(data)
-        .sort((a, b) => b[1].活跃用户 - a[1].活跃用户)
-        .slice(0, 7);
-    
-    rankingCharts.activeUsers = createBarChart(
-        'activeUsersChart',
-        activeUsersData.map(d => d[0]),
-        activeUsersData.map(d => d[1].活跃用户),
-        '活跃用户',
-        '#FF6B35'
-    );
-    
-    // 营收排名
-    const revenueData = Object.entries(data)
-        .sort((a, b) => b[1].订单营收 - a[1].订单营收)
-        .slice(0, 7);
-    
-    rankingCharts.revenue = createBarChart(
-        'revenueChart',
-        revenueData.map(d => d[0]),
-        revenueData.map(d => d[1].订单营收),
-        '营收',
-        '#FFA366'
-    );
-    
-    // ARPU排名
-    const arpuData = Object.entries(data)
-        .sort((a, b) => b[1].ARPU - a[1].ARPU)
-        .slice(0, 7);
-    
-    rankingCharts.arpu = createBarChart(
-        'arpuChart',
-        arpuData.map(d => d[0]),
-        arpuData.map(d => d[1].ARPU),
-        'ARPU',
-        '#FF8C42'
-    );
-    
-    // 使用率排名
-    const usageData = Object.entries(data)
-        .sort((a, b) => b[1].使用率 - a[1].使用率)
-        .slice(0, 7);
-    
-    rankingCharts.usage = createBarChart(
-        'usageRateChart',
-        usageData.map(d => d[0]),
-        usageData.map(d => d[1].使用率),
-        '使用率 (%)',
-        '#FFB380'
-    );
+
+    let labels, values, label, color;
+    const entries = Object.entries(data).filter(([, v]) => v != null);
+    if (currentRankingType === 'activeUsers') {
+        const sorted = entries.sort((a, b) => b[1].活跃用户 - a[1].活跃用户).slice(0, RANKING_TOP_N);
+        labels = sorted.map(d => d[0]);
+        values = sorted.map(d => d[1].活跃用户);
+        label = '活跃用户';
+        color = '#FF6B35';
+    } else if (currentRankingType === 'revenue') {
+        const sorted = entries.sort((a, b) => b[1].订单营收 - a[1].订单营收).slice(0, RANKING_TOP_N);
+        labels = sorted.map(d => d[0]);
+        values = sorted.map(d => d[1].订单营收);
+        label = '营收';
+        color = '#FFA366';
+    } else if (currentRankingType === 'arpu') {
+        const sorted = entries.sort((a, b) => b[1].ARPU - a[1].ARPU).slice(0, RANKING_TOP_N);
+        labels = sorted.map(d => d[0]);
+        values = sorted.map(d => d[1].ARPU);
+        label = 'ARPU';
+        color = '#FF8C42';
+    } else {
+        const sorted = entries.sort((a, b) => b[1].使用率 - a[1].使用率).slice(0, RANKING_TOP_N);
+        labels = sorted.map(d => d[0]);
+        values = sorted.map(d => d[1].使用率);
+        label = '使用率 (%)';
+        color = '#FFB380';
+    }
+
+    rankingCharts.current = createBarChart('rankingChart', labels, values, label, color);
 }
 
 // 创建柱状图
@@ -378,16 +440,7 @@ function updateMonthlyMetrics(province, selectedMonth) {
     if (!data || data.length === 0) return;
     
     // 根据选中的月份找到对应的数据
-    let currentIndex = -1;
-    if (selectedMonth === '26年2月') {
-        currentIndex = data.findIndex(d => d.月份 === '26年2月');
-    } else if (selectedMonth === '26年1月') {
-        currentIndex = data.findIndex(d => d.月份 === '26年1月');
-    } else if (selectedMonth === '25年12月') {
-        currentIndex = data.findIndex(d => d.月份 === '25年12月');
-    }
-    
-    // 如果没找到，使用最新数据
+    let currentIndex = data.findIndex(d => d.月份 === selectedMonth);
     if (currentIndex === -1) {
         currentIndex = data.length - 1;
     }
@@ -397,85 +450,49 @@ function updateMonthlyMetrics(province, selectedMonth) {
     const lastYearIndex = currentIndex - 12;
     const lastYearData = lastYearIndex >= 0 ? data[lastYearIndex] : null;
     
-    // 计算同比和环比
-    const yoyActiveUser = lastYearData ? ((latestData.活跃用户 - lastYearData.活跃用户) / lastYearData.活跃用户 * 100).toFixed(0) : 0;
-    const momActiveUser = previousData ? ((latestData.活跃用户 - previousData.活跃用户) / previousData.活跃用户 * 100).toFixed(0) : 0;
-    
-    const yoyRevenue = lastYearData ? ((latestData.营收 - lastYearData.营收) / lastYearData.营收 * 100).toFixed(0) : 0;
-    const momRevenue = previousData ? ((latestData.营收 - previousData.营收) / previousData.营收 * 100).toFixed(0) : 0;
-    
-    const yoyArpu = lastYearData ? ((latestData.ARPU - lastYearData.ARPU) / lastYearData.ARPU * 100).toFixed(0) : 0;
-    const momArpu = previousData ? ((latestData.ARPU - previousData.ARPU) / previousData.ARPU * 100).toFixed(0) : 0;
-    
+    const yoyActive = lastYearData ? (latestData.活跃用户 - lastYearData.活跃用户) / lastYearData.活跃用户 * 100 : 0;
+    const momActive = previousData ? (latestData.活跃用户 - previousData.活跃用户) / previousData.活跃用户 * 100 : 0;
+    const yoyRevenue = lastYearData ? (latestData.营收 - lastYearData.营收) / lastYearData.营收 * 100 : 0;
+    const momRevenue = previousData ? (latestData.营收 - previousData.营收) / previousData.营收 * 100 : 0;
+    const yoyArpu = lastYearData ? (latestData.ARPU - lastYearData.ARPU) / lastYearData.ARPU * 100 : 0;
+    const momArpu = previousData ? (latestData.ARPU - previousData.ARPU) / previousData.ARPU * 100 : 0;
     const yoyUsage = lastYearData ? (latestData.使用率 - lastYearData.使用率) : 0;
     const momUsage = previousData ? (latestData.使用率 - previousData.使用率) : 0;
-    
+
     const metrics = [
-        { 
-            name: '月活用户', 
-            value: formatNumber(latestData.活跃用户), 
-            tag1: `同比: ${yoyActiveUser > 0 ? '+' : ''}${yoyActiveUser}%`, 
-            tag2: `环比: ${momActiveUser > 0 ? '+' : ''}${momActiveUser}%` 
-        },
-        { 
-            name: '营收', 
-            value: (latestData.营收 / 10000).toFixed(1) + '万', 
-            tag1: `同比: ${yoyRevenue > 0 ? '+' : ''}${yoyRevenue}%`, 
-            tag2: `环比: ${momRevenue > 0 ? '+' : ''}${momRevenue}%` 
-        },
-        { 
-            name: 'ARPU', 
-            value: latestData.ARPU.toFixed(2), 
-            tag1: `同比: ${yoyArpu > 0 ? '+' : ''}${yoyArpu}%`, 
-            tag2: `环比: ${momArpu > 0 ? '+' : ''}${momArpu}%` 
-        },
-        { 
-            name: '使用率', 
-            value: latestData.使用率 + '%', 
-            tag1: `同比: ${yoyUsage > 0 ? '+' : ''}${yoyUsage}pp`, 
-            tag2: `环比: ${momUsage > 0 ? '+' : ''}${momUsage}pp` 
-        }
+        { name: '月活用户', value: formatNumber(latestData.活跃用户), yoy: yoyActive, mom: momActive, suffix: '%' },
+        { name: '营收', value: (latestData.营收 / 10000).toFixed(1) + '万', yoy: yoyRevenue, mom: momRevenue, suffix: '%' },
+        { name: 'ARPU', value: formatDecimal(latestData.ARPU), yoy: yoyArpu, mom: momArpu, suffix: '%' },
+        { name: '使用率', value: formatDecimal(latestData.使用率) + '%', yoy: yoyUsage, mom: momUsage, suffix: 'pp' }
     ];
-    
-    metrics.forEach(metric => {
+
+    metrics.forEach(m => {
         const card = document.createElement('div');
         card.className = 'monthly-metric-card';
+        const yoyCls = m.yoy >= 0 ? 'positive' : 'negative';
+        const momCls = m.mom >= 0 ? 'positive' : 'negative';
+        const yoyStr = (m.yoy > 0 ? '+' : '') + formatDecimal(m.yoy) + m.suffix;
+        const momStr = (m.mom > 0 ? '+' : '') + formatDecimal(m.mom) + m.suffix;
         card.innerHTML = `
-            <h4>${metric.name}</h4>
-            <div class="monthly-metric-value">${metric.value}</div>
+            <h4>${m.name}</h4>
+            <div class="monthly-metric-value">${m.value}</div>
             <div class="monthly-metric-tags">
-                <span class="metric-tag">${metric.tag1}</span>
-                <span class="metric-tag">${metric.tag2}</span>
+                <span class="metric-change ${yoyCls}">同比: ${yoyStr}</span>
+                <span class="metric-change ${momCls}">环比: ${momStr}</span>
             </div>
         `;
         container.appendChild(card);
     });
 }
 
-// 模块三：更新趋势图表
+// 模块三：更新趋势图表（始终以数据的最新月份为终点，展示近 3/6/12 个月）
 function updateTrendCharts(province, period, selectedMonth) {
     const data = provinceTrendData[province];
-    if (!data) return;
+    if (!data || data.length === 0) return;
     
-    // 找到选中月份的索引
-    let endIndex = -1;
-    if (selectedMonth === '26年2月') {
-        endIndex = data.findIndex(d => d.月份 === '26年2月');
-    } else if (selectedMonth === '26年1月') {
-        endIndex = data.findIndex(d => d.月份 === '26年1月');
-    } else if (selectedMonth === '25年12月') {
-        endIndex = data.findIndex(d => d.月份 === '25年12月');
-    }
-    
-    // 如果没找到，使用最新数据
-    if (endIndex === -1) {
-        endIndex = data.length - 1;
-    }
-    
-    // 根据周期筛选数据（从选中月份往前推）
-    let filteredData = [];
+    // 始终用最新月份作为终点，保证趋势图有完整 3/6/12 个月
+    const endIndex = data.length - 1;
     let startIndex = 0;
-    
     if (period === 'recent3') {
         startIndex = Math.max(0, endIndex - 2);
     } else if (period === 'recent6') {
@@ -483,8 +500,7 @@ function updateTrendCharts(province, period, selectedMonth) {
     } else if (period === 'recent12') {
         startIndex = Math.max(0, endIndex - 11);
     }
-    
-    filteredData = data.slice(startIndex, endIndex + 1);
+    const filteredData = data.slice(startIndex, endIndex + 1);
     
     // 销毁旧图表
     Object.values(trendCharts).forEach(chart => chart && chart.destroy());
@@ -593,6 +609,15 @@ function formatNumber(num) {
         return (num / 10000).toFixed(1) + '万';
     }
     return num.toLocaleString();
+}
+
+/** 最多保留小数点后两位 */
+function formatDecimal(val, maxDec) {
+    if (val == null || val === '') return '0';
+    const n = Number(val);
+    if (isNaN(n)) return '0';
+    const d = maxDec == null ? 2 : maxDec;
+    return n.toFixed(d);
 }
 
 
