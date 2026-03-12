@@ -1131,7 +1131,7 @@
         </div>
     </div>
 
-    <script src="data.js"></script>
+    <script src="data.js?v=10"></script>
     <script>
         // 全局变量
         let weeklyData = [];
@@ -1166,9 +1166,12 @@
             populateWeekSelector();
             updateB2BMetrics();
             
-            // 默认选择最新周度
+            // 默认选择最新周度（按年份+周数取最大，不依赖数组顺序）
             if (weeklyData.length > 0) {
-                const latestWeek = weeklyData[weeklyData.length - 1];
+                const latestWeek = weeklyData.reduce((best, cur) => {
+                    if (cur.年份 > best.年份 || (cur.年份 === best.年份 && cur.周数 > best.周数)) return cur;
+                    return best;
+                });
                 currentWeek = { year: latestWeek.年份, week: latestWeek.周数 };
                 document.getElementById('weekSelect').value = JSON.stringify(currentWeek);
                 updateAllMetrics();
