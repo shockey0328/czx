@@ -13,8 +13,8 @@ const dashboardConfig = {
         },
         'user-behavior-weekly': {
             name: '用户行为',
-            // Vercel 部署时用 /user-behavior（方案 A）；本地或需 Railway 时可在下方改用 type: 'server' 与 Railway URL
-            path: '/user-behavior',
+            // 根目录 user-behavior.html，本地与 Vercel 均可用；file:// 下用相对路径，http(s) 下用根路径
+            path: 'user-behavior.html',
             type: 'static'
         }
     },
@@ -296,10 +296,11 @@ function loadDashboard(period, dashboardType) {
     }
     
     // 静态看板（含搜索看板）：统一用 iframe src 加载，保证 data.js/app.js 同源执行、数据与图表正常展示
-    // 线上部署（如 Vercel）使用根路径，避免相对路径解析错误
+    // file:// 下用相对路径（否则 /xxx 会变成 file:///xxx 失败）；http(s) 下用根路径
+    const isFileProtocol = (window.location.protocol === 'file:');
     const staticPath = (config.path.indexOf('/') === 0 || config.path.indexOf('http') === 0)
         ? config.path
-        : '/' + config.path.replace(/^\.\//, '');
+        : (isFileProtocol ? config.path.replace(/^\.\//, '') : '/' + config.path.replace(/^\.\//, ''));
     setTimeout(() => {
         const iframe = document.createElement('iframe');
         iframe.src = staticPath;
