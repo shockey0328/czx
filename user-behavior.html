@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户行为看板 - Vercel版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #fff5f0 0%, #ffe8dc 50%, #ffddd0 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%); color: white; padding: 24px 32px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(255, 107, 53, 0.25); }
+        .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+        .header p { font-size: 13px; opacity: 0.9; }
+        .card { background: white; padding: 20px 24px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06); border: 1px solid rgba(255, 163, 102, 0.1); }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .stat-item { text-align: center; padding: 16px 20px; background: linear-gradient(135deg, #fff9f7 0%, #fff0eb 100%); border-radius: 12px; border: 2px solid transparent; }
+        .stat-number { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 2px; }
+        .stat-label { font-size: 12px; color: #666; margin-top: 6px; font-weight: 600; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .form-item label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 14px; }
+        .form-item input, .form-item textarea { width: 100%; padding: 12px 16px; border: 2px solid #e8e8e8; border-radius: 8px; font-size: 14px; transition: all 0.3s; font-family: inherit; }
+        .form-item input:focus, .form-item textarea:focus { outline: none; border-color: #FF6B35; box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1); }
+        .status { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; font-weight: 500; }
+        .status.success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .status.error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+        .status.loading { background: #fff9f7; color: #FF6B35; border: 1px solid #ffd8c4; }
+        .btn { background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%); color: white; border: none; padding: 13px 28px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255, 107, 53, 0.45); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+        .results-card { background: white; padding: 24px; border-radius: 16px; margin-top: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06); border: 1px solid rgba(255, 163, 102, 0.1); }
+        .results-card h3 { color: #FF6B35; font-size: 18px; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #fff0eb; }
+        .analysis-section { margin-bottom: 24px; }
+        .analysis-section:last-child { margin-bottom: 0; }
+        .analysis-section h4 { font-size: 15px; color: #FF6B35; margin-bottom: 10px; font-weight: 600; }
+        .analysis-content { font-size: 14px; line-height: 1.8; color: #333; white-space: pre-wrap; }
+        .report-body { white-space: normal; }
+        .report-h3 { font-size: 16px; color: #FF6B35; margin: 16px 0 10px; font-weight: 700; }
+        .report-h3:first-child { margin-top: 0; }
+        .report-h4 { font-size: 14px; color: #333; margin: 14px 0 8px; font-weight: 600; }
+        .report-bullet { margin: 6px 0 6px 1em; padding-left: 6px; }
+        .loading { text-align: center; padding: 40px 20px; color: #666; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #FF6B35; border-radius: 50%; width: 48px; height: 48px; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .alert-error { padding: 15px; border-radius: 8px; background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>用户行为看板 - Vercel版</h1>
+            <p>数据来自 GitHub Releases，AI 分析由 DeepSeek 提供</p>
+        </div>
+        <div class="card">
+            <div class="stats">
+                <div class="stat-item"><div class="stat-number" id="totalUsers">—</div><div class="stat-label">总用户数</div></div>
+                <div class="stat-item"><div class="stat-number" id="totalRecords">—</div><div class="stat-label">总记录数</div></div>
+                <div class="stat-item"><div class="stat-number" id="availableDays">—</div><div class="stat-label">可用天数</div></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item"><label>起始日期：</label><input type="date" id="startDate" value="2026-02-26" min="2026-02-26" max="2026-03-11"></div>
+                <div class="form-item"><label>结束日期：</label><input type="date" id="endDate" value="2026-03-11" min="2026-02-26" max="2026-03-11"></div>
+                <div class="form-item"><label>用户ID：</label><input type="text" id="userIds" placeholder="多个用户ID用逗号隔开"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item" style="grid-column:1/-1;"><label>分析描述（可选）：</label><textarea id="description" rows="3" placeholder="描述你想了解的问题，例如：分析用户完整使用路径、为什么在支付页流失…"></textarea></div>
+            </div>
+            <div id="dataStatus" class="status success">数据范围 2026-02-26 至 2026-03-11。为减少超时，建议起始与结束日期选同一天。</div>
+            <button class="btn" id="analyzeBtn" onclick="runAnalysis()">分析</button>
+        </div>
+        <div id="resultsWrap" style="display:none;" class="results-card"><h3>AI 分析报告</h3><div id="results"></div></div>
+        <div id="errorWrap" style="display:none;" class="alert-error"></div>
+    </div>
+    <script>
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                if (!res.ok) return;
+                const json = await res.json();
+                if (!json.success || !json.stats) return;
+                const s = json.stats;
+                const elUsers = document.getElementById('totalUsers');
+                const elRecords = document.getElementById('totalRecords');
+                const elDays = document.getElementById('availableDays');
+                const elStart = document.getElementById('startDate');
+                const elEnd = document.getElementById('endDate');
+                const elStatus = document.getElementById('dataStatus');
+                if (elUsers && s.totalUsers != null) elUsers.textContent = Number(s.totalUsers).toLocaleString();
+                if (elRecords && s.totalRecords != null) elRecords.textContent = Number(s.totalRecords).toLocaleString();
+                if (elDays && s.availableDates && s.availableDates.length) elDays.textContent = s.availableDates.length;
+                if (s.dateRange && s.dateRange.start && s.dateRange.end) {
+                    if (elStart) { elStart.min = s.dateRange.start; elStart.max = s.dateRange.end; elStart.value = s.dateRange.start; }
+                    if (elEnd) { elEnd.min = s.dateRange.start; elEnd.max = s.dateRange.end; elEnd.value = s.dateRange.end; }
+                    if (elStatus) elStatus.textContent = '数据范围 ' + s.dateRange.start + ' 至 ' + s.dateRange.end + '。为减少超时，建议起始与结束日期选同一天。';
+                }
+            } catch (e) { /* 使用页面默认值 */ }
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadStats); else loadStats();
+
+        async function runAnalysis() {
+            const userIdsInput = document.getElementById('userIds').value.trim();
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const description = document.getElementById('description').value.trim();
+            const resultsWrap = document.getElementById('resultsWrap');
+            const results = document.getElementById('results');
+            const errorWrap = document.getElementById('errorWrap');
+            const btn = document.getElementById('analyzeBtn');
+            if (!userIdsInput) { errorWrap.style.display = 'block'; errorWrap.textContent = '请输入用户ID'; resultsWrap.style.display = 'none'; return; }
+            const userIds = userIdsInput.split(',').map(id => id.trim()).filter(id => id);
+            errorWrap.style.display = 'none';
+            resultsWrap.style.display = 'block';
+            results.innerHTML = '<div class="loading"><div class="spinner"></div><p>正在拉取数据并生成分析…</p></div>';
+            btn.disabled = true;
+            try {
+                const getRes = await fetch('/api/getData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userIds, startDate, endDate }) });
+                const getText = await getRes.text();
+                let getResult;
+                try { getResult = JSON.parse(getText); } catch (e) { throw new Error('获取数据接口异常，状态: ' + getRes.status + (getText ? '，' + getText.slice(0, 200) : '')); }
+                if (!getResult.success) throw new Error(getResult.error || '获取数据失败');
+                if (getRes.status >= 400) throw new Error(getResult.error || ('接口异常，状态: ' + getRes.status));
+                const data = getResult.data || [];
+                if (data.length === 0) { results.innerHTML = '<p style="color:#666;">未找到指定用户在该日期范围内的行为数据，请检查用户ID与日期。</p>'; btn.disabled = false; return; }
+                const analyzeRes = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logs: data, userDescription: description }) });
+                const analyzeText = await analyzeRes.text();
+                let analyzeResult;
+                try { analyzeResult = JSON.parse(analyzeText); } catch (e) { throw new Error('分析接口异常，状态: ' + analyzeRes.status); }
+                if (!analyzeResult.success) throw new Error(analyzeResult.error || '分析失败');
+                const analysis = analyzeResult.analysis;
+                const dataCount = analyzeResult.dataCount != null ? analyzeResult.dataCount : data.length;
+                function simpleMarkdown(html) {
+                    let s = (html || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    s = s.replace(/^### (.+)$/gm, '<h3 class="report-h3">$1</h3>').replace(/^#### (.+)$/gm, '<h4 class="report-h4">$1</h4>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^\* (.+)$/gm, '<div class="report-bullet">• $1</div>');
+                    return s.replace(/\n/g, '<br>');
+                }
+                if (typeof analysis === 'string') results.innerHTML = '<div class="analysis-section"><div class="analysis-content report-body">' + simpleMarkdown(analysis) + '</div></div>';
+                else if (analysis.trajectory && !analysis.habits && !analysis.issues && !analysis.suggestions) results.innerHTML = '<div class="analysis-section"><div class="analysis-content report-body">' + simpleMarkdown(analysis.trajectory) + '</div></div>';
+                else results.innerHTML = '<p style="margin-bottom:20px;color:#666;font-size:14px;">基于 ' + dataCount + ' 条行为记录</p><div class="analysis-section"><h4>一、用户完整行为轨迹（时间线简述）</h4><div class="analysis-content">' + (analysis.trajectory || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>二、用户使用习惯与特征</h4><div class="analysis-content">' + (analysis.habits || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>三、产品问题与体验卡点（重点）</h4><div class="analysis-content">' + (analysis.issues || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>四、产品&运营优化建议</h4><div class="analysis-content">' + (analysis.suggestions || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+            } catch (err) {
+                errorWrap.style.display = 'block';
+                errorWrap.textContent = err.message || '请求失败';
+                results.innerHTML = '';
+            } finally { btn.disabled = false; }
+        }
+    </script>
+</body>
+</html>

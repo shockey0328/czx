@@ -296,9 +296,13 @@ function loadDashboard(period, dashboardType) {
     }
     
     // 静态看板（含搜索看板）：统一用 iframe src 加载，保证 data.js/app.js 同源执行、数据与图表正常展示
+    // 线上部署（如 Vercel）使用根路径，避免相对路径解析错误
+    const staticPath = (config.path.indexOf('/') === 0 || config.path.indexOf('http') === 0)
+        ? config.path
+        : '/' + config.path.replace(/^\.\//, '');
     setTimeout(() => {
         const iframe = document.createElement('iframe');
-        iframe.src = config.path;
+        iframe.src = staticPath;
         iframe.className = 'dashboard-frame';
         iframe.onload = function() {
             console.log(`${config.name}看板加载完成`);
@@ -307,11 +311,26 @@ function loadDashboard(period, dashboardType) {
             container.innerHTML = `
                 <div class="loading-container">
                     <div class="loading-text">看板加载失败，请检查文件路径</div>
+                    <p style="margin-top:12px;font-size:13px;color:#666;">可尝试<a href="${staticPath}" target="_blank" rel="noopener" style="color:#FF6B35;">直接打开</a>或刷新页面（Ctrl+F5）</p>
                 </div>
             `;
         };
         container.innerHTML = '';
         container.appendChild(iframe);
+        // 超时提示：若 12 秒后仍无内容，显示友好提示（可能子页面加载慢或路径问题）
+        setTimeout(function() {
+            if (!container.querySelector('iframe') || !iframe.contentWindow || !iframe.contentDocument || !iframe.contentDocument.body || !iframe.contentDocument.body.innerHTML.trim()) {
+                try {
+                    var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+                    if (doc && doc.body && doc.body.innerHTML.trim()) return;
+                } catch (e) {}
+                var tip = document.createElement('div');
+                tip.style.cssText = 'position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:5;font-size:13px;color:#666;background:rgba(255,255,255,0.95);padding:10px 20px;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.1);text-align:center;';
+                tip.innerHTML = '若看板一直未显示，请<a href="' + staticPath + '" target="_blank" rel="noopener" style="color:#FF6B35;">直接打开该看板</a>或强刷页面（Ctrl+F5）';
+                container.style.position = 'relative';
+                if (!container.querySelector('[data-load-tip]')) { tip.setAttribute('data-load-tip', '1'); container.appendChild(tip); }
+            }
+        }, 12000);
     }, 300);
 }
 

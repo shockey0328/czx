@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "rewrites": [
-    { "source": "/user-behavior", "destination": "/用户行为看板（周度）/dashboard-vercel.html" }
+    { "source": "/user-behavior", "destination": "/user-behavior.html" }
   ],
   "headers": [
     {
