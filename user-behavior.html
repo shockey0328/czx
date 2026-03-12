@@ -72,27 +72,35 @@
     </div>
     <script>
         async function loadStats() {
+            let s = null;
             try {
                 const res = await fetch('/api/stats');
-                if (!res.ok) return;
-                const json = await res.json();
-                if (!json.success || !json.stats) return;
-                const s = json.stats;
-                const elUsers = document.getElementById('totalUsers');
-                const elRecords = document.getElementById('totalRecords');
-                const elDays = document.getElementById('availableDays');
-                const elStart = document.getElementById('startDate');
-                const elEnd = document.getElementById('endDate');
-                const elStatus = document.getElementById('dataStatus');
-                if (elUsers && s.totalUsers != null) elUsers.textContent = Number(s.totalUsers).toLocaleString();
-                if (elRecords && s.totalRecords != null) elRecords.textContent = Number(s.totalRecords).toLocaleString();
-                if (elDays && s.availableDates && s.availableDates.length) elDays.textContent = s.availableDates.length;
-                if (s.dateRange && s.dateRange.start && s.dateRange.end) {
-                    if (elStart) { elStart.min = s.dateRange.start; elStart.max = s.dateRange.end; elStart.value = s.dateRange.start; }
-                    if (elEnd) { elEnd.min = s.dateRange.start; elEnd.max = s.dateRange.end; elEnd.value = s.dateRange.end; }
-                    if (elStatus) elStatus.textContent = '数据范围 ' + s.dateRange.start + ' 至 ' + s.dateRange.end + '。为减少超时，建议起始与结束日期选同一天。';
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.success && json.stats) s = json.stats;
                 }
-            } catch (e) { /* 使用页面默认值 */ }
+            } catch (e) { /* 尝试回退到本地 stats.json */ }
+            if (!s) {
+                try {
+                    const fallback = await fetch('用户行为看板（周度）/cloud-upload/stats.json');
+                    if (fallback.ok) s = await fallback.json();
+                } catch (e2) { /* 使用页面默认 — */ }
+            }
+            if (!s) return;
+            const elUsers = document.getElementById('totalUsers');
+            const elRecords = document.getElementById('totalRecords');
+            const elDays = document.getElementById('availableDays');
+            const elStart = document.getElementById('startDate');
+            const elEnd = document.getElementById('endDate');
+            const elStatus = document.getElementById('dataStatus');
+            if (elUsers && s.totalUsers != null) elUsers.textContent = Number(s.totalUsers).toLocaleString();
+            if (elRecords && s.totalRecords != null) elRecords.textContent = Number(s.totalRecords).toLocaleString();
+            if (elDays && s.availableDates && s.availableDates.length) elDays.textContent = s.availableDates.length;
+            if (s.dateRange && s.dateRange.start && s.dateRange.end) {
+                if (elStart) { elStart.min = s.dateRange.start; elStart.max = s.dateRange.end; elStart.value = s.dateRange.start; }
+                if (elEnd) { elEnd.min = s.dateRange.start; elEnd.max = s.dateRange.end; elEnd.value = s.dateRange.end; }
+                if (elStatus) elStatus.textContent = '数据范围 ' + s.dateRange.start + ' 至 ' + s.dateRange.end + '。为减少超时，建议起始与结束日期选同一天。';
+            }
         }
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadStats); else loadStats();
 
