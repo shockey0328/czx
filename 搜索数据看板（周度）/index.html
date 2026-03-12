@@ -428,7 +428,8 @@
     <div class="header">
         <div class="header-title">搜索数据看板</div>
         <select class="week-selector" id="weekSelector">
-            <option value="9" selected>2026年第9周</option>
+            <option value="10" selected>2026年第10周</option>
+            <option value="9">2026年第9周</option>
             <option value="8">2026年第8周</option>
             <option value="7">2026年第7周</option>
             <option value="6">2026年第6周</option>
@@ -516,10 +517,31 @@
         <div class="card">
             <div class="card-title">搜索转化趋势</div>
             
-            <div class="tabs">
-                <button class="tab-btn active" data-range="21">近3周</button>
-                <button class="tab-btn" data-range="28">近4周</button>
-                <button class="tab-btn" data-range="35">近5周</button>
+            <div class="chart-header" style="margin-bottom: 12px;">
+                <div class="tabs">
+                    <button class="tab-btn" data-range="7">近7天</button>
+                    <button class="tab-btn active" data-range="21">近3周</button>
+                    <button class="tab-btn" data-range="28">近4周</button>
+                    <button class="tab-btn" data-range="35">近5周</button>
+                </div>
+                <select class="week-selector" id="conversionMetricSelector" style="min-width: 160px;">
+                    <option value="user" selected>搜索用户转化率</option>
+                    <option value="count">搜索次数转化率</option>
+                </select>
+            </div>
+            <div class="chart-stats" id="conversionTrendStats" style="margin-bottom: 16px;">
+                <div class="stat-item">
+                    <div class="stat-value" id="conversionStatAvg">-</div>
+                    <div class="stat-label">区间均值</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="conversionStatMax">-</div>
+                    <div class="stat-label">最高</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="conversionStatMin">-</div>
+                    <div class="stat-label">最低</div>
+                </div>
             </div>
 
             <div class="chart-container" id="conversionChart"></div>

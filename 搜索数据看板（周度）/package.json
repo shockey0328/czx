@@ -14,5 +14,8 @@
     "search-analytics"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "iconv-lite": "^0.6.3"
+  }
 }

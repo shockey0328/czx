@@ -2,13 +2,15 @@
 let allData = {
     keywords: {},
     funnel: [],
-    conversion: [],
+    conversionUser: [],   // 搜索用户转化率
+    conversionCount: [],   // 搜索次数转化率
     retention: []
 };
 
-let currentWeek = 9; // 默认选择最新一周
+let currentWeek = 10; // 默认选择最新一周（第10周）
 let currentSort = 'uv';
 let currentConversionRange = 21;
+let currentConversionType = 'user'; // 'user' | 'count'，默认展示搜索用户转化率
 let currentRetentionWeeks = 5;
 
 // 初始化 - 确保ECharts已加载
@@ -59,8 +61,8 @@ async function loadAllData() {
         
         console.log('可用的数据集:', Object.keys(dashboardData));
         
-        // 加载每周搜索词数据
-        for (let i = 1; i <= 9; i++) {
+        // 加载每周搜索词数据（含第10周）
+        for (let i = 1; i <= 10; i++) {
             const key = `第${i}周搜索词`;
             if (dashboardData[key]) {
                 allData.keywords[i] = dashboardData[key];
@@ -76,10 +78,17 @@ async function loadAllData() {
             console.log('漏斗数据加载成功，共', allData.funnel.length, '条');
         }
 
-        // 加载转化率数据
-        if (dashboardData['搜索转化率']) {
-            allData.conversion = dashboardData['搜索转化率'];
-            console.log('转化率数据加载成功，共', allData.conversion.length, '条');
+        // 加载转化率数据：搜索用户转化率、搜索次数转化率（兼容旧版单一「搜索转化率」）
+        if (dashboardData['搜索用户转化率']) {
+            allData.conversionUser = dashboardData['搜索用户转化率'];
+            console.log('搜索用户转化率数据加载成功，共', allData.conversionUser.length, '条');
+        } else if (dashboardData['搜索转化率']) {
+            allData.conversionUser = dashboardData['搜索转化率'];
+            console.log('转化率数据(兼容)加载为搜索用户转化率，共', allData.conversionUser.length, '条');
+        }
+        if (dashboardData['搜索次数转化率']) {
+            allData.conversionCount = dashboardData['搜索次数转化率'];
+            console.log('搜索次数转化率数据加载成功，共', allData.conversionCount.length, '条');
         }
 
         // 加载留存数据
@@ -203,6 +212,16 @@ function initEventListeners() {
         });
     });
 
+    // 转化率指标切换（搜索用户转化率 / 搜索次数转化率）
+    const conversionMetricEl = document.getElementById('conversionMetricSelector');
+    if (conversionMetricEl) {
+        conversionMetricEl.addEventListener('change', (e) => {
+            currentConversionType = e.target.value;
+            updateConversionChart();
+            updateOverviewCards();
+        });
+    }
+
     // 留存周数
     document.querySelectorAll('.tabs .tab-btn[data-weeks]').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -258,17 +277,17 @@ function updateOverviewCards() {
         document.getElementById('userChange').textContent = '暂无数据';
     }
 
-    // 平均转化率（最近7天）
-    const conversionData = allData.conversion;
-    if (conversionData && conversionData.length > 0) {
+    // 平均转化率（最近7天，按当前选中的转化率指标）
+    const conversionData = currentConversionType === 'user' ? allData.conversionUser : allData.conversionCount;
+    const rateKey = getConversionRateKey(conversionData);
+    if (conversionData && conversionData.length > 0 && rateKey) {
         const recentData = conversionData.slice(-7);
-        const avgRate = recentData.reduce((sum, item) => sum + parseFloat(item['搜索转化率']), 0) / recentData.length;
-        document.getElementById('conversionRate').textContent = avgRate.toFixed(2) + '%';
-        
-        // 计算趋势
-        const firstRate = parseFloat(recentData[0]['搜索转化率']);
-        const lastRate = parseFloat(recentData[recentData.length - 1]['搜索转化率']);
-        const trend = lastRate - firstRate;
+        const avgRate = recentData.reduce((sum, item) => sum + parseFloat(item[rateKey] || 0), 0) / recentData.length;
+        const firstRate = parseFloat(recentData[0][rateKey]);
+        const lastRate = parseFloat(recentData[recentData.length - 1][rateKey]);
+        const trend = (typeof lastRate === 'number' && !isNaN(lastRate) && typeof firstRate === 'number' && !isNaN(firstRate))
+            ? lastRate - firstRate : 0;
+        document.getElementById('conversionRate').textContent = (isNaN(avgRate) ? 0 : avgRate).toFixed(2) + '%';
         const arrow = trend >= 0 ? '↑' : '↓';
         document.getElementById('conversionChange').textContent = `7日趋势 ${arrow} ${Math.abs(trend).toFixed(2)}%`;
     } else {
@@ -507,11 +526,100 @@ function updateFunnelChart() {
     window.addEventListener('resize', () => chart.resize());
 }
 
+// 从转化率数据第一行推断“转化率”列名（兼容乱码或不同字段名）
+function getConversionRateKey(arr) {
+    if (!arr || arr.length === 0) return null;
+    const first = arr[0];
+    if (first['搜索转化率'] !== undefined) return '搜索转化率';
+    if (first['搜索点击转化率'] !== undefined) return '搜索点击转化率';
+    for (const k of Object.keys(first)) {
+        const v = first[k];
+        if (typeof v === 'string' && /^\d+(\.\d+)?$/.test(v.trim()) && parseFloat(v) >= 0 && parseFloat(v) <= 100) return k;
+    }
+    return null;
+}
+
+// 从转化率数据第一行推断“日期”列名
+function getConversionDateKey(arr) {
+    if (!arr || arr.length === 0) return null;
+    const first = arr[0];
+    if (first.dt !== undefined) return 'dt';
+    if (first['日期'] !== undefined) return '日期';
+    for (const k of Object.keys(first)) {
+        const v = first[k];
+        if (typeof v === 'string' && /^\d{4}[\/\-]\d/.test(v.trim())) return k;
+    }
+    return null;
+}
+
+// 从转化率数据推断“搜索次数/搜索点击次数”列名（用于 tooltip 等）
+function getConversionVolumeKeys(arr) {
+    if (!arr || arr.length === 0) return { search: null, click: null };
+    const first = arr[0];
+    const keys = Object.keys(first).filter(k => k && !/^(dt|日期)$/.test(k));
+    let searchKey = null, clickKey = null;
+    if (first['搜索次数'] !== undefined) searchKey = '搜索次数';
+    if (first['搜索点击次数'] !== undefined) clickKey = '搜索点击次数';
+    if (!searchKey && keys.length >= 2) {
+        const numKeys = keys.filter(k => /^\d+$/.test(String(first[k]).trim()));
+        if (numKeys.length >= 2) { searchKey = numKeys[0]; clickKey = numKeys[1]; }
+    }
+    return { search: searchKey, click: clickKey };
+}
+
+// 获取当前选中的转化率数据并统一字段名（含搜索量用于 tooltip）
+function getCurrentConversionData() {
+    const raw = currentConversionType === 'user' ? allData.conversionUser : allData.conversionCount;
+    if (!raw || raw.length === 0) return [];
+    const dateKey = getConversionDateKey(raw);
+    const rateKey = getConversionRateKey(raw);
+    const vol = getConversionVolumeKeys(raw);
+    if (!dateKey || !rateKey) return [];
+    const sliceData = raw.slice(-currentConversionRange);
+    return sliceData.map(item => ({
+        date: item[dateKey],
+        rate: parseFloat(item[rateKey]) || 0,
+        searchPv: vol.search ? parseInt(item[vol.search], 10) || 0 : null,
+        clickPv: vol.click ? parseInt(item[vol.click], 10) || 0 : null
+    }));
+}
+
+// 千分位格式化
+function formatNum(n) {
+    if (n == null || isNaN(n)) return '-';
+    return Number(n).toLocaleString();
+}
+
 // 更新转化率图表
 function updateConversionChart() {
-    const data = allData.conversion.slice(-currentConversionRange);
+    const data = getCurrentConversionData();
+    const seriesName = currentConversionType === 'user' ? '搜索用户转化率' : '搜索次数转化率';
 
     const chart = echarts.init(document.getElementById('conversionChart'));
+
+    if (data.length === 0) {
+        chart.setOption({ title: { text: '暂无转化率数据', left: 'center', top: 'middle', textStyle: { color: '#999' } } });
+        ['conversionStatAvg', 'conversionStatMax', 'conversionStatMin'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '-';
+        });
+        window.addEventListener('resize', () => chart.resize());
+        return;
+    }
+
+    const rates = data.map(d => d.rate).filter(r => !isNaN(r));
+    const avg = rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : 0;
+    const max = rates.length ? Math.max.apply(null, rates) : 0;
+    const min = rates.length ? Math.min.apply(null, rates) : 0;
+    const yMin = Math.max(0, Math.floor(min - 2));
+    const yMax = Math.min(100, Math.ceil(max + 2));
+
+    const statAvgEl = document.getElementById('conversionStatAvg');
+    const statMaxEl = document.getElementById('conversionStatMax');
+    const statMinEl = document.getElementById('conversionStatMin');
+    if (statAvgEl) statAvgEl.textContent = avg.toFixed(2) + '%';
+    if (statMaxEl) statMaxEl.textContent = max.toFixed(2) + '%';
+    if (statMinEl) statMinEl.textContent = min.toFixed(2) + '%';
 
     chart.setOption({
         tooltip: {
@@ -521,11 +629,18 @@ function updateConversionChart() {
             borderWidth: 1,
             textStyle: { color: '#333' },
             formatter: function(params) {
-                return `${params[0].name}<br/>${params[0].seriesName}: ${params[0].value}%`;
+                const idx = params[0].dataIndex;
+                const d = data[idx];
+                let html = `<strong>${d.date}</strong><br/>${seriesName}: ${d.rate.toFixed(2)}%`;
+                if (d.searchPv != null || d.clickPv != null) {
+                    if (d.searchPv != null) html += `<br/>搜索次数: ${formatNum(d.searchPv)}`;
+                    if (d.clickPv != null) html += `<br/>搜索点击: ${formatNum(d.clickPv)}`;
+                }
+                return html;
             }
         },
         legend: {
-            data: ['搜索转化率'],
+            data: [seriesName],
             top: 10,
             textStyle: { color: '#666' }
         },
@@ -533,20 +648,28 @@ function updateConversionChart() {
             left: '3%',
             right: '4%',
             bottom: '3%',
+            top: 36,
             containLabel: true
         },
         xAxis: {
             type: 'category',
             boundaryGap: false,
-            data: data.map(item => item.dt.substring(5)),
+            data: data.map(item => {
+                const s = String(item.date);
+                const m = s.match(/(\d{4})[\/\-](\d{1,2})[\/\-]?(\d{1,2})?/);
+                return m ? (parseInt(m[2], 10) + (m[3] ? '/' + parseInt(m[3], 10) : '')) : s.substring(5);
+            }),
             axisLabel: { 
                 color: '#666',
-                rotate: 45
+                rotate: 45,
+                fontSize: 11
             },
             axisLine: { lineStyle: { color: '#e0e0e0' } }
         },
         yAxis: {
             type: 'value',
+            min: yMin,
+            max: yMax,
             axisLabel: {
                 formatter: '{value}%',
                 color: '#666'
@@ -555,17 +678,14 @@ function updateConversionChart() {
                 lineStyle: { 
                     color: '#f0f0f0',
                     type: 'dashed'
-                } 
-            },
-            min: function(value) {
-                return Math.floor(value.min - 2);
+                }
             }
         },
         series: [{
-            name: '搜索转化率',
+            name: seriesName,
             type: 'line',
             smooth: true,
-            data: data.map(item => parseFloat(item['搜索转化率'])),
+            data: data.map(item => item.rate),
             itemStyle: { color: '#FF6B35' },
             lineStyle: { width: 3 },
             areaStyle: {
