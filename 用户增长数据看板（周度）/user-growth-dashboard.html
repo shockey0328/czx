@@ -37,7 +37,8 @@
       }
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <!-- 同源 ECharts，避免 jsdelivr 超时 / 跟踪防护导致线上图表不可用 -->
+  <script src="./lib/echarts.min.js"></script>
   <style>
     html { -webkit-text-size-adjust: 100%; }
     html, body { height: 100%; overflow-x: hidden; }
@@ -97,7 +98,7 @@
   <div class="flex-1 w-full max-w-[min(1480px,100%)] mx-auto px-4 sm:px-6 lg:px-10 py-5 sm:py-8 lg:py-10">
     <main id="main-content" class="outline-none" tabindex="-1">
     <div class="hidden" aria-hidden="true">
-      <img id="brandLogo" src="./logo.png" alt="" width="1" height="1" decoding="async" class="absolute h-px w-px opacity-0" />
+      <img id="brandLogo" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" width="1" height="1" decoding="async" class="absolute h-px w-px opacity-0" />
       <div
         id="logoFallback"
         class="hidden h-10 min-w-[2.5rem] items-center justify-center rounded-3xl border border-orange-200/80 bg-orange-50 px-3 text-sm font-semibold text-brand"
@@ -454,20 +455,35 @@
       return new TextDecoder("utf-8").decode(bytes);
     }
 
+    /** 排除 SPA/404 页返回的 HTML（仍可能 res.ok） */
+    function looksLikeCsvText(text) {
+      const t = String(text || "").trim();
+      if (!t) return false;
+      const head = t.slice(0, 80).toLowerCase();
+      if (head.startsWith("<!doctype") || head.startsWith("<html") || head.startsWith("<head")) return false;
+      return true;
+    }
+
     /**
-     * 先依次 fetch 主路径与备选路径（渠道表支持 _fixed 等本地副本）；
-     * 失败则使用 embedded-csv-b64.js 内嵌（file:// 场景）。
+     * 先 fetch 同目录 CSV（URL 相对当前页解析）；失败或内容非 CSV 时用 embedded-csv-b64.js（线上未部署 CSV 时仍可展示）。
      */
     async function loadCsvText(key, url, alternateUrls = []) {
-      const urls = [url, ...alternateUrls].filter(Boolean);
+      const urls = [url, ...alternateUrls].filter(Boolean).map((u) => {
+        try {
+          return new URL(u, window.location.href).href;
+        } catch (e) {
+          return u;
+        }
+      });
       for (const u of urls) {
         try {
           const res = await fetch(u, { cache: "no-store" });
           if (res.ok) {
-            return await res.text();
+            const text = await res.text();
+            if (looksLikeCsvText(text)) return text;
           }
         } catch (e) {
-          /* file:// 等环境会抛错 */
+          /* file://、跨域、网络错误等 */
         }
       }
       if (typeof EMBEDDED_CSV_B64 !== "undefined" && EMBEDDED_CSV_B64[key]) {
@@ -1110,6 +1126,7 @@
     }
 
     function updateCharts(rangeKey) {
+      if (typeof echarts === "undefined") return;
       currentTrendRange = rangeKey;
       const { labels, active, newUsers, growth, share } = getDailyTrendSlice(rangeKey);
       chartActive && chartActive.setOption(buildAreaChartOptions(labels, active), true);
@@ -1118,6 +1135,14 @@
     }
 
     function initCharts() {
+      if (typeof echarts === "undefined") {
+        console.warn("[用户增长看板] ECharts 未加载，请确认已部署 lib/echarts.min.js");
+        ["chartActive", "chartNewMix", "chartNewShare"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = '<p class="p-4 text-center text-sm text-stone-500">图表库未加载，请刷新或联系管理员检查 lib/echarts.min.js</p>';
+        });
+        return;
+      }
       chartActive = echarts.init(document.getElementById("chartActive"));
       chartNewMix = echarts.init(document.getElementById("chartNewMix"));
       chartNewShare = echarts.init(document.getElementById("chartNewShare"));
@@ -1248,6 +1273,12 @@
 
       const pieActiveEl = document.getElementById("pieActive");
       const pieNewEl = document.getElementById("pieNew");
+
+      if (typeof echarts === "undefined") {
+        if (pieActiveEl) pieActiveEl.innerHTML = '<p class="flex min-h-[200px] items-center justify-center p-4 text-sm text-stone-500">图表库未加载</p>';
+        if (pieNewEl) pieNewEl.innerHTML = '<p class="flex min-h-[200px] items-center justify-center p-4 text-sm text-stone-500">图表库未加载</p>';
+        return;
+      }
 
       if (!pieActiveChart) pieActiveChart = echarts.init(pieActiveEl);
       if (!pieNewChart) pieNewChart = echarts.init(pieNewEl);
