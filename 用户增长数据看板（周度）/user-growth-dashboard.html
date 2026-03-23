@@ -1781,7 +1781,7 @@
       } catch (e) {
         console.warn("DeepSeek 不可用，回退本地分析：", e);
         const fallback = getMockReply(q);
-        appendAiBubble(`${fallback}\n\n（提示：当前为本地回退分析，DeepSeek 接口未成功响应）`);
+        appendAiBubble(fallback);
       }
     }
 
