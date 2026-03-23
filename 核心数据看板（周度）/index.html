@@ -1225,6 +1225,22 @@
         let charts = {};
         let aiChatHistory = []; // AI对话历史
 
+        /** 统一为数字，避免 JSON/下拉框把 year、week 解析成字符串导致 === 匹配失败（同比/环比不显示） */
+        function normalizeCurrentWeek(raw) {
+            if (!raw || raw.year == null || raw.week == null) return null;
+            const year = Number(raw.year);
+            const week = Number(raw.week);
+            if (!Number.isFinite(year) || !Number.isFinite(week)) return null;
+            return { year, week };
+        }
+
+        function findWeeklyRow(year, week) {
+            const y = Number(year);
+            const w = Number(week);
+            if (!Number.isFinite(y) || !Number.isFinite(w)) return undefined;
+            return weeklyData.find(item => item.年份 === y && item.周数 === w);
+        }
+
         // 初始化应用
         document.addEventListener('DOMContentLoaded', function() {
             console.log('页面加载完成，开始初始化...');
@@ -1257,7 +1273,7 @@
                     if (cur.年份 > best.年份 || (cur.年份 === best.年份 && cur.周数 > best.周数)) return cur;
                     return best;
                 });
-                currentWeek = { year: latestWeek.年份, week: latestWeek.周数 };
+                currentWeek = normalizeCurrentWeek({ year: latestWeek.年份, week: latestWeek.周数 });
                 document.getElementById('weekSelect').value = JSON.stringify(currentWeek);
                 updateAllMetrics();
                 updateCharts();
@@ -1846,8 +1862,9 @@
                     const selectedWeek = e.target.value;
                     if (selectedWeek) {
                         try {
-                            currentWeek = JSON.parse(selectedWeek);
+                            currentWeek = normalizeCurrentWeek(JSON.parse(selectedWeek));
                             console.log('当前选择的周度:', currentWeek);
+                            if (!currentWeek) return;
                             updateAllMetrics();
                             updateCharts();
                             updateB2BMetrics(); // 添加B端数据更新
@@ -1903,13 +1920,12 @@
         function updateWeekContextBar() {
             const bar = document.getElementById('weekContextBar');
             if (!bar) return;
-            if (!currentWeek) {
+            const cw = normalizeCurrentWeek(currentWeek);
+            if (!cw) {
                 bar.textContent = '请选择周度';
                 return;
             }
-            const d = weeklyData.find(item =>
-                item.年份 === currentWeek.year && item.周数 === currentWeek.week
-            );
+            const d = findWeeklyRow(cw.year, cw.week);
             if (!d) {
                 bar.textContent = '未找到该周数据';
                 return;
@@ -1923,15 +1939,14 @@
         function updateAllMetrics() {
             console.log('更新所有指标，当前周度:', currentWeek);
             
-            if (!currentWeek) {
+            const cw = normalizeCurrentWeek(currentWeek);
+            if (!cw) {
                 console.log('没有选择周度，跳过更新');
                 updateWeekContextBar();
                 return;
             }
             
-            const currentData = weeklyData.find(item => 
-                item.年份 === currentWeek.year && item.周数 === currentWeek.week
-            );
+            const currentData = findWeeklyRow(cw.year, cw.week);
             
             if (!currentData) {
                 console.log('找不到当前周度的数据');
@@ -1941,14 +1956,10 @@
 
             console.log('当前周度数据:', currentData);
 
-            // 获取对比数据
-            const lastWeekData = weeklyData.find(item => 
-                item.年份 === currentWeek.year && item.周数 === currentWeek.week - 1
-            );
+            // 获取对比数据（同年内上周；同比：去年同周序号）
+            const lastWeekData = findWeeklyRow(cw.year, cw.week - 1);
             
-            const lastYearData = weeklyData.find(item => 
-                item.年份 === currentWeek.year - 1 && item.周数 === currentWeek.week
-            );
+            const lastYearData = findWeeklyRow(cw.year - 1, cw.week);
 
             console.log('上周数据:', lastWeekData);
             console.log('去年同期数据:', lastYearData);
@@ -1981,39 +1992,47 @@
             // 计算并更新环比
             const wowElement = document.getElementById(id + 'WoW');
             if (wowElement) {
-                if (lastWeek !== undefined) {
-                    const wowChange = calculateChange(current, lastWeek, type);
+                const wowChange = calculateChange(current, lastWeek, type);
+                if (wowChange != null) {
                     wowElement.textContent = `环比: ${wowChange}`;
                     wowElement.className = 'change-item ' + getChangeClass(wowChange);
+                    wowElement.title = '';
                 } else {
                     wowElement.textContent = '环比: -';
                     wowElement.className = 'change-item';
+                    wowElement.title = '';
                 }
             }
 
             // 计算并更新同比
             const yoyElement = document.getElementById(id + 'YoY');
             if (yoyElement) {
-                if (lastYear !== undefined) {
-                    const yoyChange = calculateChange(current, lastYear, type);
+                const yoyChange = calculateChange(current, lastYear, type);
+                if (yoyChange != null) {
                     yoyElement.textContent = `同比: ${yoyChange}`;
                     yoyElement.className = 'change-item ' + getChangeClass(yoyChange);
+                    yoyElement.title = type === 'percent'
+                        ? `去年同期：${lastYear}%`
+                        : `去年同期：${formatNumber(lastYear)}`;
                 } else {
                     yoyElement.textContent = '同比: -';
                     yoyElement.className = 'change-item';
+                    yoyElement.title = '';
                 }
             }
         }
 
-        // 计算变化
+        // 计算变化（无效或分母为 0 时返回 null，界面显示「-」）
         function calculateChange(current, previous, type) {
+            if (previous == null || !Number.isFinite(previous)) return null;
+            if (!Number.isFinite(current)) return null;
             if (type === 'percent') {
                 const change = current - previous;
                 return (change >= 0 ? '+' : '') + change.toFixed(2) + 'pp';
-            } else {
-                const change = ((current - previous) / previous * 100);
-                return (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
             }
+            if (previous === 0) return null;
+            const change = ((current - previous) / previous * 100);
+            return (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
         }
 
         // 获取变化样式类（中国风格：红涨绿跌）
@@ -2045,12 +2064,11 @@
 
         // 获取指定周期的每日数据
         function getDailyDataForPeriod(weeks) {
-            if (!currentWeek) return { startDate: null, endDate: null };
+            const cw = normalizeCurrentWeek(currentWeek);
+            if (!cw) return { startDate: null, endDate: null };
             
             // 找到当前选择周的结束日期
-            const currentWeekData = weeklyData.find(item => 
-                item.年份 === currentWeek.year && item.周数 === currentWeek.week
-            );
+            const currentWeekData = findWeeklyRow(cw.year, cw.week);
             
             if (!currentWeekData) return { startDate: null, endDate: null };
             
@@ -2261,10 +2279,9 @@
             
             // 根据当前选择的周度查找对应的B端数据
             let currentB2BData = null;
-            if (currentWeek) {
-                const currentWeekData = weeklyData.find(item => 
-                    item.年份 === currentWeek.year && item.周数 === currentWeek.week
-                );
+            const cwB2b = normalizeCurrentWeek(currentWeek);
+            if (cwB2b) {
+                const currentWeekData = findWeeklyRow(cwB2b.year, cwB2b.week);
                 
                 if (currentWeekData) {
                     // 根据日期范围查找对应的B端数据
@@ -2298,22 +2315,17 @@
         // 生成AI分析（调用DeepSeek API）
         async function generateAIAnalysis() {
             console.log('生成AI分析...');
-            if (!currentWeek) return;
+            const cw = normalizeCurrentWeek(currentWeek);
+            if (!cw) return;
             
             const analysisElement = document.getElementById('aiAnalysis');
             if (!analysisElement) return;
             
-            const currentData = weeklyData.find(item => 
-                item.年份 === currentWeek.year && item.周数 === currentWeek.week
-            );
+            const currentData = findWeeklyRow(cw.year, cw.week);
             
-            const lastWeekData = weeklyData.find(item => 
-                item.年份 === currentWeek.year && item.周数 === currentWeek.week - 1
-            );
+            const lastWeekData = findWeeklyRow(cw.year, cw.week - 1);
             
-            const lastYearData = weeklyData.find(item => 
-                item.年份 === currentWeek.year - 1 && item.周数 === currentWeek.week
-            );
+            const lastYearData = findWeeklyRow(cw.year - 1, cw.week);
             
             if (!currentData) {
                 analysisElement.innerHTML = '<div class="loading">暂无数据分析</div>';
@@ -2371,9 +2383,14 @@ ${lastWeekData ? `【环比变化】vs上周：
 • 留存率：${metrics.retentionWoW}
 • 使用率：${metrics.usageWoW}` : '【说明】首周数据，无环比对比'}
 
-${lastYearData ? `【同比变化】vs去年同期：
+${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年第${currentWeek.week}周）：
 • 活跃用户：${metrics.userYoY}
-• 营收：${metrics.revenueYoY}` : ''}
+• 营收：${metrics.revenueYoY}
+• ARPU：${metrics.arpuYoY}
+• 次周留存率：${metrics.retentionYoY}
+• 使用率：${metrics.usageYoY}
+• 深度访问率：${metrics.deepAccessYoY}
+• 大会员活跃率：${metrics.vipActiveYoY}` : ''}
 
 【分析要求】请按照以下3个维度分析，每个维度2-3个要点：
 
@@ -2471,24 +2488,26 @@ ${lastYearData ? `【同比变化】vs去年同期：
             
             if (lastWeek) {
                 // 环比计算
-                metrics.userWoW = calculateChange(current.活跃用户, lastWeek.活跃用户, 'number');
-                metrics.revenueWoW = calculateChange(current.营收, lastWeek.营收, 'number');
-                metrics.arpuWoW = calculateChange(current.ARPU, lastWeek.ARPU, 'number');
-                metrics.retentionWoW = calculateChange(current.次周留存率, lastWeek.次周留存率, 'percent');
-                metrics.usageWoW = calculateChange(current.使用率, lastWeek.使用率, 'percent');
+                metrics.userWoW = calculateChange(current.活跃用户, lastWeek.活跃用户, 'number') ?? '—';
+                metrics.revenueWoW = calculateChange(current.营收, lastWeek.营收, 'number') ?? '—';
+                metrics.arpuWoW = calculateChange(current.ARPU, lastWeek.ARPU, 'number') ?? '—';
+                metrics.retentionWoW = calculateChange(current.次周留存率, lastWeek.次周留存率, 'percent') ?? '—';
+                metrics.usageWoW = calculateChange(current.使用率, lastWeek.使用率, 'percent') ?? '—';
                 
                 // 计算数值变化
-                metrics.userWoWNum = ((current.活跃用户 - lastWeek.活跃用户) / lastWeek.活跃用户 * 100).toFixed(1);
-                metrics.revenueWoWNum = ((current.营收 - lastWeek.营收) / lastWeek.营收 * 100).toFixed(1);
+                metrics.userWoWNum = lastWeek.活跃用户 ? ((current.活跃用户 - lastWeek.活跃用户) / lastWeek.活跃用户 * 100).toFixed(1) : '0';
+                metrics.revenueWoWNum = lastWeek.营收 ? ((current.营收 - lastWeek.营收) / lastWeek.营收 * 100).toFixed(1) : '0';
             }
             
             if (lastYear) {
-                // 同比计算
-                metrics.userYoY = calculateChange(current.活跃用户, lastYear.活跃用户, 'number');
-                metrics.revenueYoY = calculateChange(current.营收, lastYear.营收, 'number');
-                metrics.arpuYoY = calculateChange(current.ARPU, lastYear.ARPU, 'number');
-                metrics.retentionYoY = calculateChange(current.次周留存率, lastYear.次周留存率, 'percent');
-                metrics.usageYoY = calculateChange(current.使用率, lastYear.使用率, 'percent');
+                // 同比计算（去年同周序号）
+                metrics.userYoY = calculateChange(current.活跃用户, lastYear.活跃用户, 'number') ?? '—';
+                metrics.revenueYoY = calculateChange(current.营收, lastYear.营收, 'number') ?? '—';
+                metrics.arpuYoY = calculateChange(current.ARPU, lastYear.ARPU, 'number') ?? '—';
+                metrics.retentionYoY = calculateChange(current.次周留存率, lastYear.次周留存率, 'percent') ?? '—';
+                metrics.usageYoY = calculateChange(current.使用率, lastYear.使用率, 'percent') ?? '—';
+                metrics.deepAccessYoY = calculateChange(current.深度访问率, lastYear.深度访问率, 'percent') ?? '—';
+                metrics.vipActiveYoY = calculateChange(current.大会员活跃率, lastYear.大会员活跃率, 'percent') ?? '—';
             }
             
             return metrics;
@@ -2657,7 +2676,7 @@ ${lastYearData ? `【同比变化】vs去年同期：
             const performanceText = `周活跃用户${formatNumber(currentData.活跃用户)}，营收${formatNumber(currentData.营收)}元。ARPU为${currentData.ARPU}元，留存率${currentData.次周留存率}%，使用率${currentData.使用率}%。`;
             
             // 基于教育场景的关键变化分析
-            const keyChanges = analyzeEducationScenarioChanges(currentData, lastWeekData, metrics, weekInfo);
+            const keyChanges = analyzeEducationScenarioChanges(currentData, lastWeekData, lastYearData, metrics, weekInfo);
             
             // 基于教育场景的策略建议
             const strategies = generateEducationStrategies(currentData, lastWeekData, metrics, weekInfo);
@@ -2708,10 +2727,11 @@ ${lastYearData ? `【同比变化】vs去年同期：
         }
 
         // 获取周度的学习场景信息
-        function getWeekScenarioInfo(currentWeek) {
-            if (!currentWeek) return { scenario: 'normal', description: '' };
+        function getWeekScenarioInfo(weekCtx) {
+            const cw = normalizeCurrentWeek(weekCtx);
+            if (!cw) return { scenario: 'normal', description: '' };
             
-            const { year, week } = currentWeek;
+            const { year, week } = cw;
             
             // 2026年春节是2月17日（正月初一），假期约2月16日-22日
             if (year === 2026 && week === 5) {
@@ -2809,11 +2829,15 @@ ${lastYearData ? `【同比变化】vs去年同期：
         }
 
         // 基于教育场景的关键变化分析 - 按用户、收入、使用三个维度
-        function analyzeEducationScenarioChanges(currentData, lastWeekData, metrics, weekInfo) {
+        function analyzeEducationScenarioChanges(currentData, lastWeekData, lastYearData, metrics, weekInfo) {
             const changes = [];
-            
+
+            if (lastYearData && metrics.userYoY && metrics.userYoY !== '—') {
+                changes.push(`【同比】活跃用户 ${metrics.userYoY}，营收 ${metrics.revenueYoY}（vs 去年同周）`);
+            }
+
             if (!lastWeekData) {
-                changes.push('首周数据，暂无环比对比');
+                if (changes.length === 0) changes.push('首周数据，暂无环比对比');
                 changes.push(`${weekInfo.description}`);
                 return changes;
             }
@@ -3117,23 +3141,18 @@ ${userMessage}
         
         // 构建数据上下文
         function buildDataContext() {
-            if (!currentWeek) return '暂无选择的周度数据';
+            const cw = normalizeCurrentWeek(currentWeek);
+            if (!cw) return '暂无选择的周度数据';
             
-            const currentData = weeklyData.find(item => 
-                item.年份 === currentWeek.year && item.周数 === currentWeek.week
-            );
+            const currentData = findWeeklyRow(cw.year, cw.week);
             
-            const lastWeekData = weeklyData.find(item => 
-                item.年份 === currentWeek.year && item.周数 === currentWeek.week - 1
-            );
+            const lastWeekData = findWeeklyRow(cw.year, cw.week - 1);
             
-            const lastYearData = weeklyData.find(item => 
-                item.年份 === currentWeek.year - 1 && item.周数 === currentWeek.week
-            );
+            const lastYearData = findWeeklyRow(cw.year - 1, cw.week);
             
             if (!currentData) return '当前周度暂无数据';
             
-            let context = `当前选择：${currentWeek.year}年第${currentWeek.week}周
+            let context = `当前选择：${cw.year}年第${cw.week}周
 • 活跃用户：${formatNumber(currentData.活跃用户)}人
 • 营收：${formatNumber(currentData.营收)}元
 • ARPU：${currentData.ARPU}元
@@ -3152,17 +3171,21 @@ ${userMessage}
             }
             
             if (lastYearData) {
-                const userYoY = ((currentData.活跃用户 - lastYearData.活跃用户) / lastYearData.活跃用户 * 100).toFixed(1);
-                const revenueYoY = ((currentData.营收 - lastYearData.营收) / lastYearData.营收 * 100).toFixed(1);
+                const km = calculateKeyMetrics(currentData, lastWeekData, lastYearData);
                 context += `
 
-【同比变化】
-• 活跃用户：${userYoY > 0 ? '+' : ''}${userYoY}%
-• 营收：${revenueYoY > 0 ? '+' : ''}${revenueYoY}%`;
+【同比变化】vs ${cw.year - 1}年第${cw.week}周
+• 活跃用户：${km.userYoY}
+• 营收：${km.revenueYoY}
+• ARPU：${km.arpuYoY}
+• 次周留存率：${km.retentionYoY}
+• 使用率：${km.usageYoY}
+• 深度访问率：${km.deepAccessYoY}
+• 大会员活跃率：${km.vipActiveYoY}`;
             }
             
             // 添加场景信息
-            const weekInfo = getWeekScenarioInfo(currentWeek);
+            const weekInfo = getWeekScenarioInfo(cw);
             context += `
 
 【场景信息】${weekInfo.description}`;

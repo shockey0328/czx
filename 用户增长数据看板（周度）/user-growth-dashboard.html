@@ -114,10 +114,10 @@
     <section class="mt-10 scroll-mt-6 sm:mt-14" aria-labelledby="heading-kpi">
       <h2 id="heading-kpi" class="mb-6 text-xl font-bold tracking-tight text-brand sm:mb-8">核心指标</h2>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 lg:gap-5">
         <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
           <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
-          <div class="absolute top-5 right-5" id="kpiNewUsersDelta"></div>
+          <div class="absolute top-5 right-5 flex flex-col items-end gap-0.5" id="kpiNewUsersDeltas"></div>
           <div class="pr-14">
             <div class="text-[13px] font-medium text-stone-600">新增用户</div>
             <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiNewUsersValue">-</div>
@@ -126,7 +126,7 @@
 
         <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
           <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
-          <div class="absolute top-5 right-5" id="kpiActiveUsersDelta"></div>
+          <div class="absolute top-5 right-5 flex flex-col items-end gap-0.5" id="kpiActiveUsersDeltas"></div>
           <div class="pr-14">
             <div class="text-[13px] font-medium text-stone-600">活跃用户</div>
             <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiActiveUsersValue">-</div>
@@ -135,7 +135,7 @@
 
         <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
           <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
-          <div class="absolute top-5 right-5" id="kpiNewShareDelta"></div>
+          <div class="absolute top-5 right-5 flex flex-col items-end gap-0.5" id="kpiNewShareDeltas"></div>
           <div class="pr-14">
             <div class="text-[13px] font-medium text-stone-600">新用户占比</div>
             <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiNewShareValue">-</div>
@@ -144,7 +144,16 @@
 
         <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
           <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
-          <div class="absolute top-5 right-5" id="kpiCumulativeDelta"></div>
+          <div class="absolute top-5 right-5 flex flex-col items-end gap-0.5" id="kpiNewRetentionDeltas"></div>
+          <div class="pr-14">
+            <div class="text-[13px] font-medium text-stone-600">新用户次周留存</div>
+            <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiNewRetentionValue">-</div>
+          </div>
+        </div>
+
+        <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
+          <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
+          <div class="absolute top-5 right-5 flex flex-col items-end gap-0.5" id="kpiCumulativeDeltas"></div>
           <div class="pr-14">
             <div class="text-[13px] font-medium text-stone-600">累计用户</div>
             <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiCumulativeValue">-</div>
@@ -323,6 +332,8 @@
       weeks: [],
       activeUsers: [],
       newUsers: [],
+      /** 新用户次周留存（%，与 CSV「新用户次周留存」列一致） */
+      newUserRetention: [],
       cumulativeUsers: [],
 
       // 模块三：渠道展示（当周全部渠道来源，按当期占比排序）
@@ -344,6 +355,9 @@
     let dailyRows = [];           // {dtISO, active_uv, new_uv, old_uv, sharePct}
     let activeChannelRows = [];  // {week_startISO, week_endISO, channel_name, uv}
     let newChannelRows = [];
+
+    /** 解析后的核心表按「年-周序号」索引，用于同比（如 2026 第 n 周 vs 2025 第 n 周） */
+    let coreRowByYearWeek = new Map();
 
     /** 当前选中的周在 coreWeeks（当年序列）中的下标 */
     let selectedWeekIdx = 0;
@@ -677,6 +691,7 @@
         active: coreHeader.indexOf("活跃用户"),
         news: coreHeader.indexOf("新增用户"),
         share: coreHeader.indexOf("新增用户占比"),
+        retention: coreHeader.indexOf("新用户次周留存"),
         cum: coreHeader.indexOf("累计用户"),
       };
 
@@ -687,6 +702,7 @@
         const startISO = toISODate(parseSlashDate(startSlash));
         const endISO = toISODate(parseSlashDate(endSlash));
         const year = parseInt(String(startISO).slice(0, 4), 10);
+        const hasRetention = coreIdx.retention >= 0 && r[coreIdx.retention] != null && String(r[coreIdx.retention]).trim() !== "";
         return {
           weekNo,
           year,
@@ -695,9 +711,15 @@
           active: toNumber(r[coreIdx.active]),
           newUsers: toNumber(r[coreIdx.news]),
           sharePct: toNumber(r[coreIdx.share]),
+          newUserRetention: hasRetention ? toNumber(r[coreIdx.retention]) : NaN,
           cum: toNumber(r[coreIdx.cum]),
         };
       }).filter(x => x.weekNo && x.startISO);
+
+      coreRowByYearWeek = new Map();
+      for (const row of coreRowsParsed) {
+        coreRowByYearWeek.set(`${row.year}-${row.weekNo}`, row);
+      }
 
       const coreCurrentYear = coreRowsParsed
         .filter(r => r.year === CURRENT_YEAR)
@@ -707,6 +729,7 @@
       mock.weeks = coreCurrentYear.map(w => `W${w.weekNo}`);
       mock.activeUsers = coreCurrentYear.map(r => r.active);
       mock.newUsers = coreCurrentYear.map(r => r.newUsers);
+      mock.newUserRetention = coreCurrentYear.map(r => r.newUserRetention);
       mock.cumulativeUsers = coreCurrentYear.map(r => r.cum);
 
       selectedWeekIdx = Math.max(0, coreWeeks.length - 1);
@@ -812,6 +835,23 @@
       `;
     }
 
+    /** 同比：规模类指标相对去年同周的变化率（%）；基数为 0 或缺失时返回 NaN */
+    function yoyRate(curr, prev) {
+      if (!isFinite(curr) || !isFinite(prev) || prev === 0) return NaN;
+      return ((curr - prev) / prev) * 100;
+    }
+
+    /** 同比：占比类用百分点差（本期% − 去年同期%） */
+    function yoyPP(curr, prev) {
+      if (!isFinite(curr) || !isFinite(prev)) return NaN;
+      return curr - prev;
+    }
+
+    /** 核心指标卡片右上角：环比 + 同比（与「新用户次周留存」布局一致） */
+    function dualDeltaHtml(wow, yoy, variant = "rate") {
+      return `<div class="flex flex-col items-end gap-0.5">${deltaBadge(wow, "环比", variant)}${deltaBadge(yoy, "同比", variant)}</div>`;
+    }
+
     /**
      * 趋势分析：按「日」切片（与上方周期按钮一致：本周=当前自然周内的每一天；近4周/12周=对应周跨度内的所有日）
      */
@@ -886,17 +926,35 @@
       const shareDeltaPP = hasPrev ? (shareU - newShare[prevIdx]) : NaN;
       const cumDelta = hasPrev ? deltaPct(cumU, cumulativeUsers[prevIdx]) : NaN;
 
+      const wno = coreWeeks[endIdx] ? coreWeeks[endIdx].weekNo : endIdx + 1;
+      const ly = coreRowByYearWeek.get(`${CURRENT_YEAR - 1}-${wno}`);
+      const newYoY = ly ? yoyRate(newU, ly.newUsers) : NaN;
+      const activeYoY = ly ? yoyRate(activeU, ly.active) : NaN;
+      const shareYoY = ly ? yoyPP(shareU, ly.sharePct) : NaN;
+      const cumYoY = ly ? yoyRate(cumU, ly.cum) : NaN;
+
+      const retU = mock.newUserRetention[endIdx];
+      const retWoW = hasPrev && isFinite(retU) && isFinite(mock.newUserRetention[prevIdx])
+        ? (retU - mock.newUserRetention[prevIdx])
+        : NaN;
+      const retYoY = ly && isFinite(ly.newUserRetention) && isFinite(retU)
+        ? (retU - ly.newUserRetention)
+        : NaN;
+
       document.getElementById("kpiNewUsersValue").textContent = formatInt(newU);
-      document.getElementById("kpiNewUsersDelta").innerHTML = deltaBadge(newDelta, "环比");
+      document.getElementById("kpiNewUsersDeltas").innerHTML = dualDeltaHtml(newDelta, newYoY, "rate");
 
       document.getElementById("kpiActiveUsersValue").textContent = formatInt(activeU);
-      document.getElementById("kpiActiveUsersDelta").innerHTML = deltaBadge(activeDelta, "环比");
+      document.getElementById("kpiActiveUsersDeltas").innerHTML = dualDeltaHtml(activeDelta, activeYoY, "rate");
 
       document.getElementById("kpiNewShareValue").textContent = `${nf1(shareU)}%`;
-      document.getElementById("kpiNewShareDelta").innerHTML = deltaBadge(shareDeltaPP, "环比", "pp");
+      document.getElementById("kpiNewShareDeltas").innerHTML = dualDeltaHtml(shareDeltaPP, shareYoY, "pp");
+
+      document.getElementById("kpiNewRetentionValue").textContent = isFinite(retU) ? `${nf1(retU)}%` : "—";
+      document.getElementById("kpiNewRetentionDeltas").innerHTML = dualDeltaHtml(retWoW, retYoY, "pp");
 
       document.getElementById("kpiCumulativeValue").textContent = formatInt(cumU);
-      document.getElementById("kpiCumulativeDelta").innerHTML = deltaBadge(cumDelta, "环比");
+      document.getElementById("kpiCumulativeDeltas").innerHTML = dualDeltaHtml(cumDelta, cumYoY, "rate");
     }
 
     // ---------------------------
@@ -1206,66 +1264,62 @@
       document.getElementById("tableActiveBody").innerHTML = activeRows.map(r => buildTableRowHTML(r)).join("");
       document.getElementById("tableNewBody").innerHTML = newRows.map(r => buildTableRowHTML(r)).join("");
 
-      // 饼图使用统一橙色渐变（通过每一块的线性渐变色模拟）
-      function pieColorStops(i) {
-        const palette = [
-          ["#9A3412", "#FF6B35"],
-          ["#FF6B35", "#FB923C"],
-          ["#C2410C", "#F97316"],
-          ["#F97316", "#FDBA74"],
-          ["#FF6B35", "#FDBA74"],
-          ["#7C2D12", "#FB923C"],
-        ];
-        const p = palette[i % palette.length];
-        return {
-          type: "linear",
-          x: 0, y: 0, x2: 1, y2: 1,
-          colorStops: [
-            { offset: 0, color: p[0] },
-            { offset: 1, color: p[1] }
-          ]
-        };
-      }
-
-      function buildPieData(rows) {
-        return rows.map((r, i) => ({
-          name: r.name,
-          value: r.count,
-          itemStyle: { color: pieColorStops(i) },
-        }));
-      }
-
-      const pieActiveData = buildPieData(activeRows);
-      const pieNewData = buildPieData(newRows);
-
-      function makePieOption(title, pieData, total) {
+      // 渠道图改为横向柱状图：信息密度更高、标签更清晰（替代环形图）
+      function makeBarOption(title, rows, total) {
+        const labels = rows.map((r) => r.name);
+        const values = rows.map((r) => r.count);
+        const shares = rows.map((r) => (total === 0 ? 0 : (r.count / total) * 100));
         return {
           backgroundColor: "transparent",
+          grid: { left: 160, right: 28, top: 14, bottom: 24 },
           tooltip: {
-            trigger: "item",
+            trigger: "axis",
+            axisPointer: { type: "shadow" },
             backgroundColor: "rgba(17,24,39,0.92)",
             borderWidth: 0,
             textStyle: { color: "#fff" },
-            formatter: (p) => {
-              const v = p.value ?? 0;
-              const pct = total === 0 ? 0 : (v / total) * 100;
+            formatter: (params) => {
+              const p = params && params[0];
+              if (!p) return "";
+              const idx = p.dataIndex ?? 0;
               return [
-                `<div style="font-weight:800;margin-bottom:6px;">${p.name}</div>`,
-                `<div>数量：<span style="color:#FB923C;font-weight:900;">${formatInt(v)}</span></div>`,
-                `<div>占比：<span style="color:#FF6B35;font-weight:900;">${pct.toFixed(1)}%</span></div>`
+                `<div style="font-weight:800;margin-bottom:6px;">${labels[idx]}</div>`,
+                `<div>数量：<span style="color:#FB923C;font-weight:900;">${formatInt(values[idx])}</span></div>`,
+                `<div>占比：<span style="color:#FF6B35;font-weight:900;">${shares[idx].toFixed(1)}%</span></div>`
               ].join("");
+            }
+          },
+          xAxis: {
+            type: "value",
+            axisLabel: { color: "rgba(68,64,60,0.75)", formatter: yAxisNumberFormatter },
+            splitLine: { lineStyle: { color: "rgba(107,114,128,0.12)" } }
+          },
+          yAxis: {
+            type: "category",
+            data: labels,
+            inverse: true,
+            axisTick: { show: false },
+            axisLine: { lineStyle: { color: "rgba(107,114,128,0.28)" } },
+            axisLabel: {
+              color: "rgba(68,64,60,0.88)",
+              width: 140,
+              overflow: "truncate",
             }
           },
           series: [
             {
               name: title,
-              type: "pie",
-              radius: ["58%", "82%"],
-              avoidLabelOverlap: true,
-              itemStyle: { borderColor: "#FFFFFF", borderWidth: 2 },
-              label: { show: false },
-              data: pieData,
-              emphasis: { scale: true, scaleSize: 8 },
+              type: "bar",
+              data: values,
+              barMaxWidth: 18,
+              itemStyle: {
+                borderRadius: [0, 8, 8, 0],
+                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                  { offset: 0, color: "#FDBA74" },
+                  { offset: 1, color: "#FF6B35" }
+                ])
+              },
+              emphasis: { focus: "self" }
             }
           ]
         };
@@ -1280,26 +1334,24 @@
         return;
       }
 
+      // 渠道多时自动增高图高，避免标签重叠（最小 320）
+      pieActiveEl.style.height = `${Math.max(320, activeRows.length * 30)}px`;
+      pieNewEl.style.height = `${Math.max(320, newRows.length * 30)}px`;
+
       if (!pieActiveChart) pieActiveChart = echarts.init(pieActiveEl);
       if (!pieNewChart) pieNewChart = echarts.init(pieNewEl);
 
-      pieActiveChart.setOption(makePieOption("活跃渠道", pieActiveData, activeTotal), true);
-      pieNewChart.setOption(makePieOption("新增渠道", pieNewData, newTotal), true);
+      pieActiveChart.setOption(makeBarOption("活跃渠道", activeRows, activeTotal), true);
+      pieNewChart.setOption(makeBarOption("新增渠道", newRows, newTotal), true);
+      pieActiveChart.resize();
+      pieNewChart.resize();
 
-      function bindPieClickHighlight(pieChart, tableBodyElId) {
+      function bindBarClickHighlight(barChart, tableBodyElId) {
         const tableBodyEl = document.getElementById(tableBodyElId);
-        pieChart.off("click");
+        barChart.off("click");
 
-        pieChart.on("click", (params) => {
+        barChart.on("click", (params) => {
           if (!params || params.dataIndex == null) return;
-          const dataIndex = params.dataIndex;
-
-          const seriesIndex = 0;
-          const totalDataLen = pieChart.getOption()?.series?.[0]?.data?.length ?? 0;
-          for (let i = 0; i < totalDataLen; i++) {
-            if (i === dataIndex) pieChart.dispatchAction({ type: "highlight", seriesIndex, dataIndex: i });
-            else pieChart.dispatchAction({ type: "downplay", seriesIndex, dataIndex: i });
-          }
 
           // 表格高亮对应行
           const name = params.name;
@@ -1311,8 +1363,8 @@
         });
       }
 
-      bindPieClickHighlight(pieActiveChart, "tableActiveBody");
-      bindPieClickHighlight(pieNewChart, "tableNewBody");
+      bindBarClickHighlight(pieActiveChart, "tableActiveBody");
+      bindBarClickHighlight(pieNewChart, "tableNewBody");
     }
 
     // ---------------------------
@@ -1451,6 +1503,15 @@
       const shareDeltaPP = hasPrev ? (shareU - newShare[prevIdx]) : NaN;
       const cumDelta = hasPrev ? deltaPct(cumU, cumulativeUsers[prevIdx]) : NaN;
 
+      const retU = mock.newUserRetention[endIdx];
+      const retWoW = hasPrev && isFinite(retU) && isFinite(mock.newUserRetention[prevIdx])
+        ? (retU - mock.newUserRetention[prevIdx])
+        : NaN;
+      const lyCore = coreRowByYearWeek.get(`${CURRENT_YEAR - 1}-${wkNo}`);
+      const retYoY = lyCore && isFinite(lyCore.newUserRetention) && isFinite(retU)
+        ? (retU - lyCore.newUserRetention)
+        : NaN;
+
       const { stage, pivotWeek } = getTrendStage();
       const channels = getTopChannels();
       const risk = getRiskSignals();
@@ -1475,7 +1536,7 @@
           </div>
           <p class="text-sm leading-relaxed text-stone-700">
             ${CURRENT_YEAR}年第<strong>${wkNo}</strong>周活跃用户 <strong>${formatInt(activeU)}</strong>，环比 <strong>${pctOrDash(activeDelta)}</strong>（与上一周相比），体现为“${activePart}”；新增用户 <strong>${formatInt(newU)}</strong>，环比 <strong>${pctOrDash(newDelta)}</strong>，${newPart}。
-            新用户占比 <strong>${nf1(shareU)}%</strong>，环比 <strong>${ppOrDash(shareDeltaPP)}</strong>；累计用户 <strong>${formatInt(cumU)}</strong>，环比 <strong>${pctOrDash(cumDelta)}</strong>。
+            新用户占比 <strong>${nf1(shareU)}%</strong>，环比 <strong>${ppOrDash(shareDeltaPP)}</strong>；新用户次周留存 <strong>${isFinite(retU) ? nf1(retU) + "%" : "—"}</strong>，环比 <strong>${ppOrDash(retWoW)}</strong>，同比 <strong>${ppOrDash(retYoY)}</strong>；累计用户 <strong>${formatInt(cumU)}</strong>，环比 <strong>${pctOrDash(cumDelta)}</strong>。
           </p>
         </div>
       `;
