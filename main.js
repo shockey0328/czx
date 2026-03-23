@@ -6,6 +6,11 @@ const dashboardConfig = {
             path: '核心数据看板（周度）/index.html',
             type: 'static'
         },
+        'user-growth-weekly': {
+            name: '用户增长',
+            path: '用户增长数据看板（周度）/user-growth-dashboard.html',
+            type: 'static'
+        },
         'search-weekly': {
             name: '搜索数据',
             path: '搜索数据看板（周度）/index.html',

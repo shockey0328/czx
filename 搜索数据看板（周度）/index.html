@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>搜索数据看板</title>
+    <link rel="stylesheet" href="../weekly-dashboard-theme.css">
     <!-- 确保 data.js / app.js 等相对路径始终基于当前页所在目录（含 iframe 场景） -->
     <script>
         (function(){
@@ -94,43 +95,54 @@
             min-height: 100%;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #ffffff;
-            color: #333;
+            font-family: var(--font-sans);
+            background: var(--color-bg);
+            color: var(--color-text);
         }
 
         .header {
-            background: #ffffff;
-            padding: 20px 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            background: var(--color-surface);
+            padding: var(--space-4) var(--space-5);
+            border-bottom: 1px solid var(--color-border);
+            box-shadow: var(--shadow-sm);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: var(--space-4);
+            flex-wrap: wrap;
             position: sticky;
             top: 0;
             z-index: 100;
         }
 
         .header-title {
-            font-size: 28px;
-            font-weight: 600;
-            color: #FF7043;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--color-primary);
+            letter-spacing: -0.02em;
         }
 
         .week-selector {
             padding: 10px 16px;
-            border: 2px solid #FF6B35;
-            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
             font-size: 14px;
-            color: #FF6B35;
-            background: #fff;
+            font-weight: 500;
+            color: var(--color-primary);
+            background: var(--color-surface);
             cursor: pointer;
             outline: none;
-            transition: all 0.3s;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
 
         .week-selector:hover {
-            background: #FFF5F2;
+            background: var(--color-primary-soft);
+            border-color: rgba(255, 107, 53, 0.35);
+        }
+
+        .week-selector:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18);
         }
 
         .container {
@@ -140,17 +152,17 @@
         }
 
         .card {
-            background: #fff;
-            border-radius: 16px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
             padding: 24px;
             margin-bottom: 24px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
         .card:hover {
-            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.15);
-            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(45, 42, 38, 0.1);
         }
 
         .card-title {
@@ -192,8 +204,9 @@
         }
 
         .chart-wrapper {
-            background: #FAFAFA;
-            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
             padding: 16px;
             margin-bottom: 16px;
         }
@@ -207,7 +220,7 @@
 
         .chart-header h3 {
             font-size: 16px;
-            color: #666;
+            color: var(--color-text-muted);
             font-weight: 500;
             margin: 0;
         }
@@ -246,7 +259,7 @@
 
         .stat-label {
             font-size: 12px;
-            color: #666;
+            color: var(--color-text-muted);
             font-weight: 500;
         }
 
@@ -346,7 +359,7 @@
 
         .ai-analysis p {
             line-height: 1.8;
-            color: #666;
+            color: var(--color-text-muted);
             margin-bottom: 8px;
         }
 

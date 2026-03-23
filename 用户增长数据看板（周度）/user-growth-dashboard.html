@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f4f1" />
+  <title>用户增长数据看板</title>
+  <link rel="stylesheet" href="../weekly-dashboard-theme.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: "#FF6B35",
+            brandLight: "#ffb088",
+            brandDark: "#E85A2A",
+            bg: "#f6f4f1",
+            textDark: "#1C1917",
+            textGray: "#78716C",
+            card: "#FFFFFF",
+            /** 涨跌色：涨红、跌绿（与 A 股习惯一致） */
+            up: "#DC2626",
+            down: "#059669",
+            canvas: "#FFF8F4",
+            ink: "#1C1917",
+            muted: "#78716C",
+          },
+          borderRadius: {
+            "4xl": "1.75rem",
+            "5xl": "2rem",
+          },
+          fontFamily: {
+            sans: ['"PingFang SC"', '"Microsoft YaHei"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    html { -webkit-text-size-adjust: 100%; }
+    html, body { height: 100%; overflow-x: hidden; }
+    body { font-family: var(--font-sans); }
+    /* 表面：大圆角、轻边框（偏橙主题） */
+    .card {
+      background: #FFFFFF;
+      border-radius: 1.75rem;
+      border: 1px solid rgba(254, 215, 170, 0.45);
+      box-shadow: 0 1px 3px rgba(255, 107, 53, 0.06);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+    .card-hover {
+      transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(28, 25, 23, 0.07);
+      border-color: rgba(214, 211, 209, 0.95);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .card-hover,
+      .card-hover:hover {
+        transform: none;
+        transition: none;
+      }
+    }
+    #tableActiveBody tr:hover,
+    #tableNewBody tr:hover {
+      background-color: rgba(255, 247, 237, 0.55);
+    }
+    .no-select { user-select: none; }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    /* 环比涨跌：增长红、下滑绿 */
+    .text-up { color: #DC2626 !important; }
+    .text-down { color: #059669 !important; }
+    @supports (padding: env(safe-area-inset-bottom)) {
+      body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom); }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-bg text-stone-900 flex flex-col antialiased selection:bg-brand/20">
+  <div class="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_100%_70%_at_50%_-20%,rgba(255,107,53,0.08),transparent_50%)]" aria-hidden="true"></div>
+
+  <!-- 顶栏：与「周度核心数据」看板同一结构（白底条 + 标题 + 周信息胶囊 + 周下拉） -->
+  <header class="navbar">
+    <div class="brand-block">
+      <span class="logo-text">用户增长数据看板</span>
+    </div>
+    <div class="nav-actions">
+      <div class="week-context" id="weekMetaLabel" title="">加载中…</div>
+      <select id="weekSelect" class="week-dropdown" aria-label="选择周度"></select>
+    </div>
+  </header>
+
+  <div class="flex-1 w-full max-w-[min(1480px,100%)] mx-auto px-4 sm:px-6 lg:px-10 py-5 sm:py-8 lg:py-10">
+    <main id="main-content" class="outline-none" tabindex="-1">
+    <div class="hidden" aria-hidden="true">
+      <img id="brandLogo" src="./logo.png" alt="" width="1" height="1" decoding="async" class="absolute h-px w-px opacity-0" />
+      <div
+        id="logoFallback"
+        class="hidden h-10 min-w-[2.5rem] items-center justify-center rounded-3xl border border-orange-200/80 bg-orange-50 px-3 text-sm font-semibold text-brand"
+        aria-hidden="true"
+      >
+        增长
+      </div>
+      <p id="dataModeHint"></p>
+      <div id="periodBadge">当前：—</div>
+    </div>
+
+    <!-- 模块一：核心指标 -->
+    <section class="mt-10 scroll-mt-6 sm:mt-14" aria-labelledby="heading-kpi">
+      <h2 id="heading-kpi" class="mb-6 text-xl font-bold tracking-tight text-brand sm:mb-8">核心指标</h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
+        <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
+          <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
+          <div class="absolute top-5 right-5" id="kpiNewUsersDelta"></div>
+          <div class="pr-14">
+            <div class="text-[13px] font-medium text-stone-600">新增用户</div>
+            <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiNewUsersValue">-</div>
+          </div>
+        </div>
+
+        <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
+          <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
+          <div class="absolute top-5 right-5" id="kpiActiveUsersDelta"></div>
+          <div class="pr-14">
+            <div class="text-[13px] font-medium text-stone-600">活跃用户</div>
+            <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiActiveUsersValue">-</div>
+          </div>
+        </div>
+
+        <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
+          <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
+          <div class="absolute top-5 right-5" id="kpiNewShareDelta"></div>
+          <div class="pr-14">
+            <div class="text-[13px] font-medium text-stone-600">新用户占比</div>
+            <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiNewShareValue">-</div>
+          </div>
+        </div>
+
+        <div class="card card-hover relative overflow-hidden rounded-3xl p-6 pl-7">
+          <span class="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-brand to-brandLight" aria-hidden="true"></span>
+          <div class="absolute top-5 right-5" id="kpiCumulativeDelta"></div>
+          <div class="pr-14">
+            <div class="text-[13px] font-medium text-stone-600">累计用户</div>
+            <div class="mt-2 text-3xl font-bold tabular-nums tracking-tight text-stone-900" id="kpiCumulativeValue">-</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模块二：趋势分析 -->
+    <section class="mt-12 scroll-mt-6 sm:mt-16" aria-labelledby="heading-trend">
+      <div class="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h2 id="heading-trend" class="text-xl font-bold tracking-tight text-brand">趋势分析</h2>
+        </div>
+        <div class="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row sm:items-center sm:gap-3 no-select">
+          <span class="text-sm font-medium text-stone-500">周期</span>
+          <div class="flex w-full max-w-full items-stretch justify-between gap-0.5 overflow-x-auto rounded-2xl bg-orange-50/40 p-1 ring-1 ring-orange-100/90 shadow-sm sm:w-auto sm:justify-start touch-manipulation [-webkit-overflow-scrolling:touch]">
+            <button type="button" data-range="week" class="range-btn flex-1 rounded-xl px-2 py-2.5 text-sm font-semibold bg-brand text-white shadow-sm transition-colors duration-150 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 sm:min-w-[4.5rem] sm:flex-none sm:px-3">
+              本周
+            </button>
+            <button type="button" data-range="4w" class="range-btn flex-1 rounded-xl px-2 py-2.5 text-sm font-medium text-stone-600 transition-colors duration-150 hover:bg-white/90 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 sm:min-w-[4.5rem] sm:flex-none sm:px-3">
+              近4周
+            </button>
+            <button type="button" data-range="12w" class="range-btn flex-1 rounded-xl px-2 py-2.5 text-sm font-medium text-stone-600 transition-colors duration-150 hover:bg-white/90 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 sm:min-w-[4.5rem] sm:flex-none sm:px-3">
+              近12周
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-4 sm:space-y-5">
+        <div class="card rounded-3xl p-5 sm:p-7">
+          <div class="border-b border-orange-100/80 pb-4 mb-1">
+            <h3 class="text-lg font-semibold text-brand">活跃用户趋势</h3>
+          </div>
+          <div id="chartActive" class="mt-4 h-[220px] min-h-[200px] sm:mt-5 sm:h-[280px]"></div>
+        </div>
+
+        <div class="card rounded-3xl p-5 sm:p-7">
+          <div class="border-b border-orange-100/80 pb-4 mb-1">
+            <h3 class="text-lg font-semibold text-brand">新用户趋势</h3>
+          </div>
+          <div id="chartNewMix" class="mt-4 h-[240px] min-h-[220px] sm:mt-5 sm:h-[300px]"></div>
+        </div>
+
+        <div class="card rounded-3xl p-5 sm:p-7">
+          <div class="border-b border-orange-100/80 pb-4 mb-1">
+            <h3 class="text-lg font-semibold text-brand">新用户占比趋势</h3>
+          </div>
+          <div id="chartNewShare" class="mt-4 h-[220px] min-h-[200px] sm:mt-5 sm:h-[280px]"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模块三：渠道分析 -->
+    <section class="mt-12 scroll-mt-6 sm:mt-16" aria-labelledby="heading-ch">
+      <h2 id="heading-ch" class="mb-6 text-xl font-bold tracking-tight text-brand sm:mb-8">渠道分析</h2>
+
+      <div class="flex flex-col lg:flex-row gap-5">
+        <div class="card flex-1 rounded-3xl p-6 sm:p-7">
+          <div class="border-b border-orange-100/80 pb-4">
+            <h3 class="text-lg font-semibold text-brand">活跃用户渠道</h3>
+          </div>
+          <div id="pieActive" class="mt-4 h-[min(320px,55vh)] min-h-[260px]"></div>
+          <div class="mt-4 overflow-x-auto rounded-xl ring-1 ring-orange-100/70">
+            <table class="w-full min-w-[420px] text-left text-sm">
+              <thead>
+                <tr class="border-b border-orange-100/70 bg-orange-50/60 text-xs font-semibold tracking-wide text-stone-600">
+                  <th class="py-3 pl-4 pr-2 whitespace-nowrap">渠道名称</th>
+                  <th class="py-3 pr-2 whitespace-nowrap">活跃用户数</th>
+                  <th class="py-3 pr-2 whitespace-nowrap">占比</th>
+                  <th class="py-3 pr-4 text-right whitespace-nowrap">环比</th>
+                </tr>
+              </thead>
+              <tbody id="tableActiveBody" class="text-stone-800"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card flex-1 rounded-3xl p-6 sm:p-7">
+          <div class="border-b border-orange-100/80 pb-4">
+            <h3 class="text-lg font-semibold text-brand">新用户渠道</h3>
+          </div>
+          <div id="pieNew" class="mt-4 h-[min(320px,55vh)] min-h-[260px]"></div>
+          <div class="mt-4 overflow-x-auto rounded-xl ring-1 ring-orange-100/70">
+            <table class="w-full min-w-[420px] text-left text-sm">
+              <thead>
+                <tr class="border-b border-orange-100/70 bg-orange-50/60 text-xs font-semibold tracking-wide text-stone-600">
+                  <th class="py-3 pl-4 pr-2 whitespace-nowrap">渠道名称</th>
+                  <th class="py-3 pr-2 whitespace-nowrap">新增用户数</th>
+                  <th class="py-3 pr-2 whitespace-nowrap">占比</th>
+                  <th class="py-3 pr-4 text-right whitespace-nowrap">环比</th>
+                </tr>
+              </thead>
+              <tbody id="tableNewBody" class="text-stone-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模块四：数据分析助手 -->
+    <section class="mt-12 scroll-mt-6 sm:mt-16 mb-8 sm:mb-10" aria-labelledby="heading-ai">
+      <div class="card overflow-hidden rounded-3xl">
+        <div class="border-b border-orange-100/80 bg-gradient-to-r from-orange-50/50 via-white to-white px-6 py-6 sm:px-8">
+          <h2 id="heading-ai" class="text-xl font-bold tracking-tight text-brand">数据分析助手</h2>
+        </div>
+
+        <div class="space-y-6 px-6 py-6 sm:px-8 sm:py-8">
+          <div id="analysisReport" class="space-y-6"></div>
+
+          <div class="border-t border-orange-100/80 pt-6">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-sm font-semibold text-brand">对话</span>
+            </div>
+            <div id="chatBox" class="mt-4 max-h-[min(400px,55vh)] overflow-y-auto rounded-3xl bg-orange-50/35 p-4 ring-1 ring-orange-100/80 space-y-3 scroll-smooth"></div>
+
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+              <input
+                id="chatInput"
+                class="min-h-[44px] flex-1 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm text-stone-800 shadow-sm outline-none transition duration-150 placeholder:text-stone-400 hover:border-orange-200/90 focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
+                placeholder="输入你的问题，如：新用户下降的原因是什么？"
+                type="text"
+                autocomplete="off"
+              />
+              <button
+                id="sendBtn"
+                type="button"
+                class="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-brand px-6 text-sm font-semibold text-white shadow-sm transition duration-150 hover:brightness-110 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 whitespace-nowrap"
+              >
+                发送
+              </button>
+            </div>
+
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button type="button" class="quick-btn rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-150 ease-out hover:border-brand/40 hover:bg-orange-50/90 active:scale-[0.98]" data-q="哪个渠道的 ROI 最高？">
+                哪个渠道的 ROI 最高？
+              </button>
+              <button type="button" class="quick-btn rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-150 ease-out hover:border-brand/40 hover:bg-orange-50/90 active:scale-[0.98]" data-q="新用户占比下降该怎么办？">
+                新用户占比下降该怎么办？
+              </button>
+              <button type="button" class="quick-btn rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition-colors duration-150 ease-out hover:border-brand/40 hover:bg-orange-50/90 active:scale-[0.98]" data-q="下周增长预测是什么？">
+                下周增长预测是什么？
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    </main>
+  </div>
+
+  <script src="./embedded-csv-b64.js"></script>
+  <script>
+    // ---------------------------
+    // 1) CSV 数据加载（替代 Mock）
+    // ---------------------------
+    // 优先 fetch 同目录 CSV；在 file:// 打开时 fetch 会失败，则自动使用 embedded-csv-b64.js 中的内嵌副本。
+    const CSV_FILES = {
+      core: "./周度用户核心数据.csv",
+      daily: "./每天的活跃用户及新老用户.csv",
+      /** 渠道：默认文件名；若存在 _fixed 备选会在 fetch 时自动尝试 */
+      activeCh: "./每周活跃用户的渠道来源.csv",
+      activeChAlt: "./每周活跃用户的渠道来源_fixed.csv",
+      newCh: "./每周新用户的渠道来源.csv",
+    };
+
+    /** 看板主数据年份（CSV 中按「周开始日期」解析年份，仅取该年作为核心序列） */
+    const CURRENT_YEAR = 2026;
+
+    // 渠道周区间与核心周区间存在固定偏移（观察到 channel 的 week_start/week_end 比核心晚 4 天）
+    const CHANNEL_SHIFT_DAYS = 4;
+
+    const mock = {
+      // W1 ~ Wn（来自“周度用户核心数据.csv”里的 第n周）
+      weeks: [],
+      activeUsers: [],
+      newUsers: [],
+      cumulativeUsers: [],
+
+      // 模块三：渠道展示（当周全部渠道来源，按当期占比排序）
+      activeChannels: [],
+      newChannels: [],
+      // 环比份额：prev(上周) vs end(本周)
+      activeChannelShareW11: [],
+      activeChannelShareW12: [],
+      newChannelShareW11: [],
+      newChannelShareW12: [],
+    };
+
+    let cumulativeUsers = [];
+    let newShare = [];
+    let newGrowthRate = [];
+    let activeGrowthRate = [];
+
+    let coreWeeks = [];            // {weekNo, startISO, endISO}
+    let dailyRows = [];           // {dtISO, active_uv, new_uv, old_uv, sharePct}
+    let activeChannelRows = [];  // {week_startISO, week_endISO, channel_name, uv}
+    let newChannelRows = [];
+
+    /** 当前选中的周在 coreWeeks（当年序列）中的下标 */
+    let selectedWeekIdx = 0;
+    /** 趋势图周期按钮当前值 */
+    let currentTrendRange = "week";
+
+    function stripBom(s) {
+      return s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s;
+    }
+
+    // 简易 CSV 解析（支持双引号字段）
+    function parseCSV(text) {
+      const s = stripBom(String(text || ""));
+      const rows = [];
+      let row = [];
+      let field = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+
+        if (ch === '"') {
+          if (inQuotes && s[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+          continue;
+        }
+
+        if (ch === "," && !inQuotes) {
+          row.push(field);
+          field = "";
+          continue;
+        }
+
+        if (ch === "\n" && !inQuotes) {
+          row.push(field);
+          rows.push(row);
+          row = [];
+          field = "";
+          continue;
+        }
+
+        if (ch === "\r" && !inQuotes) {
+          continue;
+        }
+
+        field += ch;
+      }
+
+      // 最后一行
+      if (field.length > 0 || row.length > 0) {
+        row.push(field);
+        rows.push(row);
+      }
+
+      // 清理空行
+      return rows.filter(r => r.some(c => String(c).trim() !== ""));
+    }
+
+    function toNumber(v) {
+      const raw = String(v ?? "").trim();
+      if (!raw) return 0;
+      return Number(raw.replace(/,/g, "").replace(/%/g, ""));
+    }
+
+    function parseSlashDate(s) {
+      // 2026/1/1 或 2026/01/01
+      const [y, m, d] = String(s).trim().split("/");
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+
+    function parseISODate(s) {
+      // 2026-01-05
+      const [y, m, d] = String(s).trim().split("-");
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+
+    function toISODate(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function addDays(dateObj, days) {
+      const d = new Date(dateObj);
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    /** 渠道表 week_start/week_end 可能是 2026-01-05 或 2026/1/5，统一为 ISO 便于与核心周对齐 */
+    function normalizeChannelDateCell(v) {
+      let s = String(v ?? "").trim().replace(/^\uFEFF/, "");
+      if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1).trim();
+      if (!s) return "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      if (s.includes("/")) return toISODate(parseSlashDate(s));
+      return s;
+    }
+
+    function utf8FromBase64(b64) {
+      const binary = atob(b64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder("utf-8").decode(bytes);
+    }
+
+    /**
+     * 先依次 fetch 主路径与备选路径（渠道表支持 _fixed 等本地副本）；
+     * 失败则使用 embedded-csv-b64.js 内嵌（file:// 场景）。
+     */
+    async function loadCsvText(key, url, alternateUrls = []) {
+      const urls = [url, ...alternateUrls].filter(Boolean);
+      for (const u of urls) {
+        try {
+          const res = await fetch(u, { cache: "no-store" });
+          if (res.ok) {
+            return await res.text();
+          }
+        } catch (e) {
+          /* file:// 等环境会抛错 */
+        }
+      }
+      if (typeof EMBEDDED_CSV_B64 !== "undefined" && EMBEDDED_CSV_B64[key]) {
+        return utf8FromBase64(EMBEDDED_CSV_B64[key]);
+      }
+      throw new Error(`无法加载 CSV：${key}（fetch 失败且无内嵌数据，请确认 embedded-csv-b64.js 与 HTML 同目录）`);
+    }
+
+    function parseActiveChannelTable(activeChText) {
+      const activeChTable = parseCSV(activeChText);
+      const activeChHeader = activeChTable[0];
+      const aIdx = {
+        wkStart: activeChHeader.indexOf("week_start"),
+        wkEnd: activeChHeader.indexOf("week_end"),
+        name: activeChHeader.indexOf("channel_name"),
+        uv: activeChHeader.indexOf("uv"),
+      };
+      if (aIdx.wkStart < 0 || aIdx.wkEnd < 0 || aIdx.name < 0 || aIdx.uv < 0) {
+        console.warn("活跃用户渠道 CSV 表头缺少 week_start / week_end / channel_name / uv");
+      }
+      return activeChTable.slice(1).map(r => ({
+        week_startISO: normalizeChannelDateCell(r[aIdx.wkStart]),
+        week_endISO: normalizeChannelDateCell(r[aIdx.wkEnd]),
+        channel_name: String(r[aIdx.name] ?? "").trim().replace(/^"|"$/g, ""),
+        uv: toNumber(r[aIdx.uv]),
+      }));
+    }
+
+    function parseNewChannelTable(newChText) {
+      const newChTable = parseCSV(newChText);
+      const newChHeader = newChTable[0];
+      const newUvCol = newChHeader.indexOf("new_user_uv") >= 0 ? newChHeader.indexOf("new_user_uv") : newChHeader.indexOf("uv");
+      const nIdx = {
+        wkStart: newChHeader.indexOf("week_start"),
+        wkEnd: newChHeader.indexOf("week_end"),
+        name: newChHeader.indexOf("channel_name"),
+        uv: newUvCol,
+      };
+      if (nIdx.wkStart < 0 || nIdx.wkEnd < 0 || nIdx.name < 0 || nIdx.uv < 0) {
+        console.warn("新用户渠道 CSV 表头缺少 week_start / week_end / channel_name / new_user_uv 或 uv");
+      }
+      return newChTable.slice(1).map(r => ({
+        week_startISO: normalizeChannelDateCell(r[nIdx.wkStart]),
+        week_endISO: normalizeChannelDateCell(r[nIdx.wkEnd]),
+        channel_name: String(r[nIdx.name] ?? "").trim().replace(/^"|"$/g, ""),
+        uv: toNumber(r[nIdx.uv]),
+      }));
+    }
+
+    function buildChannelTopShares(channelRows, endShiftStartISO, endShiftEndISO, prevShiftStartISO, prevShiftEndISO) {
+      const endRows = channelRows.filter(r => r.week_startISO === endShiftStartISO && r.week_endISO === endShiftEndISO);
+      const prevRows = channelRows.filter(r => r.week_startISO === prevShiftStartISO && r.week_endISO === prevShiftEndISO);
+
+      const endMap = new Map();
+      const prevMap = new Map();
+
+      let endTotal = 0;
+      let prevTotal = 0;
+
+      for (const r of endRows) {
+        const uv = Number(r.uv) || 0;
+        endTotal += uv;
+        endMap.set(r.channel_name, (endMap.get(r.channel_name) || 0) + uv);
+      }
+      for (const r of prevRows) {
+        const uv = Number(r.uv) || 0;
+        prevTotal += uv;
+        prevMap.set(r.channel_name, (prevMap.get(r.channel_name) || 0) + uv);
+      }
+
+      /** 合并当期与上期出现过的全部渠道名称，按当期 UV 降序（仅在上期出现的排后） */
+      const allNames = new Set([...endMap.keys(), ...prevMap.keys()]);
+      const entries = [...allNames].map(name => ({
+        name,
+        uv: endMap.get(name) || 0,
+      }));
+      entries.sort((a, b) => b.uv - a.uv);
+
+      const endDen = endTotal || 1;
+      const prevDen = prevTotal || 1;
+
+      const channelNames = entries.map(x => x.name);
+      const sharesEnd = entries.map(x => (x.uv / endDen) * 100);
+      const sharesPrev = entries.map(x => ((prevMap.get(x.name) || 0) / prevDen) * 100);
+
+      return { channelNames, sharesPrev, sharesEnd };
+    }
+
+    function computeDerived() {
+      cumulativeUsers = (mock.cumulativeUsers || []).slice();
+      newShare = mock.newUsers.map((n, i) => (mock.activeUsers[i] ? (n / mock.activeUsers[i]) * 100 : 0));
+      newGrowthRate = mock.newUsers.map((n, i) => {
+        if (i === 0) return 0;
+        const prev = mock.newUsers[i - 1];
+        return prev === 0 ? 0 : ((n - prev) / prev) * 100;
+      });
+      activeGrowthRate = mock.activeUsers.map((v, i) => {
+        if (i === 0) return 0;
+        const prev = mock.activeUsers[i - 1];
+        return prev === 0 ? 0 : ((v - prev) / prev) * 100;
+      });
+    }
+
+    function computeLatestChannelModel() {
+      const endIdx = selectedWeekIdx;
+      if (endIdx <= 0) return;
+      const prevIdx = endIdx - 1;
+
+      const end = coreWeeks[endIdx];
+      const prev = coreWeeks[prevIdx];
+      const endShiftStartISO = toISODate(addDays(parseISODate(end.startISO), CHANNEL_SHIFT_DAYS));
+      const endShiftEndISO = toISODate(addDays(parseISODate(end.endISO), CHANNEL_SHIFT_DAYS));
+      const prevShiftStartISO = toISODate(addDays(parseISODate(prev.startISO), CHANNEL_SHIFT_DAYS));
+      const prevShiftEndISO = toISODate(addDays(parseISODate(prev.endISO), CHANNEL_SHIFT_DAYS));
+
+      const activeModel = buildChannelTopShares(activeChannelRows, endShiftStartISO, endShiftEndISO, prevShiftStartISO, prevShiftEndISO);
+      const newModel = buildChannelTopShares(newChannelRows, endShiftStartISO, endShiftEndISO, prevShiftStartISO, prevShiftEndISO);
+
+      mock.activeChannels = activeModel.channelNames;
+      mock.newChannels = newModel.channelNames;
+      mock.activeChannelShareW11 = activeModel.sharesPrev;
+      mock.activeChannelShareW12 = activeModel.sharesEnd;
+      mock.newChannelShareW11 = newModel.sharesPrev;
+      mock.newChannelShareW12 = newModel.sharesEnd;
+    }
+
+    function updatePeriodBadge() {
+      const el = document.getElementById("periodBadge");
+      if (!el) return;
+      if (!coreWeeks || coreWeeks.length === 0 || selectedWeekIdx < 0) {
+        el.textContent = "当前：—";
+        return;
+      }
+      const w = coreWeeks[selectedWeekIdx];
+      el.textContent = `当前：${CURRENT_YEAR}年第${w.weekNo}周`;
+    }
+
+    function updateWeekMetaLabel() {
+      const el = document.getElementById("weekMetaLabel");
+      if (!el || !coreWeeks.length || selectedWeekIdx < 0) return;
+      const w = coreWeeks[selectedWeekIdx];
+      const fmt = (iso) => {
+        const p = String(iso || "").split("-");
+        if (p.length < 3) return "—";
+        return `${Number(p[1])}/${Number(p[2])}`;
+      };
+      const text = `${CURRENT_YEAR}年第${w.weekNo}周（${fmt(w.startISO)} – ${fmt(w.endISO)}）`;
+      el.textContent = text;
+      el.title = text;
+    }
+
+    function initWeekSelector() {
+      const sel = document.getElementById("weekSelect");
+      if (!sel || !coreWeeks.length) return;
+      sel.innerHTML = "";
+      coreWeeks.forEach((w, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = `${CURRENT_YEAR}年第${w.weekNo}周`;
+        sel.appendChild(opt);
+      });
+      sel.value = String(Math.min(selectedWeekIdx, coreWeeks.length - 1));
+      selectedWeekIdx = Number(sel.value);
+      sel.onchange = () => {
+        selectedWeekIdx = Number(sel.value);
+        computeLatestChannelModel();
+        renderKpis();
+        renderChannelTablesAndPies();
+        renderReport();
+        updateCharts(currentTrendRange);
+        updateWeekMetaLabel();
+        updatePeriodBadge();
+      };
+    }
+
+    async function loadAllData() {
+      const [coreText, dailyText, activeChText, newChText] = await Promise.all([
+        loadCsvText("core", CSV_FILES.core),
+        loadCsvText("daily", CSV_FILES.daily),
+        loadCsvText("activeCh", CSV_FILES.activeCh, [CSV_FILES.activeChAlt]),
+        loadCsvText("newCh", CSV_FILES.newCh),
+      ]);
+
+      // 核心周度
+      const coreTable = parseCSV(coreText);
+      const coreHeader = coreTable[0];
+      const coreIdx = {
+        weekNo: coreHeader.indexOf("第n周"),
+        start: coreHeader.indexOf("周开始日期"),
+        end: coreHeader.indexOf("周结束日期"),
+        active: coreHeader.indexOf("活跃用户"),
+        news: coreHeader.indexOf("新增用户"),
+        share: coreHeader.indexOf("新增用户占比"),
+        cum: coreHeader.indexOf("累计用户"),
+      };
+
+      const coreRowsParsed = coreTable.slice(1).map(r => {
+        const weekNo = Number(r[coreIdx.weekNo]);
+        const startSlash = r[coreIdx.start];
+        const endSlash = r[coreIdx.end];
+        const startISO = toISODate(parseSlashDate(startSlash));
+        const endISO = toISODate(parseSlashDate(endSlash));
+        const year = parseInt(String(startISO).slice(0, 4), 10);
+        return {
+          weekNo,
+          year,
+          startISO,
+          endISO,
+          active: toNumber(r[coreIdx.active]),
+          newUsers: toNumber(r[coreIdx.news]),
+          sharePct: toNumber(r[coreIdx.share]),
+          cum: toNumber(r[coreIdx.cum]),
+        };
+      }).filter(x => x.weekNo && x.startISO);
+
+      const coreCurrentYear = coreRowsParsed
+        .filter(r => r.year === CURRENT_YEAR)
+        .sort((a, b) => a.weekNo - b.weekNo);
+
+      coreWeeks = coreCurrentYear.map(({ weekNo, startISO, endISO }) => ({ weekNo, startISO, endISO }));
+      mock.weeks = coreCurrentYear.map(w => `W${w.weekNo}`);
+      mock.activeUsers = coreCurrentYear.map(r => r.active);
+      mock.newUsers = coreCurrentYear.map(r => r.newUsers);
+      mock.cumulativeUsers = coreCurrentYear.map(r => r.cum);
+
+      selectedWeekIdx = Math.max(0, coreWeeks.length - 1);
+
+      updatePeriodBadge();
+
+      // 日度：主要用于“趋势分析”的新用户增长计算口径（new_uv 可直接累加）
+      const dailyTable = parseCSV(dailyText);
+      const dailyHeader = dailyTable[0];
+      const dailyIdx = {
+        dt: dailyHeader.indexOf("dt"),
+        active: dailyHeader.indexOf("active_uv"),
+        news: dailyHeader.indexOf("new_uv"),
+        old: dailyHeader.indexOf("old_uv"),
+        share: dailyHeader.indexOf("新用户占比"),
+      };
+
+      dailyRows = dailyTable.slice(1).map(r => {
+        const dtISO = toISODate(parseSlashDate(r[dailyIdx.dt]));
+        return {
+          dtISO,
+          active_uv: toNumber(r[dailyIdx.active]),
+          new_uv: toNumber(r[dailyIdx.news]),
+          old_uv: toNumber(r[dailyIdx.old]),
+          sharePct: toNumber(r[dailyIdx.share]),
+        };
+      });
+      dailyRows.sort((a, b) => parseISODate(a.dtISO) - parseISODate(b.dtISO));
+
+      // 计算每周新增用户（new_uv 为新用户，不会跨天重复计入），用于替代 mock.newUsers（保证与日度口径一致）
+      const weeklyNewFromDaily = [];
+      for (const wk of coreWeeks) {
+        const startDate = parseISODate(wk.startISO);
+        const endDate = parseISODate(wk.endISO);
+        let sumNew = 0;
+        for (const d of dailyRows) {
+          const dt = parseISODate(d.dtISO);
+          if (dt >= startDate && dt <= endDate) sumNew += d.new_uv;
+        }
+        weeklyNewFromDaily.push(sumNew);
+      }
+      // 若日度累计与核心周表一致，则以日度口径覆盖（否则保留核心周表，避免异常带偏）
+      const mismatch = weeklyNewFromDaily.some((x, i) => x !== mock.newUsers[i]);
+      if (!mismatch) {
+        mock.newUsers = weeklyNewFromDaily;
+      }
+
+      activeChannelRows = parseActiveChannelTable(activeChText);
+      newChannelRows = parseNewChannelTable(newChText);
+
+      computeDerived();
+      computeLatestChannelModel();
+    }
+
+    // ---------------------------
+    // 2) 工具函数
+    // ---------------------------
+    const nfInt = new Intl.NumberFormat('zh-CN');
+    const nf1 = (x) => (Math.round(x * 10) / 10).toFixed(1);
+
+    function formatInt(n) {
+      return nfInt.format(Math.round(n));
+    }
+
+    function formatPercent1(n, forceSign = true) {
+      const v = Math.round(n * 10) / 10;
+      const sign = (forceSign && v > 0) ? "+" : "";
+      return `${sign}${v.toFixed(1)}%`;
+    }
+
+    /** 占比类指标的环比：用百分点 pp（本期% − 上期%） */
+    function formatPP(deltaPP, forceSign = true) {
+      const v = Math.round(deltaPP * 10) / 10;
+      const sign = (forceSign && v > 0) ? "+" : "";
+      return `${sign}${v.toFixed(1)}pp`;
+    }
+
+    function deltaPct(curr, prev) {
+      if (!isFinite(prev) || prev === 0) return 0;
+      return ((curr - prev) / prev) * 100;
+    }
+
+    /**
+     * @param {"rate"|"pp"} variant rate=相对变化率(%)，pp=占比差(百分点)
+     */
+    function deltaBadge(delta, label = "环比", variant = "rate") {
+      if (!isFinite(delta)) {
+        return `
+        <div class="text-right">
+          <div class="text-[11px] font-medium text-stone-400">${label}</div>
+          <div class="mt-1 text-sm font-semibold tabular-nums text-stone-400">—</div>
+        </div>
+      `;
+      }
+      const up = delta >= 0;
+      const colorCls = up ? "text-up" : "text-down";
+      const text = variant === "pp" ? formatPP(delta) : formatPercent1(delta);
+      return `
+        <div class="text-right">
+          <div class="text-[11px] font-medium text-stone-400">${label}</div>
+          <div class="mt-1 ${colorCls} font-bold text-sm tabular-nums">${text}</div>
+        </div>
+      `;
+    }
+
+    /**
+     * 趋势分析：按「日」切片（与上方周期按钮一致：本周=当前自然周内的每一天；近4周/12周=对应周跨度内的所有日）
+     */
+    function getDailyTrendSlice(rangeKey) {
+      if (!dailyRows.length || !coreWeeks.length) {
+        return { labels: [], active: [], newUsers: [], growth: [], share: [] };
+      }
+      const byDate = new Map(dailyRows.map(d => [d.dtISO, d]));
+      const endIdx = Math.min(Math.max(0, selectedWeekIdx), coreWeeks.length - 1);
+      let startISO;
+      const endISO = coreWeeks[endIdx].endISO;
+      if (rangeKey === "week") {
+        startISO = coreWeeks[endIdx].startISO;
+      } else if (rangeKey === "4w") {
+        const s = Math.max(0, endIdx - 3);
+        startISO = coreWeeks[s].startISO;
+      } else {
+        const s = Math.max(0, endIdx - 11);
+        startISO = coreWeeks[s].startISO;
+      }
+      const startD = parseISODate(startISO);
+      const endD = parseISODate(endISO);
+      const inRange = dailyRows.filter(d => {
+        const dt = parseISODate(d.dtISO);
+        return dt >= startD && dt <= endD;
+      });
+      const labels = inRange.map(d => {
+        const parts = d.dtISO.split("-");
+        const m = parts[1];
+        const day = parts[2];
+        return `${Number(m)}/${Number(day)}`;
+      });
+      const active = inRange.map(d => d.active_uv);
+      const newUsers = inRange.map(d => d.new_uv);
+      const share = inRange.map(d => d.sharePct);
+      const growth = inRange.map(d => {
+        const prevISO = toISODate(addDays(parseISODate(d.dtISO), -1));
+        const prevRow = byDate.get(prevISO);
+        if (!prevRow) return 0;
+        const pv = prevRow.new_uv;
+        if (pv === 0) return 0;
+        return ((d.new_uv - pv) / pv) * 100;
+      });
+      return { labels, active, newUsers, growth, share };
+    }
+
+    /** 横轴点较多时旋转标签，避免重叠 */
+    function getCategoryAxisExtra(len) {
+      if (!len) return { bottom: 44, rotate: 0, interval: 0 };
+      if (len <= 12) return { bottom: 44, rotate: 0, interval: 0 };
+      if (len <= 42) return { bottom: 56, rotate: 28, interval: 0 };
+      return { bottom: 64, rotate: 35, interval: Math.max(1, Math.floor(len / 18)) };
+    }
+
+    // ---------------------------
+    // 3) 模块一：核心指标（默认展示 W12 “本周”）
+    // ---------------------------
+    function renderKpis() {
+      const endIdx = selectedWeekIdx;
+      if (endIdx < 0 || !mock.activeUsers.length) return;
+
+      const newU = mock.newUsers[endIdx];
+      const activeU = mock.activeUsers[endIdx];
+      const shareU = newShare[endIdx];
+      const cumU = cumulativeUsers[endIdx];
+
+      const prevIdx = endIdx - 1;
+      const hasPrev = prevIdx >= 0;
+
+      const newDelta = hasPrev ? deltaPct(newU, mock.newUsers[prevIdx]) : NaN;
+      const activeDelta = hasPrev ? deltaPct(activeU, mock.activeUsers[prevIdx]) : NaN;
+      const shareDeltaPP = hasPrev ? (shareU - newShare[prevIdx]) : NaN;
+      const cumDelta = hasPrev ? deltaPct(cumU, cumulativeUsers[prevIdx]) : NaN;
+
+      document.getElementById("kpiNewUsersValue").textContent = formatInt(newU);
+      document.getElementById("kpiNewUsersDelta").innerHTML = deltaBadge(newDelta, "环比");
+
+      document.getElementById("kpiActiveUsersValue").textContent = formatInt(activeU);
+      document.getElementById("kpiActiveUsersDelta").innerHTML = deltaBadge(activeDelta, "环比");
+
+      document.getElementById("kpiNewShareValue").textContent = `${nf1(shareU)}%`;
+      document.getElementById("kpiNewShareDelta").innerHTML = deltaBadge(shareDeltaPP, "环比", "pp");
+
+      document.getElementById("kpiCumulativeValue").textContent = formatInt(cumU);
+      document.getElementById("kpiCumulativeDelta").innerHTML = deltaBadge(cumDelta, "环比");
+    }
+
+    // ---------------------------
+    // 4) 模块二：ECharts 三张图（随时间切换联动）
+    // ---------------------------
+    let chartActive, chartNewMix, chartNewShare;
+    let pieActiveChart, pieNewChart;
+
+    function yAxisNumberFormatter(v) {
+      return formatInt(v);
+    }
+
+    function buildAreaChartOptions(weeks, activeSlice) {
+      const ax = getCategoryAxisExtra(weeks.length);
+      return {
+        backgroundColor: "transparent",
+        grid: { left: 48, right: 18, top: 18, bottom: ax.bottom },
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "line" },
+          backgroundColor: "rgba(17,24,39,0.92)",
+          borderWidth: 0,
+          textStyle: { color: "#fff" },
+          formatter: (params) => {
+            const p = params && params[0];
+            if (!p) return "";
+            return [
+              `<div style="font-weight:700;margin-bottom:6px;">${p.axisValue}</div>`,
+              `<div>活跃用户：<span style="color:#FB923C;font-weight:900;">${formatInt(p.data)}</span></div>`
+            ].join("");
+          }
+        },
+        xAxis: {
+          type: "category",
+          data: weeks,
+          axisTick: { alignWithLabel: true },
+          axisLine: { lineStyle: { color: "rgba(107,114,128,0.25)" } },
+          axisLabel: { color: "rgba(68,64,60,0.82)", rotate: ax.rotate, interval: ax.interval }
+        },
+        yAxis: {
+          type: "value",
+          axisLabel: {
+            color: "rgba(68,64,60,0.82)",
+            formatter: yAxisNumberFormatter
+          },
+          splitLine: { lineStyle: { color: "rgba(107,114,128,0.12)" } }
+        },
+        series: [
+          {
+            name: "活跃用户",
+            type: "line",
+            smooth: true,
+            symbol: "none",
+            data: activeSlice,
+            lineStyle: { width: 3, color: "#FF6B35" },
+            areaStyle: {
+              color: {
+                type: "linear",
+                x: 0, y: 0, x2: 0, y2: 1,
+                colorStops: [
+                  { offset: 0, color: "rgba(234,88,12,0.32)" },
+                  { offset: 1, color: "rgba(234,88,12,0.00)" }
+                ]
+              }
+            }
+          }
+        ]
+      };
+    }
+
+    function buildDualAxisChartOptions(weeks, newSlice, growthSlice) {
+      const ax = getCategoryAxisExtra(weeks.length);
+      const n = weeks.length;
+      const barSeries = {
+        name: "新增用户",
+        type: "bar",
+        data: newSlice,
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: "#FDBA74" },
+            { offset: 1, color: "#FF6B35" }
+          ])
+        },
+        emphasis: { focus: "series" }
+      };
+      if (n > 40) {
+        barSeries.barMaxWidth = 12;
+      } else if (n > 14) {
+        barSeries.barMaxWidth = 22;
+        barSeries.barWidth = "55%";
+      } else {
+        barSeries.barWidth = "38%";
+      }
+      return {
+        backgroundColor: "transparent",
+        grid: { left: 52, right: 52, top: 18, bottom: ax.bottom },
+        legend: { show: false },
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+          backgroundColor: "rgba(17,24,39,0.92)",
+          borderWidth: 0,
+          textStyle: { color: "#fff" },
+          formatter: (params) => {
+            const x = params && params[0] ? params[0].axisValue : "";
+            let barV = null;
+            let lineV = null;
+            for (const p of params) {
+              if (p.seriesName === "新增用户") barV = p.data;
+              if (p.seriesName === "日环比增长率") lineV = p.data;
+            }
+            const barText = barV == null ? "-" : `${formatInt(barV)}`;
+            const lineText = lineV == null ? "-" : `${(Math.round(lineV * 10) / 10).toFixed(1)}%`;
+            return [
+              `<div style="font-weight:700;margin-bottom:6px;">${x}</div>`,
+              `<div>新增用户：<span style="color:#FB923C;font-weight:900;">${barText}</span></div>`,
+              `<div>日环比增长率：<span style="color:#FF6B35;font-weight:900;">${lineText}</span></div>`
+            ].join("");
+          }
+        },
+        xAxis: {
+          type: "category",
+          data: weeks,
+          axisTick: { alignWithLabel: true },
+          axisLine: { lineStyle: { color: "rgba(107,114,128,0.25)" } },
+          axisLabel: { color: "rgba(68,64,60,0.82)", rotate: ax.rotate, interval: ax.interval }
+        },
+        yAxis: [
+          {
+            type: "value",
+            name: "新增用户",
+            nameTextStyle: { color: "rgba(68,64,60,0.72)" },
+            axisLabel: {
+              color: "rgba(68,64,60,0.82)",
+              formatter: yAxisNumberFormatter
+            },
+            splitLine: { lineStyle: { color: "rgba(107,114,128,0.12)" } }
+          },
+          {
+            type: "value",
+            name: "日环比(%)",
+            nameTextStyle: { color: "rgba(68,64,60,0.72)" },
+            axisLabel: {
+              color: "rgba(68,64,60,0.82)",
+              formatter: (v) => `${(Math.round(v * 10) / 10).toFixed(1)}%`
+            },
+            splitLine: { show: false }
+          }
+        ],
+        series: [
+          barSeries,
+          {
+            name: "日环比增长率",
+            type: "line",
+            yAxisIndex: 1,
+            data: growthSlice,
+            smooth: true,
+            symbol: n > 45 ? "none" : "circle",
+            symbolSize: 6,
+            lineStyle: { width: 3, color: "#FB923C" },
+            itemStyle: { color: "#FB923C" }
+          }
+        ]
+      };
+    }
+
+    function buildShareChartOptions(weeks, shareSlice) {
+      const health = 30; // 健康阈值
+      const ax = getCategoryAxisExtra(weeks.length);
+      return {
+        backgroundColor: "transparent",
+        grid: { left: 52, right: 18, top: 18, bottom: ax.bottom },
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "line" },
+          backgroundColor: "rgba(17,24,39,0.92)",
+          borderWidth: 0,
+          textStyle: { color: "#fff" },
+          formatter: (params) => {
+            const p = params && params[0];
+            if (!p) return "";
+            return [
+              `<div style="font-weight:700;margin-bottom:6px;">${p.axisValue}</div>`,
+              `<div>新用户占比：<span style="color:#FB923C;font-weight:900;">${(Math.round(p.data * 10) / 10).toFixed(1)}%</span></div>`
+            ].join("");
+          }
+        },
+        xAxis: {
+          type: "category",
+          data: weeks,
+          axisTick: { alignWithLabel: true },
+          axisLine: { lineStyle: { color: "rgba(107,114,128,0.25)" } },
+          axisLabel: { color: "rgba(68,64,60,0.82)", rotate: ax.rotate, interval: ax.interval }
+        },
+        yAxis: {
+          type: "value",
+          axisLabel: {
+            color: "rgba(68,64,60,0.82)",
+            formatter: (v) => `${(Math.round(v * 10) / 10).toFixed(1)}%`
+          },
+          splitLine: { lineStyle: { color: "rgba(107,114,128,0.12)" } }
+        },
+        series: [
+          {
+            name: "新用户占比",
+            type: "line",
+            data: shareSlice,
+            smooth: true,
+            symbol: "none",
+            lineStyle: { width: 3, color: "#FF6B35" },
+            markLine: {
+              symbol: "none",
+              silent: true,
+              label: {
+                show: true,
+                formatter: "健康阈值",
+                position: "end",
+                color: "rgba(234,88,12,0.95)",
+                fontWeight: 700
+              },
+              lineStyle: { type: "dashed", width: 2, color: "rgba(234,88,12,0.5)" },
+              data: [{ yAxis: health }]
+            }
+          }
+        ]
+      };
+    }
+
+    function updateCharts(rangeKey) {
+      currentTrendRange = rangeKey;
+      const { labels, active, newUsers, growth, share } = getDailyTrendSlice(rangeKey);
+      chartActive && chartActive.setOption(buildAreaChartOptions(labels, active), true);
+      chartNewMix && chartNewMix.setOption(buildDualAxisChartOptions(labels, newUsers, growth), true);
+      chartNewShare && chartNewShare.setOption(buildShareChartOptions(labels, share), true);
+    }
+
+    function initCharts() {
+      chartActive = echarts.init(document.getElementById("chartActive"));
+      chartNewMix = echarts.init(document.getElementById("chartNewMix"));
+      chartNewShare = echarts.init(document.getElementById("chartNewShare"));
+
+      updateCharts("week");
+    }
+
+    // ---------------------------
+    // 5) 模块三：渠道饼图 + 排行表格（默认展示 W12）
+    // ---------------------------
+    function computeChannelCounts(total, shares) {
+      return shares.map(s => total * (s / 100));
+    }
+
+    function buildTableRowHTML({ name, count, sharePct, deltaPctValue }) {
+      const up = deltaPctValue >= 0;
+      const colorCls = up ? "text-up" : "text-down";
+      return `
+        <tr data-channel="${name}" class="border-b border-orange-50/80 transition-colors duration-150 last:border-0">
+          <td class="py-3 pl-4 pr-2 font-semibold text-stone-800 whitespace-nowrap">${name}</td>
+          <td class="py-3 pr-2 tabular-nums text-stone-800 whitespace-nowrap">${formatInt(count)}</td>
+          <td class="py-3 pr-2 tabular-nums text-stone-700 whitespace-nowrap">${(Math.round(sharePct * 10) / 10).toFixed(1)}%</td>
+          <td class="py-3 pr-4 text-right whitespace-nowrap ${colorCls} text-sm font-bold tabular-nums">${formatPercent1(deltaPctValue)}</td>
+        </tr>
+      `;
+    }
+
+    function renderChannelTablesAndPies() {
+      const endIdx = selectedWeekIdx;
+      if (endIdx < 0) return;
+      const prevIdx = Math.max(0, endIdx - 1);
+
+      const activeTotal = mock.activeUsers[endIdx];
+      const activeTotalPrev = mock.activeUsers[prevIdx];
+      const newTotal = mock.newUsers[endIdx];
+      const newTotalPrev = mock.newUsers[prevIdx];
+
+      const activeNames = mock.activeChannels;
+      const newNames = mock.newChannels;
+
+      const activeCounts = computeChannelCounts(activeTotal, mock.activeChannelShareW12);
+      const activeCountsPrev = computeChannelCounts(activeTotalPrev, mock.activeChannelShareW11);
+
+      const newCounts = computeChannelCounts(newTotal, mock.newChannelShareW12);
+      const newCountsPrev = computeChannelCounts(newTotalPrev, mock.newChannelShareW11);
+
+      const activeRows = activeNames.map((name, i) => ({
+        name,
+        count: activeCounts[i],
+        sharePct: mock.activeChannelShareW12[i],
+        deltaPctValue: deltaPct(activeCounts[i], activeCountsPrev[i]),
+      })).sort((a, b) => b.count - a.count);
+
+      const newRows = newNames.map((name, i) => ({
+        name,
+        count: newCounts[i],
+        sharePct: mock.newChannelShareW12[i],
+        deltaPctValue: deltaPct(newCounts[i], newCountsPrev[i]),
+      })).sort((a, b) => b.count - a.count);
+
+      document.getElementById("tableActiveBody").innerHTML = activeRows.map(r => buildTableRowHTML(r)).join("");
+      document.getElementById("tableNewBody").innerHTML = newRows.map(r => buildTableRowHTML(r)).join("");
+
+      // 饼图使用统一橙色渐变（通过每一块的线性渐变色模拟）
+      function pieColorStops(i) {
+        const palette = [
+          ["#9A3412", "#FF6B35"],
+          ["#FF6B35", "#FB923C"],
+          ["#C2410C", "#F97316"],
+          ["#F97316", "#FDBA74"],
+          ["#FF6B35", "#FDBA74"],
+          ["#7C2D12", "#FB923C"],
+        ];
+        const p = palette[i % palette.length];
+        return {
+          type: "linear",
+          x: 0, y: 0, x2: 1, y2: 1,
+          colorStops: [
+            { offset: 0, color: p[0] },
+            { offset: 1, color: p[1] }
+          ]
+        };
+      }
+
+      function buildPieData(rows) {
+        return rows.map((r, i) => ({
+          name: r.name,
+          value: r.count,
+          itemStyle: { color: pieColorStops(i) },
+        }));
+      }
+
+      const pieActiveData = buildPieData(activeRows);
+      const pieNewData = buildPieData(newRows);
+
+      function makePieOption(title, pieData, total) {
+        return {
+          backgroundColor: "transparent",
+          tooltip: {
+            trigger: "item",
+            backgroundColor: "rgba(17,24,39,0.92)",
+            borderWidth: 0,
+            textStyle: { color: "#fff" },
+            formatter: (p) => {
+              const v = p.value ?? 0;
+              const pct = total === 0 ? 0 : (v / total) * 100;
+              return [
+                `<div style="font-weight:800;margin-bottom:6px;">${p.name}</div>`,
+                `<div>数量：<span style="color:#FB923C;font-weight:900;">${formatInt(v)}</span></div>`,
+                `<div>占比：<span style="color:#FF6B35;font-weight:900;">${pct.toFixed(1)}%</span></div>`
+              ].join("");
+            }
+          },
+          series: [
+            {
+              name: title,
+              type: "pie",
+              radius: ["58%", "82%"],
+              avoidLabelOverlap: true,
+              itemStyle: { borderColor: "#FFFFFF", borderWidth: 2 },
+              label: { show: false },
+              data: pieData,
+              emphasis: { scale: true, scaleSize: 8 },
+            }
+          ]
+        };
+      }
+
+      const pieActiveEl = document.getElementById("pieActive");
+      const pieNewEl = document.getElementById("pieNew");
+
+      if (!pieActiveChart) pieActiveChart = echarts.init(pieActiveEl);
+      if (!pieNewChart) pieNewChart = echarts.init(pieNewEl);
+
+      pieActiveChart.setOption(makePieOption("活跃渠道", pieActiveData, activeTotal), true);
+      pieNewChart.setOption(makePieOption("新增渠道", pieNewData, newTotal), true);
+
+      function bindPieClickHighlight(pieChart, tableBodyElId) {
+        const tableBodyEl = document.getElementById(tableBodyElId);
+        pieChart.off("click");
+
+        pieChart.on("click", (params) => {
+          if (!params || params.dataIndex == null) return;
+          const dataIndex = params.dataIndex;
+
+          const seriesIndex = 0;
+          const totalDataLen = pieChart.getOption()?.series?.[0]?.data?.length ?? 0;
+          for (let i = 0; i < totalDataLen; i++) {
+            if (i === dataIndex) pieChart.dispatchAction({ type: "highlight", seriesIndex, dataIndex: i });
+            else pieChart.dispatchAction({ type: "downplay", seriesIndex, dataIndex: i });
+          }
+
+          // 表格高亮对应行
+          const name = params.name;
+          tableBodyEl.querySelectorAll("tr[data-channel]").forEach(tr => {
+            tr.classList.remove("bg-orange-50/90");
+          });
+          const row = tableBodyEl.querySelector(`tr[data-channel="${CSS.escape(name)}"]`);
+          if (row) row.classList.add("bg-orange-50/90");
+        });
+      }
+
+      bindPieClickHighlight(pieActiveChart, "tableActiveBody");
+      bindPieClickHighlight(pieNewChart, "tableNewBody");
+    }
+
+    // ---------------------------
+    // 6) 模块四：自动生成周度分析报告（与 Mock 数据一致）
+    // ---------------------------
+    function getTrendStage() {
+      const endIdx = selectedWeekIdx;
+      // 取“前4周”和“后4周”计算阶段（环比增长率用于更贴近增长节奏）
+      const firstStart = 1; // activeGrowthRate[0]=0，跳过
+      const firstEnd = firstStart + 3; // 前4个有效点
+      const lastStart = Math.max(1, endIdx - 3);
+      const lastEnd = endIdx;
+
+      const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      const a1 = avg(activeGrowthRate.slice(firstStart, firstEnd + 1));
+      const a2 = lastStart <= lastEnd
+        ? avg(activeGrowthRate.slice(lastStart, lastEnd + 1))
+        : avg(activeGrowthRate.slice(0, Math.max(0, endIdx + 1)));
+
+      let minVal = Infinity;
+      let minIdx = 1;
+      for (let i = 1; i < activeGrowthRate.length; i++) {
+        if (activeGrowthRate[i] < minVal) {
+          minVal = activeGrowthRate[i];
+          minIdx = i;
+        }
+      }
+      const pivotWeek = mock.weeks[minIdx];
+
+      if (a2 > a1 * 1.05) return { stage: "加速增长", pivotWeek };
+      if (a2 < a1 * 0.85) return { stage: "增长放缓", pivotWeek };
+      return { stage: "稳定增长", pivotWeek };
+    }
+
+    function getTopChannels() {
+      const endIdx = selectedWeekIdx;
+      const prevIdx = Math.max(0, endIdx - 1);
+
+      const activeTotal = mock.activeUsers[endIdx];
+      const activeTotalPrev = mock.activeUsers[prevIdx];
+      const newTotal = mock.newUsers[endIdx];
+      const newTotalPrev = mock.newUsers[prevIdx];
+
+      const activeCounts = computeChannelCounts(activeTotal, mock.activeChannelShareW12);
+      const activeCountsPrev = computeChannelCounts(activeTotalPrev, mock.activeChannelShareW11);
+      const newCounts = computeChannelCounts(newTotal, mock.newChannelShareW12);
+      const newCountsPrev = computeChannelCounts(newTotalPrev, mock.newChannelShareW11);
+
+      const activeRows = mock.activeChannels.map((name, i) => ({
+        name,
+        count: activeCounts[i],
+        delta: deltaPct(activeCounts[i], activeCountsPrev[i]),
+        sharePct: mock.activeChannelShareW12[i],
+      })).sort((a, b) => b.count - a.count);
+
+      const newRows = mock.newChannels.map((name, i) => ({
+        name,
+        count: newCounts[i],
+        delta: deltaPct(newCounts[i], newCountsPrev[i]),
+        sharePct: mock.newChannelShareW12[i],
+      })).sort((a, b) => b.count - a.count);
+
+      const activeTop1 = activeRows[0];
+      const newTop1 = newRows[0];
+
+      const activeFastest = [...activeRows].sort((a, b) => b.delta - a.delta)[0];
+      const newFastest = [...newRows].sort((a, b) => b.delta - a.delta)[0];
+
+      const activeDecliners = activeRows.filter(r => r.delta < 0).sort((a, b) => a.delta - b.delta);
+      const newDecliners = newRows.filter(r => r.delta < 0).sort((a, b) => a.delta - b.delta);
+
+      // 新用户前两大渠道占比
+      const top2NewShare = mock.newChannelShareW12
+        .slice()
+        .sort((a, b) => b - a)[0] +
+        mock.newChannelShareW12.slice().sort((a, b) => b - a)[1];
+
+      return {
+        activeTop1,
+        newTop1,
+        activeFastest,
+        newFastest,
+        activeDecliners,
+        newDecliners,
+        top2NewShare,
+      };
+    }
+
+    function getRiskSignals() {
+      const endIdx = selectedWeekIdx;
+      const prevIdx = Math.max(0, endIdx - 1);
+
+      const shareNow = newShare[endIdx];
+      const w8Idx = Math.min(7, endIdx); // 如果不足 8 周，则退化为第 1 周
+      const shareW8 = newShare[w8Idx] ?? 0;
+
+      // 新用户占比在 W8->本周 是否回落（用于风险提示）
+      const lastShares = newShare.slice(w8Idx, endIdx + 1).filter(v => isFinite(v));
+      const sharePeak = lastShares.length ? Math.max(...lastShares) : shareW8;
+      const shareDownOverall = shareNow < sharePeak;
+
+      // 新增渠道最大下滑（新增侧）
+      const newCounts = computeChannelCounts(mock.newUsers[endIdx], mock.newChannelShareW12);
+      const newCountsPrev = computeChannelCounts(mock.newUsers[prevIdx], mock.newChannelShareW11);
+      const newDecliner = mock.newChannels
+        .map((name, i) => ({ name, delta: deltaPct(newCounts[i], newCountsPrev[i]) }))
+        .sort((a, b) => a.delta - b.delta)[0];
+
+      const health = 30;
+      const belowHealthCount = lastShares.filter(s => s < health).length;
+
+      return {
+        shareNow,
+        shareW8,
+        shareDownOverall,
+        belowHealthCount,
+        lastSharesCount: lastShares.length || 1,
+        newWorstDecliner: newDecliner,
+      };
+    }
+
+    function generateReport() {
+      const endIdx = selectedWeekIdx;
+      const prevIdx = endIdx - 1;
+      const hasPrev = prevIdx >= 0;
+
+      const activeU = mock.activeUsers[endIdx];
+      const newU = mock.newUsers[endIdx];
+      const shareU = newShare[endIdx];
+      const cumU = cumulativeUsers[endIdx];
+
+      const wkNo = coreWeeks[endIdx] ? coreWeeks[endIdx].weekNo : endIdx + 1;
+
+      const activeDelta = hasPrev ? deltaPct(activeU, mock.activeUsers[prevIdx]) : NaN;
+      const newDelta = hasPrev ? deltaPct(newU, mock.newUsers[prevIdx]) : NaN;
+      const shareDeltaPP = hasPrev ? (shareU - newShare[prevIdx]) : NaN;
+      const cumDelta = hasPrev ? deltaPct(cumU, cumulativeUsers[prevIdx]) : NaN;
+
+      const { stage, pivotWeek } = getTrendStage();
+      const channels = getTopChannels();
+      const risk = getRiskSignals();
+
+      const activePart = (isFinite(activeDelta) ? activeDelta : 0) >= 0 ? "正向拉动" : "增长承压";
+      const newPart = (isFinite(newDelta) ? newDelta : 0) >= 0 ? "新增供给稳定" : "新增供给回落";
+
+      const pctOrDash = (v) => (isFinite(v) ? formatPercent1(v) : "—");
+      const ppOrDash = (v) => (isFinite(v) ? formatPP(v) : "—");
+
+      const overviewTitle = "本周数据概览";
+      const trendTitle = "趋势判断";
+      const channelTitle = "渠道洞察";
+      const riskTitle = "风险提示";
+      const actionTitle = "行动建议";
+
+      const overview = `
+        <div class="rounded-3xl border border-orange-100/70 bg-white p-5 shadow-sm">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="h-6 w-1 rounded-full bg-brand"></span>
+            <div class="text-sm font-bold text-brand">${overviewTitle}</div>
+          </div>
+          <p class="text-sm leading-relaxed text-stone-700">
+            ${CURRENT_YEAR}年第<strong>${wkNo}</strong>周活跃用户 <strong>${formatInt(activeU)}</strong>，环比 <strong>${pctOrDash(activeDelta)}</strong>（与上一周相比），体现为“${activePart}”；新增用户 <strong>${formatInt(newU)}</strong>，环比 <strong>${pctOrDash(newDelta)}</strong>，${newPart}。
+            新用户占比 <strong>${nf1(shareU)}%</strong>，环比 <strong>${ppOrDash(shareDeltaPP)}</strong>；累计用户 <strong>${formatInt(cumU)}</strong>，环比 <strong>${pctOrDash(cumDelta)}</strong>。
+          </p>
+        </div>
+      `;
+
+      const trend = `
+        <div class="rounded-3xl border border-orange-100/70 bg-white p-5 shadow-sm">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="h-6 w-1 rounded-full bg-brand"></span>
+            <div class="text-sm font-bold text-brand">${trendTitle}</div>
+          </div>
+          <p class="text-sm leading-relaxed text-stone-700">
+            活跃用户当前处于<strong>${stage}</strong>阶段，环比增长率在<strong>${pivotWeek}</strong>附近出现阶段性拐点（短期波动后进入相对更温和的增长节奏）。
+            同时，从 W8 的回落到 W9-W12 的逐步修复，整体增长更偏向“稳中求进”。
+          </p>
+        </div>
+      `;
+
+      const activeDeclineName = channels.activeDecliners[0]?.name ?? "—";
+      const activeDeclineDelta = channels.activeDecliners[0]?.delta ?? 0;
+      const newDeclineName = channels.newDecliners[0]?.name ?? "—";
+      const newDeclineDelta = channels.newDecliners[0]?.delta ?? 0;
+
+      const channel = `
+        <div class="rounded-3xl border border-orange-100/70 bg-white p-5 shadow-sm">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="h-6 w-1 rounded-full bg-brand"></span>
+            <div class="text-sm font-bold text-brand">${channelTitle}</div>
+          </div>
+          <p class="text-sm leading-relaxed text-stone-700">
+            活跃用户 Top 1 渠道是<strong>${channels.activeTop1.name}</strong>（占比 <strong>${nf1(channels.activeTop1.sharePct)}%</strong>）；
+            新用户 Top 1 渠道是<strong>${channels.newTop1.name}</strong>（占比 <strong>${nf1(channels.newTop1.sharePct)}%</strong>）。
+            增长最快的渠道包括<strong>${channels.activeFastest.name}</strong>与<strong>${channels.newFastest.name}</strong>，分别环比 <strong>${formatPercent1(channels.activeFastest.delta)}</strong>、<strong>${formatPercent1(channels.newFastest.delta)}</strong>。
+            下滑的重点渠道（新增侧）为<strong>${newDeclineName}</strong>（环比 <strong>${formatPercent1(newDeclineDelta)}</strong>），活跃侧对应为<strong>${activeDeclineName}</strong>（环比 <strong>${formatPercent1(activeDeclineDelta)}</strong>）。
+            结构健康性方面，新用户前两大渠道合计占比约<strong>${nf1(channels.top2NewShare)}%</strong>，主次分明但仍需关注单点波动风险。
+          </p>
+        </div>
+      `;
+
+      const riskBlock = `
+        <div class="rounded-3xl border border-orange-100 bg-gradient-to-br from-orange-50/90 to-amber-50/40 p-5 ring-1 ring-orange-100/80">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="h-6 w-1 rounded-full bg-brand"></span>
+            <div class="text-sm font-bold text-brand">${riskTitle}</div>
+          </div>
+          <div class="text-sm leading-relaxed text-stone-800">
+            <p>
+              注意：新用户占比从<strong>${mock.weeks[Math.min(7, endIdx)]}</strong>的<strong>${nf1(risk.shareW8)}%</strong>回落至本周<strong>${nf1(risk.shareNow)}%</strong>，
+              并且最近<strong>${risk.belowHealthCount}/${risk.lastSharesCount}</strong>个周仍低于健康阈值 <strong>30.0%</strong>，存在增长结构变弱的风险。
+            </p>
+            <p class="mt-2">
+              同时，新增侧渠道<strong>${risk.newWorstDecliner?.name ?? "—"}</strong>出现明显下滑（环比 <strong>${formatPercent1(risk.newWorstDecliner?.delta ?? 0)}</strong>），建议优先排查转化链路的掉点。
+            </p>
+          </div>
+        </div>
+      `;
+
+      const action = `
+        <div class="rounded-3xl border border-orange-100/70 bg-white p-5 shadow-sm">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="h-6 w-1 rounded-full bg-brand"></span>
+            <div class="text-sm font-bold text-brand">${actionTitle}</div>
+          </div>
+          <ol class="text-sm space-y-3 text-stone-700">
+            <li class="flex gap-3">
+              <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-black text-brand">1</span>
+              <div class="leading-relaxed">
+                强化<strong class="text-stone-900">${channels.newFastest.name}</strong>获客与转化链路（该渠道增速最快，环比 <strong>${formatPercent1(channels.newFastest.delta)}</strong>）。
+                <span class="text-stone-500">预期效果：提升新增供给，把新用户占比拉回健康区间。</span>
+              </div>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-black text-brand">2</span>
+              <div class="leading-relaxed">
+                排查<strong class="text-stone-900">${newDeclineName}</strong>下滑原因，重点从<strong>投放人群/素材</strong>与<strong>落地页转化</strong>两端做优化（环比 <strong>${formatPercent1(newDeclineDelta)}</strong>）。
+                <span class="text-stone-500">预期效果：减少下滑放大效应，稳定新增规模。</span>
+              </div>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-black text-brand">3</span>
+              <div class="leading-relaxed">
+                巩固<strong class="text-stone-900">应用商店</strong>与<strong class="text-stone-900">社交媒体分享</strong>的协同拉新：本周新用户结构中两者占比合计约<strong>${nf1(channels.top2NewShare)}%</strong>，建议同步优化内容节奏与激励机制。
+                <span class="text-stone-500">预期效果：提升渠道稳定性，降低结构抖动。</span>
+              </div>
+            </li>
+          </ol>
+        </div>
+      `;
+
+      return [overview, trend, channel, riskBlock, action].join("");
+    }
+
+    function renderReport() {
+      document.getElementById("analysisReport").innerHTML = generateReport();
+    }
+
+    // ---------------------------
+    // 7) 对话交互（Mock，不接真实 AI）
+    // ---------------------------
+    const chatBox = document.getElementById("chatBox");
+    const chatInput = document.getElementById("chatInput");
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function appendUserBubble(text) {
+      const el = document.createElement("div");
+      el.className = "w-full flex justify-end";
+      el.innerHTML = `
+        <div class="max-w-[90%] rounded-3xl bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-md">
+          ${escapeHtml(text)}
+        </div>
+      `;
+      chatBox.appendChild(el);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendAiBubble(text) {
+      const el = document.createElement("div");
+      el.className = "w-full flex flex-col items-start";
+      el.innerHTML = `
+        <div class="max-w-[90%] rounded-3xl border border-stone-200/90 bg-white px-4 py-2.5 text-sm leading-relaxed text-stone-800 shadow-sm">
+          ${escapeHtml(text)}
+        </div>
+      `;
+      chatBox.appendChild(el);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    const mockQA = [
+      {
+        q: "哪个渠道的 ROI 最高？",
+        a: "从本周数据看，ROI 更高的渠道是「邀请注册」。该渠道在新增侧环比增速更突出，同时占比具备持续贡献空间。建议把邀请码分发、首登礼包与引导文案打磨到“首次访问-首次转化”的最短路径上，放大高效获客带来的新增增量。"
+      },
+      {
+        q: "新用户占比下降该怎么办？",
+        a: "新用户占比从 W8 的高位回落到本周（约 29.x% → 27.x%），说明“新增规模改善”未能同步转化为更高的结构占比。建议：1）优先提升新增链路的首周留存与首次访问转化；2）对贡献大的渠道（应用商店、社交媒体）做落地页匹配与人群定向；3）对下滑渠道（如付费类）排查投放效率与转化链路掉点，避免结构继续被拉低。"
+      },
+      {
+        q: "下周增长预测是什么？",
+        a: "基于最近 12 周活跃与新增节奏：活跃整体回稳、但增长更偏温和；新增在 W11 出现小波动后回到正向。下周预计呈现“新增小幅上行、活跃稳定增长、结构压力仍需跟踪”的格局。若邀请注册保持高增速且付费侧下滑得到纠偏，新用户占比大概率在 27.x%~28.x% 区间波动。"
+      },
+      {
+        q: "新用户下降的原因是什么？",
+        a: "主要信号来自新用户占比的结构性走低：新增虽在增长，但活跃基数上升更快导致占比被稀释；同时部分渠道（尤其付费类）存在环比下滑，拖慢了结构修复速度。建议按渠道拆分拉新-转化-留存三段链路定位问题环节。"
+      }
+    ];
+
+    function getMockReply(question) {
+      const q = String(question || "").trim();
+      const direct = mockQA.find(x => x.q === q);
+      if (direct) return direct.a;
+
+      if (/占比.*下降|下降.*占比/.test(q)) {
+        return mockQA.find(t => t.q === "新用户占比下降该怎么办？")?.a
+          || "新用户占比下降通常需要从渠道效率与转化链路入手逐段排查。";
+      }
+      if (/ROI/.test(q)) {
+        return mockQA.find(t => t.q === "哪个渠道的 ROI 最高？")?.a
+          || "ROI 更高的渠道通常与“增长最快且仍保持稳定占比”的渠道相关。";
+      }
+      if (/预测|下周/.test(q)) {
+        return mockQA.find(t => t.q === "下周增长预测是什么？")?.a
+          || "下周增长预计以稳定为主，但需关注结构性指标与下滑渠道的修复情况。";
+      }
+      return "我可以基于当前看板数据帮你进一步拆解原因。建议你补充你关注的维度（渠道、转化、留存或投放人群），例如：要我看「付费推广」还是「应用商店」的环比变化？";
+    }
+
+    function sendChat(text) {
+      const q = String(text || "").trim();
+      if (!q) return;
+      appendUserBubble(q);
+      setTimeout(() => {
+        const reply = getMockReply(q);
+        appendAiBubble(reply);
+      }, 380);
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", () => {
+      sendChat(chatInput.value);
+      chatInput.value = "";
+      chatInput.focus();
+    });
+
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("sendBtn").click();
+      }
+    });
+
+    document.querySelectorAll(".quick-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const q = btn.getAttribute("data-q");
+        chatInput.value = q;
+        sendChat(q);
+        chatInput.value = "";
+        chatInput.focus();
+      });
+    });
+
+    // ---------------------------
+    // 8) 初始化 + 监听 resize + 时间切换联动
+    // ---------------------------
+    const RANGE_BTN_ACTIVE =
+      "range-btn flex-1 rounded-xl px-2 py-2.5 text-sm font-semibold bg-brand text-white shadow-sm transition-colors duration-150 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 sm:min-w-[4.5rem] sm:flex-none sm:px-3";
+    const RANGE_BTN_IDLE =
+      "range-btn flex-1 rounded-xl px-2 py-2.5 text-sm font-medium text-stone-600 transition-colors duration-150 hover:bg-white/90 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 sm:min-w-[4.5rem] sm:flex-none sm:px-3";
+
+    function setActiveRangeButton(rangeKey) {
+      document.querySelectorAll(".range-btn").forEach(b => {
+        const isActive = b.getAttribute("data-range") === rangeKey;
+        b.className = isActive ? RANGE_BTN_ACTIVE : RANGE_BTN_IDLE;
+      });
+    }
+
+    function bindRangeButtons() {
+      document.querySelectorAll(".range-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const rangeKey = btn.getAttribute("data-range");
+          setActiveRangeButton(rangeKey);
+          updateCharts(rangeKey); // 需求：图表联动变化（Mock）
+        });
+      });
+    }
+
+    function debounce(fn, delayMs) {
+      let t = null;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), delayMs);
+      };
+    }
+
+    function resizeCharts() {
+      chartActive && chartActive.resize();
+      chartNewMix && chartNewMix.resize();
+      chartNewShare && chartNewShare.resize();
+      pieActiveChart && pieActiveChart.resize();
+      pieNewChart && pieNewChart.resize();
+    }
+
+    window.addEventListener("load", async () => {
+      (function initBrandLogo() {
+        const img = document.getElementById("brandLogo");
+        const fb = document.getElementById("logoFallback");
+        if (!img || !fb) return;
+        img.addEventListener("error", () => {
+          img.classList.add("hidden");
+          fb.classList.remove("hidden");
+        });
+      })();
+      try {
+        await loadAllData();
+
+        initWeekSelector();
+        updateWeekMetaLabel();
+        updatePeriodBadge();
+
+        renderKpis();
+        initCharts();
+        renderChannelTablesAndPies();
+        renderReport();
+        bindRangeButtons();
+
+        const hint = document.getElementById("dataModeHint");
+        if (hint) hint.textContent = "";
+
+        window.addEventListener("resize", debounce(resizeCharts, 180));
+      } catch (err) {
+        console.error(err);
+        const hint = document.getElementById("dataModeHint");
+        if (hint) hint.textContent = "";
+      }
+    });
+  </script>
+</body>
+</html>
+
