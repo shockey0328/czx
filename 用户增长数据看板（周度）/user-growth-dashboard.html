@@ -1671,53 +1671,118 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    const mockQA = [
-      {
-        q: "哪个渠道的 ROI 最高？",
-        a: "从本周数据看，ROI 更高的渠道是「邀请注册」。该渠道在新增侧环比增速更突出，同时占比具备持续贡献空间。建议把邀请码分发、首登礼包与引导文案打磨到“首次访问-首次转化”的最短路径上，放大高效获客带来的新增增量。"
-      },
-      {
-        q: "新用户占比下降该怎么办？",
-        a: "新用户占比从 W8 的高位回落到本周（约 29.x% → 27.x%），说明“新增规模改善”未能同步转化为更高的结构占比。建议：1）优先提升新增链路的首周留存与首次访问转化；2）对贡献大的渠道（应用商店、社交媒体）做落地页匹配与人群定向；3）对下滑渠道（如付费类）排查投放效率与转化链路掉点，避免结构继续被拉低。"
-      },
-      {
-        q: "下周增长预测是什么？",
-        a: "基于最近 12 周活跃与新增节奏：活跃整体回稳、但增长更偏温和；新增在 W11 出现小波动后回到正向。下周预计呈现“新增小幅上行、活跃稳定增长、结构压力仍需跟踪”的格局。若邀请注册保持高增速且付费侧下滑得到纠偏，新用户占比大概率在 27.x%~28.x% 区间波动。"
-      },
-      {
-        q: "新用户下降的原因是什么？",
-        a: "主要信号来自新用户占比的结构性走低：新增虽在增长，但活跃基数上升更快导致占比被稀释；同时部分渠道（尤其付费类）存在环比下滑，拖慢了结构修复速度。建议按渠道拆分拉新-转化-留存三段链路定位问题环节。"
-      }
-    ];
+    function getChatSnapshot() {
+      const endIdx = selectedWeekIdx;
+      if (endIdx < 0 || endIdx >= mock.weeks.length) return null;
+      const prevIdx = endIdx - 1;
+      const hasPrev = prevIdx >= 0;
+      const weekNo = coreWeeks[endIdx] ? coreWeeks[endIdx].weekNo : endIdx + 1;
+
+      const active = mock.activeUsers[endIdx];
+      const news = mock.newUsers[endIdx];
+      const share = newShare[endIdx];
+      const ret = mock.newUserRetention[endIdx];
+
+      const activeWoW = hasPrev ? deltaPct(active, mock.activeUsers[prevIdx]) : NaN;
+      const newWoW = hasPrev ? deltaPct(news, mock.newUsers[prevIdx]) : NaN;
+      const shareWoW = hasPrev ? (share - newShare[prevIdx]) : NaN;
+      const retWoW = hasPrev && isFinite(ret) && isFinite(mock.newUserRetention[prevIdx])
+        ? (ret - mock.newUserRetention[prevIdx])
+        : NaN;
+
+      const ly = coreRowByYearWeek.get(`${CURRENT_YEAR - 1}-${weekNo}`);
+      const shareYoY = ly ? yoyPP(share, ly.sharePct) : NaN;
+
+      const channels = getTopChannels();
+      const risk = getRiskSignals();
+      const trend = getTrendStage();
+      return {
+        weekNo,
+        active,
+        news,
+        share,
+        ret,
+        activeWoW,
+        newWoW,
+        shareWoW,
+        shareYoY,
+        retWoW,
+        channels,
+        risk,
+        trend,
+      };
+    }
 
     function getMockReply(question) {
       const q = String(question || "").trim();
-      const direct = mockQA.find(x => x.q === q);
-      if (direct) return direct.a;
+      const s = getChatSnapshot();
+      if (!s) return "当前暂无可用周度数据，请先选择周度后再提问。";
 
-      if (/占比.*下降|下降.*占比/.test(q)) {
-        return mockQA.find(t => t.q === "新用户占比下降该怎么办？")?.a
-          || "新用户占比下降通常需要从渠道效率与转化链路入手逐段排查。";
+      if (q === "哪个渠道的 ROI 最高？" || /ROI/.test(q)) {
+        return `按当前周（${CURRENT_YEAR}年第${s.weekNo}周）渠道表现看，新增侧增长最快的是「${s.channels.newFastest.name}」（环比 ${formatPercent1(s.channels.newFastest.delta)}），活跃侧增长最快的是「${s.channels.activeFastest.name}」（环比 ${formatPercent1(s.channels.activeFastest.delta)}）。在看板现有数据口径下，建议优先把「${s.channels.newFastest.name}」作为高优先级拉新渠道，重点优化投放人群与落地转化链路。`;
       }
-      if (/ROI/.test(q)) {
-        return mockQA.find(t => t.q === "哪个渠道的 ROI 最高？")?.a
-          || "ROI 更高的渠道通常与“增长最快且仍保持稳定占比”的渠道相关。";
+
+      if (q === "新用户占比下降该怎么办？" || /占比.*下降|下降.*占比/.test(q)) {
+        return `当前周新用户占比为 ${nf1(s.share)}%，环比 ${formatPP(s.shareWoW)}，同比 ${isFinite(s.shareYoY) ? formatPP(s.shareYoY) : "—"}。结合渠道数据，新增侧下滑最明显的是「${s.risk.newWorstDecliner?.name ?? "—"}」（环比 ${formatPercent1(s.risk.newWorstDecliner?.delta ?? 0)}）。建议先修复该渠道的投放-落地页转化，再对「${s.channels.newFastest.name}」加预算验证增量，把占比拉回更健康区间。`;
       }
-      if (/预测|下周/.test(q)) {
-        return mockQA.find(t => t.q === "下周增长预测是什么？")?.a
-          || "下周增长预计以稳定为主，但需关注结构性指标与下滑渠道的修复情况。";
+
+      if (q === "下周增长预测是什么？" || /预测|下周/.test(q)) {
+        return `基于最近趋势判断（当前处于${s.trend.stage}阶段）：下周更可能是“活跃稳中小幅波动、新增温和修复”。当前活跃 ${formatInt(s.active)}（环比 ${formatPercent1(s.activeWoW)}），新增 ${formatInt(s.news)}（环比 ${formatPercent1(s.newWoW)}）。若「${s.channels.newFastest.name}」保持正增长且「${s.risk.newWorstDecliner?.name ?? "下滑渠道"}」修复有效，新用户占比预计围绕当前 ${nf1(s.share)}% 小幅震荡。`;
       }
-      return "我可以基于当前看板数据帮你进一步拆解原因。建议你补充你关注的维度（渠道、转化、留存或投放人群），例如：要我看「付费推广」还是「应用商店」的环比变化？";
+
+      if (q === "新用户下降的原因是什么？" || /新用户.*下降|下降.*新用户/.test(q)) {
+        return `从本周数据看，新增用户 ${formatInt(s.news)}，环比 ${formatPercent1(s.newWoW)}；新用户占比 ${nf1(s.share)}%，环比 ${formatPP(s.shareWoW)}。主要压力来自渠道结构：新增侧下滑最明显的是「${s.risk.newWorstDecliner?.name ?? "—"}」（环比 ${formatPercent1(s.risk.newWorstDecliner?.delta ?? 0)}），而活跃基数仍在扩大，导致占比被稀释。建议按“投放质量 → 落地页转化 → 首周留存”三段漏斗逐项排查。`;
+      }
+
+      return `当前是 ${CURRENT_YEAR}年第${s.weekNo}周：活跃 ${formatInt(s.active)}（环比 ${formatPercent1(s.activeWoW)}），新增 ${formatInt(s.news)}（环比 ${formatPercent1(s.newWoW)}），新用户占比 ${nf1(s.share)}%（环比 ${formatPP(s.shareWoW)}），新用户次周留存 ${isFinite(s.ret) ? nf1(s.ret) + "%" : "—"}（环比 ${isFinite(s.retWoW) ? formatPP(s.retWoW) : "—"}）。你可以继续问我渠道、转化、留存中的任一维度。`;
     }
 
-    function sendChat(text) {
+    function buildDeepSeekContext() {
+      const s = getChatSnapshot();
+      if (!s) return "当前无有效周度数据。";
+      const topChannels = getTopChannels();
+      return [
+        `当前周：${CURRENT_YEAR}年第${s.weekNo}周`,
+        `活跃用户：${formatInt(s.active)}（环比 ${formatPercent1(s.activeWoW)}）`,
+        `新增用户：${formatInt(s.news)}（环比 ${formatPercent1(s.newWoW)}）`,
+        `新用户占比：${nf1(s.share)}%（环比 ${formatPP(s.shareWoW)}）`,
+        `新用户次周留存：${isFinite(s.ret) ? nf1(s.ret) + "%" : "—"}（环比 ${isFinite(s.retWoW) ? formatPP(s.retWoW) : "—"}）`,
+        `活跃Top渠道：${topChannels.activeTop1.name}（占比 ${nf1(topChannels.activeTop1.sharePct)}%）`,
+        `新增Top渠道：${topChannels.newTop1.name}（占比 ${nf1(topChannels.newTop1.sharePct)}%）`,
+        `新增下滑最明显渠道：${s.risk.newWorstDecliner?.name ?? "—"}（环比 ${formatPercent1(s.risk.newWorstDecliner?.delta ?? 0)}）`
+      ].join("\n");
+    }
+
+    async function getDeepSeekReply(question) {
+      const resp = await fetch("/api/deepseek/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: String(question || "").trim(),
+          context: buildDeepSeekContext()
+        })
+      });
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(errText || `HTTP ${resp.status}`);
+      }
+      const data = await resp.json();
+      if (!data || !data.reply) throw new Error("empty reply");
+      return String(data.reply);
+    }
+
+    async function sendChat(text) {
       const q = String(text || "").trim();
       if (!q) return;
       appendUserBubble(q);
-      setTimeout(() => {
-        const reply = getMockReply(q);
+      try {
+        const reply = await getDeepSeekReply(q);
         appendAiBubble(reply);
-      }, 380);
+      } catch (e) {
+        console.warn("DeepSeek 不可用，回退本地分析：", e);
+        const fallback = getMockReply(q);
+        appendAiBubble(`${fallback}\n\n（提示：当前为本地回退分析，DeepSeek 接口未成功响应）`);
+      }
     }
 
     document.getElementById("sendBtn").addEventListener("click", () => {

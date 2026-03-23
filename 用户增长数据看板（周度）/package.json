@@ -1,5 +1,11 @@
 {
-  "devDependencies": {
+  "scripts": {
+    "build:embedded": "node build-embedded-b64.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "iconv-lite": "^0.7.2"
   }
 }
