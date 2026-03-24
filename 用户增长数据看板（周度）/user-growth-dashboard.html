@@ -653,12 +653,14 @@
       const sel = document.getElementById("weekSelect");
       if (!sel || !coreWeeks.length) return;
       sel.innerHTML = "";
-      coreWeeks.forEach((w, i) => {
+      // 下拉列表倒序：最新周在上，与业务习惯一致
+      for (let i = coreWeeks.length - 1; i >= 0; i--) {
+        const w = coreWeeks[i];
         const opt = document.createElement("option");
         opt.value = String(i);
         opt.textContent = `${CURRENT_YEAR}年第${w.weekNo}周`;
         sel.appendChild(opt);
-      });
+      }
       sel.value = String(Math.min(selectedWeekIdx, coreWeeks.length - 1));
       selectedWeekIdx = Number(sel.value);
       sel.onchange = () => {
