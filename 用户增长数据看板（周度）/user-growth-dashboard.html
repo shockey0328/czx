@@ -1273,7 +1273,8 @@
         const shares = rows.map((r) => (total === 0 ? 0 : (r.count / total) * 100));
         return {
           backgroundColor: "transparent",
-          grid: { left: 160, right: 28, top: 14, bottom: 24 },
+          // 统一留白，避免顶部标签贴边并确保左右图视觉持平
+          grid: { left: 160, right: 28, top: 24, bottom: 24, containLabel: false },
           tooltip: {
             trigger: "axis",
             axisPointer: { type: "shadow" },
@@ -1337,8 +1338,10 @@
       }
 
       // 渠道多时自动增高图高，避免标签重叠（最小 320）
-      pieActiveEl.style.height = `${Math.max(320, activeRows.length * 30)}px`;
-      pieNewEl.style.height = `${Math.max(320, newRows.length * 30)}px`;
+      // 左右两图使用同一高度，保证图表与表格起始位置一致
+      const sharedChartHeight = Math.max(320, Math.max(activeRows.length, newRows.length) * 30);
+      pieActiveEl.style.height = `${sharedChartHeight}px`;
+      pieNewEl.style.height = `${sharedChartHeight}px`;
 
       if (!pieActiveChart) pieActiveChart = echarts.init(pieActiveEl);
       if (!pieNewChart) pieNewChart = echarts.init(pieNewEl);
