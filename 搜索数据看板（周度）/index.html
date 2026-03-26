@@ -589,7 +589,7 @@
         </div>
     </div>
 
-    <script src="data.js?v=12"></script>
+    <script src="data.js?v=13"></script>
     <script>
         (function(){
             if (typeof dashboardData === 'undefined') {
@@ -619,7 +619,7 @@
             appJsLoaded = true;
             var script = document.createElement('script');
             // 使用相对路径，由页面顶部的 <base> 统一解析（含 fetch+srcdoc 注入场景）
-            script.src = 'app.js';
+            script.src = 'app.js?v=13';
             script.onload = function() { console.log('✅ app.js加载完成'); };
             script.onerror = function() {
                 console.error('❌ app.js加载失败，请检查路径:', script.src);
