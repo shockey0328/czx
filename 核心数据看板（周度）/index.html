@@ -2673,7 +2673,7 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
             const weekInfo = getWeekScenarioInfo(currentWeek);
             
             // 生成核心表现描述
-            const performanceText = `周活跃用户${formatNumber(currentData.活跃用户)}，营收${formatNumber(currentData.营收)}元。ARPU为${currentData.ARPU}元，留存率${currentData.次周留存率}%，使用率${currentData.使用率}%。`;
+            const performanceText = `周活跃用户${formatNumber(currentData.活跃用户)}，营收${formatNumber(currentData.营收)}元。ARPU为${currentData.ARPU}元，次周留存率${currentData.次周留存率}%，使用率${currentData.使用率}%，深度访问率${currentData.深度访问率}%，大会员活跃率${currentData.大会员活跃率}%。`;
             
             // 基于教育场景的关键变化分析
             const keyChanges = analyzeEducationScenarioChanges(currentData, lastWeekData, lastYearData, metrics, weekInfo);
@@ -2708,7 +2708,7 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
                         <h5>关键变化</h5>
                         <div class="analysis-content">
                             <ul class="analysis-list">
-                                ${keyChanges.slice(0, 4).map(change => `<li>${change}</li>`).join('')}
+                                ${keyChanges.slice(0, 3).map(change => `<li>${change}</li>`).join('')}
                             </ul>
                         </div>
                     </div>
@@ -2832,81 +2832,93 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
         function analyzeEducationScenarioChanges(currentData, lastWeekData, lastYearData, metrics, weekInfo) {
             const changes = [];
 
-            if (lastYearData && metrics.userYoY && metrics.userYoY !== '—') {
-                changes.push(`【同比】活跃用户 ${metrics.userYoY}，营收 ${metrics.revenueYoY}（vs 去年同周）`);
+            if (!lastWeekData) {
+                return [ '首周数据，暂无环比对比', `${weekInfo.description}` ].filter(Boolean);
             }
 
-            if (!lastWeekData) {
-                if (changes.length === 0) changes.push('首周数据，暂无环比对比');
-                changes.push(`${weekInfo.description}`);
-                return changes;
-            }
-            
             const userChangeNum = parseFloat(metrics.userWoWNum || 0);
             const revenueChangeNum = parseFloat(metrics.revenueWoWNum || 0);
-            const usageChange = currentData.使用率 - lastWeekData.使用率;
-            const retentionChange = currentData.次周留存率 - lastWeekData.次周留存率;
-            
-            // 1. 用户维度分析
-            if (Math.abs(userChangeNum) >= 3) {
+            const arpuChangeNum = ((currentData.ARPU - lastWeekData.ARPU) / lastWeekData.ARPU * 100);
+
+            const usageChange = currentData.使用率 - lastWeekData.使用率; // pp
+            const retentionChange = currentData.次周留存率 - lastWeekData.次周留存率; // pp
+            const deepAccessChange = currentData.深度访问率 - lastWeekData.深度访问率; // pp
+
+            const vipChange = currentData.大会员活跃率 - lastWeekData.大会员活跃率; // pp
+
+            // 1) 用户维度：合并“活跃 + 留存”形成更贴近运营的结论
+            if (Math.abs(userChangeNum) >= 3 || Math.abs(retentionChange) >= 2) {
+                let sceneReason = '';
                 if (weekInfo.isHoliday) {
-                    if (userChangeNum < 0) {
-                        changes.push(`【用户】寒假期间下降${Math.abs(userChangeNum).toFixed(1)}%，符合假期规律`);
-                    } else {
-                        changes.push(`【用户】寒假期间仍增长${userChangeNum.toFixed(1)}%，表现超预期`);
-                    }
+                    sceneReason = `，${userChangeNum >= 0 ? '寒假期间仍增长' : '寒假期间下降'}符合学习节奏预期`;
                 } else if (weekInfo.isExamPeriod) {
-                    if (userChangeNum > 0) {
-                        changes.push(`【用户】考试期增长${userChangeNum.toFixed(1)}%，学习需求旺盛`);
+                    sceneReason = `，考试期学习需求带动活跃与留存改善`;
+                } else {
+                    sceneReason = `，学习周期影响下活跃与留存共同改善`;
+                }
+
+                const userWord = userChangeNum >= 0 ? '增长' : '下降';
+                const retWord = retentionChange >= 0 ? '提升' : '下降';
+                const userYoY = metrics.userYoY && metrics.userYoY !== '—' ? `（同比活跃${metrics.userYoY}）` : '';
+                const retYoY = metrics.retentionYoY && metrics.retentionYoY !== '—' ? `（同比留存${metrics.retentionYoY}）` : '';
+
+                changes.push(`【用户】活跃${userWord}${Math.abs(userChangeNum).toFixed(1)}%，次周留存率${retWord}${Math.abs(retentionChange).toFixed(1)}pp${sceneReason}；${userYoY}${retYoY}`.replace(/\s+/g, ' ').trim());
+            }
+
+            // 2) 营收维度：重点覆盖“营收上升但 ARPU 下滑”这种组合
+            {
+                const hasRevenueMove = Math.abs(revenueChangeNum) >= 0.5;
+                const hasArpuMove = Math.abs(arpuChangeNum) >= 1.5;
+                if (hasRevenueMove || hasArpuMove) {
+                    const revenueWord = revenueChangeNum >= 0 ? '增长' : '下降';
+                    const arpuWord = arpuChangeNum >= 0 ? '提升' : '下滑';
+                    const yoyRevenue = metrics.revenueYoY && metrics.revenueYoY !== '—' ? `（同比营收${metrics.revenueYoY}）` : '';
+                    const yoyArpu = metrics.arpuYoY && metrics.arpuYoY !== '—' ? `（同比ARPU${metrics.arpuYoY}）` : '';
+
+                    if (revenueChangeNum >= 0 && arpuChangeNum < 0) {
+                        changes.push(`【营收】营收${revenueWord}${Math.abs(revenueChangeNum).toFixed(1)}%，但ARPU${arpuWord}${Math.abs(arpuChangeNum).toFixed(1)}%；说明营收更多由规模拉动，付费强度/付费结构仍需优化与验证。${yoyRevenue}${yoyArpu}`.replace(/\s+/g, ' ').trim());
+                    } else if (Math.abs(revenueChangeNum) >= 5 && Math.abs(arpuChangeNum) >= 5) {
+                        changes.push(`【营收】营收${revenueWord}${Math.abs(revenueChangeNum).toFixed(1)}%，ARPU${arpuChangeNum >= 0 ? '提升' : '下滑'}${Math.abs(arpuChangeNum).toFixed(1)}%，整体收入口径随付费意愿同步变化。${yoyRevenue}`);
                     } else {
-                        changes.push(`【用户】考试期下降${Math.abs(userChangeNum).toFixed(1)}%，需关注产品匹配度`);
+                        changes.push(`【营收】营收${revenueWord}${Math.abs(revenueChangeNum).toFixed(1)}%，ARPU${arpuWord}${Math.abs(arpuChangeNum).toFixed(1)}%；建议从“付费转化质量 vs 付费深度”两端复盘。${yoyRevenue}${yoyArpu}`.replace(/\s+/g, ' ').trim());
                     }
-                } else {
-                    changes.push(`【用户】${userChangeNum > 0 ? '增长' : '下降'}${Math.abs(userChangeNum).toFixed(1)}%`);
                 }
             }
-            
-            // 用户留存分析
-            if (Math.abs(retentionChange) >= 2) {
-                changes.push(`【用户】留存率${retentionChange > 0 ? '提升' : '下降'}${Math.abs(retentionChange).toFixed(1)}pp，${retentionChange > 0 ? '用户粘性增强' : '流失风险上升'}`);
-            }
-            
-            // 2. 收入维度分析
-            if (Math.abs(revenueChangeNum) >= 5) {
-                const arpuChangeNum = lastWeekData ? ((currentData.ARPU - lastWeekData.ARPU) / lastWeekData.ARPU * 100) : 0;
-                
-                if (Math.abs(arpuChangeNum) >= 5) {
-                    // ARPU变化显著，主要受付费意愿影响
-                    changes.push(`【收入】营收${revenueChangeNum > 0 ? '增长' : '下降'}${Math.abs(revenueChangeNum).toFixed(1)}%，主要受付费意愿${arpuChangeNum > 0 ? '提升' : '下降'}驱动`);
-                } else {
-                    // 主要受用户规模影响
-                    changes.push(`【收入】营收${revenueChangeNum > 0 ? '增长' : '下降'}${Math.abs(revenueChangeNum).toFixed(1)}%，主要受用户规模变化影响`);
+
+            // 3) 使用维度：覆盖“使用率小升 + 深度/大会员回暖”
+            {
+                const hasUsageMove = Math.abs(usageChange) >= 0.8;
+                const hasDeepMove = Math.abs(deepAccessChange) >= 1;
+                const hasVipMove = Math.abs(vipChange) >= 1;
+                if (hasUsageMove || hasDeepMove || hasVipMove) {
+                    const usageWord = usageChange >= 0 ? '提升' : '下降';
+                    const deepWord = deepAccessChange >= 0 ? '提升' : '下降';
+                    const vipWord = vipChange >= 0 ? '提升' : '下降';
+
+                    const usageYoY = metrics.usageYoY && metrics.usageYoY !== '—' ? `（同比使用${metrics.usageYoY}）` : '';
+                    const deepYoY = metrics.deepAccessYoY && metrics.deepAccessYoY !== '—' ? `（同比深度${metrics.deepAccessYoY}）` : '';
+                    const vipYoY = metrics.vipActiveYoY && metrics.vipActiveYoY !== '—' ? `（同比大会员${metrics.vipActiveYoY}）` : '';
+
+                    let sceneTail = weekInfo.description ? `，${weekInfo.description}` : '';
+                    if (weekInfo.isNormal) sceneTail = '';
+
+                    changes.push(`【使用】使用率${usageWord}${Math.abs(usageChange).toFixed(1)}pp，深度访问率${deepWord}${Math.abs(deepAccessChange).toFixed(1)}pp，大会员活跃率${vipWord}${Math.abs(vipChange).toFixed(1)}pp；反映学习参与度回暖${sceneTail}。${usageYoY}${deepYoY}${vipYoY}`.replace(/\s+/g, ' ').trim());
                 }
             }
-            
-            // 3. 使用维度分析
-            if (Math.abs(usageChange) >= 2) {
-                if (weekInfo.isHoliday && usageChange < 0) {
-                    changes.push(`【使用】假期使用率下降${Math.abs(usageChange).toFixed(1)}pp，学习动机减弱`);
-                } else if (weekInfo.isExamPeriod && usageChange > 0) {
-                    changes.push(`【使用】考试期使用率提升${usageChange.toFixed(1)}pp，学习强度增加`);
-                } else {
-                    changes.push(`【使用】使用率${usageChange > 0 ? '提升' : '下降'}${Math.abs(usageChange).toFixed(1)}pp`);
+
+            //兜底：保证至少三段
+            if (changes.length < 3) {
+                const fallback = [
+                    '【用户】活跃与留存波动不大，处于相对平稳区间',
+                    '【营收】营收整体稳定，建议持续观察ARPU与付费转化',
+                    '【使用】使用与深度访问保持增长/回暖趋势，建议强化核心内容供给'
+                ];
+                for (const f of fallback) {
+                    if (changes.length >= 3) break;
+                    changes.push(f);
                 }
             }
-            
-            // 大会员活跃率分析
-            const vipChange = lastWeekData ? currentData.大会员活跃率 - lastWeekData.大会员活跃率 : 0;
-            if (Math.abs(vipChange) >= 2) {
-                changes.push(`【使用】大会员活跃率${vipChange > 0 ? '提升' : '下降'}${Math.abs(vipChange).toFixed(1)}pp`);
-            }
-            
-            if (changes.length === 0) {
-                changes.push('【用户】活跃度保持稳定');
-                changes.push('【收入】营收水平平稳');
-                changes.push('【使用】使用情况良好');
-            }
-            
+
             return changes;
         }
 
