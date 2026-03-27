@@ -306,26 +306,24 @@
     </main>
   </div>
 
-  <script src="./embedded-csv-b64.js"></script>
+  <script src="./embedded-csv-b64.js?v=20260326-2"></script>
   <script>
     // ---------------------------
     // 1) CSV 数据加载（替代 Mock）
     // ---------------------------
-    // 优先 fetch 同目录 CSV；在 file:// 打开时 fetch 会失败，则自动使用 embedded-csv-b64.js 中的内嵌副本。
+    // 优先 fetch 同目录 normalized CSV；在 file:// 打开时 fetch 会失败，则自动使用 embedded-csv-b64.js 中的内嵌副本。
     const CSV_FILES = {
-      core: "./周度用户核心数据.csv",
-      daily: "./每天的活跃用户及新老用户.csv",
-      /** 渠道：默认文件名；若存在 _fixed 备选会在 fetch 时自动尝试 */
-      activeCh: "./每周活跃用户的渠道来源.csv",
-      activeChAlt: "./每周活跃用户的渠道来源_fixed.csv",
-      newCh: "./每周新用户的渠道来源.csv",
+      core: "./周度用户核心数据.normalized.csv",
+      daily: "./每天的活跃用户及新老用户.normalized.csv",
+      activeCh: "./每周活跃用户的渠道来源.normalized.csv",
+      newCh: "./每周新用户的渠道来源.normalized.csv",
     };
 
     /** 看板主数据年份（CSV 中按「周开始日期」解析年份，仅取该年作为核心序列） */
     const CURRENT_YEAR = 2026;
 
-    // 渠道周区间与核心周区间存在固定偏移（观察到 channel 的 week_start/week_end 比核心晚 4 天）
-    const CHANNEL_SHIFT_DAYS = 4;
+    // 渠道周区间可能与核心周存在偏移（历史上出现过 +4 天；新数据也可能为 0 天对齐）
+    let channelShiftDays = 0;
 
     const mock = {
       // W1 ~ Wn（来自“周度用户核心数据.csv”里的 第n周）
@@ -344,6 +342,10 @@
       activeChannelShareW12: [],
       newChannelShareW11: [],
       newChannelShareW12: [],
+      activeChannelCountW11: [],
+      activeChannelCountW12: [],
+      newChannelCountW11: [],
+      newChannelCountW12: [],
     };
 
     let cumulativeUsers = [];
@@ -479,13 +481,10 @@
     }
 
     /**
-     * 先 fetch 同目录 CSV（URL 相对当前页解析）；失败或内容非 CSV 时用 embedded-csv-b64.js（线上未部署 CSV 时仍可展示）。
+     * 先 fetch 同目录 normalized CSV（URL 相对当前页解析）；失败时用 embedded-csv-b64.js。
      */
-    async function loadCsvText(key, url, alternateUrls = [], preferEmbedded = false) {
-      if (preferEmbedded && typeof EMBEDDED_CSV_B64 !== "undefined" && EMBEDDED_CSV_B64[key]) {
-        return utf8FromBase64(EMBEDDED_CSV_B64[key]);
-      }
-      const urls = [url, ...alternateUrls].filter(Boolean).map((u) => {
+    async function loadCsvText(key, url) {
+      const urls = [url].filter(Boolean).map((u) => {
         try {
           return new URL(u, window.location.href).href;
         } catch (e) {
@@ -550,10 +549,6 @@
       }));
     }
 
-    function hasChannelNameMojibake(rows) {
-      return (rows || []).some(r => String(r.channel_name || "").includes("�"));
-    }
-
     function buildChannelTopShares(channelRows, endShiftStartISO, endShiftEndISO, prevShiftStartISO, prevShiftEndISO) {
       const endRows = channelRows.filter(r => r.week_startISO === endShiftStartISO && r.week_endISO === endShiftEndISO);
       const prevRows = channelRows.filter(r => r.week_startISO === prevShiftStartISO && r.week_endISO === prevShiftEndISO);
@@ -587,10 +582,12 @@
       const prevDen = prevTotal || 1;
 
       const channelNames = entries.map(x => x.name);
+      const countsEnd = entries.map(x => x.uv);
+      const countsPrev = entries.map(x => (prevMap.get(x.name) || 0));
       const sharesEnd = entries.map(x => (x.uv / endDen) * 100);
       const sharesPrev = entries.map(x => ((prevMap.get(x.name) || 0) / prevDen) * 100);
 
-      return { channelNames, sharesPrev, sharesEnd };
+      return { channelNames, countsPrev, countsEnd, sharesPrev, sharesEnd };
     }
 
     function computeDerived() {
@@ -615,12 +612,12 @@
 
       const end = coreWeeks[endIdx];
       const prev = coreWeeks[prevIdx];
-      const endShiftStartISO = toISODate(addDays(parseISODate(end.startISO), CHANNEL_SHIFT_DAYS));
-      const endShiftEndISO = toISODate(addDays(parseISODate(end.endISO), CHANNEL_SHIFT_DAYS));
-      const prevShiftStartISO = toISODate(addDays(parseISODate(prev.startISO), CHANNEL_SHIFT_DAYS));
-      const prevShiftEndISO = toISODate(addDays(parseISODate(prev.endISO), CHANNEL_SHIFT_DAYS));
+      const endShiftStartISO = toISODate(addDays(parseISODate(end.startISO), channelShiftDays));
+      const endShiftEndISO = toISODate(addDays(parseISODate(end.endISO), channelShiftDays));
+      const prevShiftStartISO = toISODate(addDays(parseISODate(prev.startISO), channelShiftDays));
+      const prevShiftEndISO = toISODate(addDays(parseISODate(prev.endISO), channelShiftDays));
 
-      // 渠道数据可能晚于核心周更新：若当前周无匹配区间，自动回退到最近可用周，避免模块空白
+      // 渠道数据可能晚于核心周更新：若目标周无匹配区间，自动回退到最近可用周，避免模块空白
       function pickClosestWeekRange(rows, targetStartISO, targetEndISO) {
         const exact = rows.some(r => r.week_startISO === targetStartISO && r.week_endISO === targetEndISO);
         if (exact) return { startISO: targetStartISO, endISO: targetEndISO, exact: true };
@@ -644,10 +641,47 @@
         return { startISO: targetStartISO, endISO: targetEndISO, exact: false };
       }
 
+      // 上周区间必须严格早于本周区间，避免两者回退到同一周导致环比恒为 0%
+      function pickPrevWeekRange(rows, targetStartISO, targetEndISO, currentEndISO) {
+        const currentEnd = parseISODate(currentEndISO);
+        const targetEnd = parseISODate(targetEndISO);
+        const exact = rows.some(r => r.week_startISO === targetStartISO && r.week_endISO === targetEndISO);
+        // 仅当“目标上周”严格早于“当前实际周”时，才允许直接命中
+        if (exact && targetEnd < currentEnd) {
+          return { startISO: targetStartISO, endISO: targetEndISO, exact: true };
+        }
+        const uniq = new Map();
+        for (const r of rows) {
+          if (!r.week_startISO || !r.week_endISO) continue;
+          const key = `${r.week_startISO}|${r.week_endISO}`;
+          if (!uniq.has(key)) uniq.set(key, { startISO: r.week_startISO, endISO: r.week_endISO });
+        }
+
+        const candidates = [...uniq.values()]
+          .map(w => ({ ...w, endDate: parseISODate(w.endISO), gap: Math.abs(parseISODate(w.endISO) - targetEnd) }))
+          .filter(w => w.endDate < currentEnd)
+          .sort((a, b) => a.gap - b.gap || b.endDate - a.endDate);
+
+        if (candidates.length > 0) {
+          return { startISO: candidates[0].startISO, endISO: candidates[0].endISO, exact: false };
+        }
+        return { startISO: targetStartISO, endISO: targetEndISO, exact: false };
+      }
+
       const activeEndRange = pickClosestWeekRange(activeChannelRows, endShiftStartISO, endShiftEndISO);
-      const activePrevRange = pickClosestWeekRange(activeChannelRows, prevShiftStartISO, prevShiftEndISO);
+      const activePrevRange = pickPrevWeekRange(
+        activeChannelRows,
+        prevShiftStartISO,
+        prevShiftEndISO,
+        activeEndRange.endISO
+      );
       const newEndRange = pickClosestWeekRange(newChannelRows, endShiftStartISO, endShiftEndISO);
-      const newPrevRange = pickClosestWeekRange(newChannelRows, prevShiftStartISO, prevShiftEndISO);
+      const newPrevRange = pickPrevWeekRange(
+        newChannelRows,
+        prevShiftStartISO,
+        prevShiftEndISO,
+        newEndRange.endISO
+      );
 
       const activeModel = buildChannelTopShares(
         activeChannelRows,
@@ -662,10 +696,39 @@
 
       mock.activeChannels = activeModel.channelNames;
       mock.newChannels = newModel.channelNames;
+      mock.activeChannelCountW11 = activeModel.countsPrev;
+      mock.activeChannelCountW12 = activeModel.countsEnd;
       mock.activeChannelShareW11 = activeModel.sharesPrev;
       mock.activeChannelShareW12 = activeModel.sharesEnd;
+      mock.newChannelCountW11 = newModel.countsPrev;
+      mock.newChannelCountW12 = newModel.countsEnd;
       mock.newChannelShareW11 = newModel.sharesPrev;
       mock.newChannelShareW12 = newModel.sharesEnd;
+    }
+
+    function detectBestChannelShiftDays(rows) {
+      if (!rows || rows.length === 0 || !coreWeeks || coreWeeks.length === 0) return 0;
+      const weekSet = new Set(
+        rows
+          .filter(r => r.week_startISO && r.week_endISO)
+          .map(r => `${r.week_startISO}|${r.week_endISO}`)
+      );
+      const candidateShifts = [0, 4, -4, 7, -7];
+      let bestShift = 0;
+      let bestScore = -1;
+      for (const shift of candidateShifts) {
+        let score = 0;
+        for (const wk of coreWeeks) {
+          const s = toISODate(addDays(parseISODate(wk.startISO), shift));
+          const e = toISODate(addDays(parseISODate(wk.endISO), shift));
+          if (weekSet.has(`${s}|${e}`)) score++;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestShift = shift;
+        }
+      }
+      return bestShift;
     }
 
     function updatePeriodBadge() {
@@ -723,9 +786,8 @@
       const [coreText, dailyText, activeChText, newChText] = await Promise.all([
         loadCsvText("core", CSV_FILES.core),
         loadCsvText("daily", CSV_FILES.daily),
-        // 渠道 CSV 线上可能存在编码不一致，优先使用 embedded（UTF-8）避免乱码
-        loadCsvText("activeCh", CSV_FILES.activeCh, [CSV_FILES.activeChAlt], true),
-        loadCsvText("newCh", CSV_FILES.newCh, [], true),
+        loadCsvText("activeCh", CSV_FILES.activeCh),
+        loadCsvText("newCh", CSV_FILES.newCh),
       ]);
 
       // 核心周度
@@ -827,13 +889,10 @@
       activeChannelRows = parseActiveChannelTable(activeChText);
       newChannelRows = parseNewChannelTable(newChText);
 
-      // 兜底：若仍出现乱码，强制回退到 embedded 渠道数据
-      if (hasChannelNameMojibake(activeChannelRows) && typeof EMBEDDED_CSV_B64 !== "undefined" && EMBEDDED_CSV_B64.activeCh) {
-        activeChannelRows = parseActiveChannelTable(utf8FromBase64(EMBEDDED_CSV_B64.activeCh));
-      }
-      if (hasChannelNameMojibake(newChannelRows) && typeof EMBEDDED_CSV_B64 !== "undefined" && EMBEDDED_CSV_B64.newCh) {
-        newChannelRows = parseNewChannelTable(utf8FromBase64(EMBEDDED_CSV_B64.newCh));
-      }
+      // 自动识别渠道周与核心周的偏移天数，兼容“同周对齐(0天)”和“历史偏移(+4天)”两种结构
+      const activeShift = detectBestChannelShiftDays(activeChannelRows);
+      const newShift = detectBestChannelShiftDays(newChannelRows);
+      channelShiftDays = activeShift === newShift ? activeShift : (Math.abs(activeShift) <= Math.abs(newShift) ? activeShift : newShift);
 
       computeDerived();
       computeLatestChannelModel();
@@ -1266,10 +1325,6 @@
     // ---------------------------
     // 5) 模块三：渠道饼图 + 排行表格（默认展示 W12）
     // ---------------------------
-    function computeChannelCounts(total, shares) {
-      return shares.map(s => total * (s / 100));
-    }
-
     function buildTableRowHTML({ name, count, sharePct, deltaPctValue }) {
       const up = deltaPctValue >= 0;
       const colorCls = up ? "text-up" : "text-down";
@@ -1286,21 +1341,18 @@
     function renderChannelTablesAndPies() {
       const endIdx = selectedWeekIdx;
       if (endIdx < 0) return;
-      const prevIdx = Math.max(0, endIdx - 1);
 
-      const activeTotal = mock.activeUsers[endIdx];
-      const activeTotalPrev = mock.activeUsers[prevIdx];
-      const newTotal = mock.newUsers[endIdx];
-      const newTotalPrev = mock.newUsers[prevIdx];
+      const activeTotal = (mock.activeChannelCountW12 || []).reduce((sum, v) => sum + (Number(v) || 0), 0);
+      const newTotal = (mock.newChannelCountW12 || []).reduce((sum, v) => sum + (Number(v) || 0), 0);
 
       const activeNames = mock.activeChannels;
       const newNames = mock.newChannels;
 
-      const activeCounts = computeChannelCounts(activeTotal, mock.activeChannelShareW12);
-      const activeCountsPrev = computeChannelCounts(activeTotalPrev, mock.activeChannelShareW11);
+      const activeCounts = mock.activeChannelCountW12 || [];
+      const activeCountsPrev = mock.activeChannelCountW11 || [];
 
-      const newCounts = computeChannelCounts(newTotal, mock.newChannelShareW12);
-      const newCountsPrev = computeChannelCounts(newTotalPrev, mock.newChannelShareW11);
+      const newCounts = mock.newChannelCountW12 || [];
+      const newCountsPrev = mock.newChannelCountW11 || [];
 
       const activeRows = activeNames.map((name, i) => ({
         name,
@@ -1458,18 +1510,10 @@
     }
 
     function getTopChannels() {
-      const endIdx = selectedWeekIdx;
-      const prevIdx = Math.max(0, endIdx - 1);
-
-      const activeTotal = mock.activeUsers[endIdx];
-      const activeTotalPrev = mock.activeUsers[prevIdx];
-      const newTotal = mock.newUsers[endIdx];
-      const newTotalPrev = mock.newUsers[prevIdx];
-
-      const activeCounts = computeChannelCounts(activeTotal, mock.activeChannelShareW12);
-      const activeCountsPrev = computeChannelCounts(activeTotalPrev, mock.activeChannelShareW11);
-      const newCounts = computeChannelCounts(newTotal, mock.newChannelShareW12);
-      const newCountsPrev = computeChannelCounts(newTotalPrev, mock.newChannelShareW11);
+      const activeCounts = mock.activeChannelCountW12 || [];
+      const activeCountsPrev = mock.activeChannelCountW11 || [];
+      const newCounts = mock.newChannelCountW12 || [];
+      const newCountsPrev = mock.newChannelCountW11 || [];
 
       const activeRows = mock.activeChannels.map((name, i) => ({
         name,
@@ -1513,7 +1557,6 @@
 
     function getRiskSignals() {
       const endIdx = selectedWeekIdx;
-      const prevIdx = Math.max(0, endIdx - 1);
 
       const shareNow = newShare[endIdx];
       const w8Idx = Math.min(7, endIdx); // 如果不足 8 周，则退化为第 1 周
@@ -1525,8 +1568,8 @@
       const shareDownOverall = shareNow < sharePeak;
 
       // 新增渠道最大下滑（新增侧）
-      const newCounts = computeChannelCounts(mock.newUsers[endIdx], mock.newChannelShareW12);
-      const newCountsPrev = computeChannelCounts(mock.newUsers[prevIdx], mock.newChannelShareW11);
+      const newCounts = mock.newChannelCountW12 || [];
+      const newCountsPrev = mock.newChannelCountW11 || [];
       const newDecliner = mock.newChannels
         .map((name, i) => ({ name, delta: deltaPct(newCounts[i], newCountsPrev[i]) }))
         .sort((a, b) => a.delta - b.delta)[0];
