@@ -481,7 +481,10 @@
     /**
      * 先 fetch 同目录 CSV（URL 相对当前页解析）；失败或内容非 CSV 时用 embedded-csv-b64.js（线上未部署 CSV 时仍可展示）。
      */
-    async function loadCsvText(key, url, alternateUrls = []) {
+    async function loadCsvText(key, url, alternateUrls = [], preferEmbedded = false) {
+      if (preferEmbedded && typeof EMBEDDED_CSV_B64 !== "undefined" && EMBEDDED_CSV_B64[key]) {
+        return utf8FromBase64(EMBEDDED_CSV_B64[key]);
+      }
       const urls = [url, ...alternateUrls].filter(Boolean).map((u) => {
         try {
           return new URL(u, window.location.href).href;
@@ -545,6 +548,10 @@
         channel_name: String(r[nIdx.name] ?? "").trim().replace(/^"|"$/g, ""),
         uv: toNumber(r[nIdx.uv]),
       }));
+    }
+
+    function hasChannelNameMojibake(rows) {
+      return (rows || []).some(r => String(r.channel_name || "").includes("�"));
     }
 
     function buildChannelTopShares(channelRows, endShiftStartISO, endShiftEndISO, prevShiftStartISO, prevShiftEndISO) {
@@ -716,8 +723,9 @@
       const [coreText, dailyText, activeChText, newChText] = await Promise.all([
         loadCsvText("core", CSV_FILES.core),
         loadCsvText("daily", CSV_FILES.daily),
-        loadCsvText("activeCh", CSV_FILES.activeCh, [CSV_FILES.activeChAlt]),
-        loadCsvText("newCh", CSV_FILES.newCh),
+        // 渠道 CSV 线上可能存在编码不一致，优先使用 embedded（UTF-8）避免乱码
+        loadCsvText("activeCh", CSV_FILES.activeCh, [CSV_FILES.activeChAlt], true),
+        loadCsvText("newCh", CSV_FILES.newCh, [], true),
       ]);
 
       // 核心周度
@@ -818,6 +826,14 @@
 
       activeChannelRows = parseActiveChannelTable(activeChText);
       newChannelRows = parseNewChannelTable(newChText);
+
+      // 兜底：若仍出现乱码，强制回退到 embedded 渠道数据
+      if (hasChannelNameMojibake(activeChannelRows) && typeof EMBEDDED_CSV_B64 !== "undefined" && EMBEDDED_CSV_B64.activeCh) {
+        activeChannelRows = parseActiveChannelTable(utf8FromBase64(EMBEDDED_CSV_B64.activeCh));
+      }
+      if (hasChannelNameMojibake(newChannelRows) && typeof EMBEDDED_CSV_B64 !== "undefined" && EMBEDDED_CSV_B64.newCh) {
+        newChannelRows = parseNewChannelTable(utf8FromBase64(EMBEDDED_CSV_B64.newCh));
+      }
 
       computeDerived();
       computeLatestChannelModel();
