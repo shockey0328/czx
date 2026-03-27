@@ -613,8 +613,45 @@
       const prevShiftStartISO = toISODate(addDays(parseISODate(prev.startISO), CHANNEL_SHIFT_DAYS));
       const prevShiftEndISO = toISODate(addDays(parseISODate(prev.endISO), CHANNEL_SHIFT_DAYS));
 
-      const activeModel = buildChannelTopShares(activeChannelRows, endShiftStartISO, endShiftEndISO, prevShiftStartISO, prevShiftEndISO);
-      const newModel = buildChannelTopShares(newChannelRows, endShiftStartISO, endShiftEndISO, prevShiftStartISO, prevShiftEndISO);
+      // 渠道数据可能晚于核心周更新：若当前周无匹配区间，自动回退到最近可用周，避免模块空白
+      function pickClosestWeekRange(rows, targetStartISO, targetEndISO) {
+        const exact = rows.some(r => r.week_startISO === targetStartISO && r.week_endISO === targetEndISO);
+        if (exact) return { startISO: targetStartISO, endISO: targetEndISO, exact: true };
+
+        const targetEnd = parseISODate(targetEndISO);
+        const uniq = new Map();
+        for (const r of rows) {
+          if (!r.week_startISO || !r.week_endISO) continue;
+          const key = `${r.week_startISO}|${r.week_endISO}`;
+          if (!uniq.has(key)) uniq.set(key, { startISO: r.week_startISO, endISO: r.week_endISO });
+        }
+
+        const candidates = [...uniq.values()]
+          .map(w => ({ ...w, endDate: parseISODate(w.endISO) }))
+          .filter(w => w.endDate <= targetEnd)
+          .sort((a, b) => b.endDate - a.endDate);
+
+        if (candidates.length > 0) {
+          return { startISO: candidates[0].startISO, endISO: candidates[0].endISO, exact: false };
+        }
+        return { startISO: targetStartISO, endISO: targetEndISO, exact: false };
+      }
+
+      const activeEndRange = pickClosestWeekRange(activeChannelRows, endShiftStartISO, endShiftEndISO);
+      const activePrevRange = pickClosestWeekRange(activeChannelRows, prevShiftStartISO, prevShiftEndISO);
+      const newEndRange = pickClosestWeekRange(newChannelRows, endShiftStartISO, endShiftEndISO);
+      const newPrevRange = pickClosestWeekRange(newChannelRows, prevShiftStartISO, prevShiftEndISO);
+
+      const activeModel = buildChannelTopShares(
+        activeChannelRows,
+        activeEndRange.startISO, activeEndRange.endISO,
+        activePrevRange.startISO, activePrevRange.endISO
+      );
+      const newModel = buildChannelTopShares(
+        newChannelRows,
+        newEndRange.startISO, newEndRange.endISO,
+        newPrevRange.startISO, newPrevRange.endISO
+      );
 
       mock.activeChannels = activeModel.channelNames;
       mock.newChannels = newModel.channelNames;
