@@ -1,332 +1,100 @@
 // 看板配置
-const dashboardConfig = {
-    weekly: {
-        'core-weekly': {
-            name: '核心数据',
-            path: '核心数据看板（周度）/index.html',
-            type: 'static'
-        },
-        'user-growth-weekly': {
-            name: '用户增长',
-            path: '用户增长数据看板（周度）/user-growth-dashboard.html',
-            type: 'static'
-        },
-        'search-weekly': {
-            name: '搜索数据',
-            path: '搜索数据看板（周度）/index.html',
-            type: 'static'
-        },
-        'user-behavior-weekly': {
-            name: '用户行为',
-            // 根目录 user-behavior.html，本地与 Vercel 均可用；file:// 下用相对路径，http(s) 下用根路径
-            path: 'user-behavior.html',
-            type: 'static'
-        }
-    },
-    monthly: {
-        'core-monthly': {
-            name: '核心数据',
-            path: '核心数据看板（月度）/index-static.html',
-            type: 'static'
-        },
-        'penetration-monthly': {
-            name: '各模块渗透率',
-            path: '各模块渗透率看板（月度）/index.html',
-            type: 'static'
-        },
-        'province-monthly': {
-            name: '分省数据',
-            path: '分省数据看板（月度）/index.html',
-            type: 'static'
-        }
-    }
+const DASHBOARDS = {
+  weekly: [
+    { id: 'core-weekly',          name: '核心数据', path: '核心数据看板（周度）/index.html' },
+    { id: 'user-growth-weekly',   name: '用户增长', path: '用户增长数据看板（周度）/user-growth-dashboard.html' },
+    { id: 'search-weekly',        name: '搜索数据', path: '搜索数据看板（周度）/index.html' },
+    { id: 'user-behavior-weekly', name: '用户行为', path: 'user-behavior.html' },
+  ],
+  monthly: [
+    { id: 'core-monthly',         name: '核心数据', path: '核心数据看板（月度）/index-static.html' },
+    { id: 'penetration-monthly',  name: '各模块渗透率', path: '各模块渗透率看板（月度）/index.html' },
+    { id: 'province-monthly',     name: '分省数据', path: '分省数据看板（月度）/index.html' },
+  ],
 };
 
-// 当前状态
 let currentPeriod = 'weekly';
-let currentDashboard = 'core-weekly';
+
+// 将相对路径转为可用于 iframe src 的路径
+function resolvePath(relativePath) {
+  if (relativePath.startsWith('http')) return relativePath;
+  if (window.location.protocol === 'file:') return relativePath;
+  return '/' + relativePath.replace(/^\.\//, '');
+}
+
+// 渲染加载中
+function showLoading(container) {
+  container.innerHTML = `
+    <div class="portal-loading">
+      <span class="portal-spinner" aria-hidden="true"></span>
+      <span class="portal-loading-text">正在加载看板…</span>
+    </div>`;
+}
+
+// 渲染错误
+function showError(container, path) {
+  container.innerHTML = `
+    <div class="portal-error">
+      <span class="portal-error-icon">📭</span>
+      <p class="portal-error-title">看板加载失败</p>
+      <p class="portal-error-desc">文件路径可能不存在，请检查目录结构。</p>
+      <a class="portal-error-link" href="${path}" target="_blank" rel="noopener">尝试直接打开 →</a>
+    </div>`;
+}
+
+// 加载看板（iframe）
+function loadDashboard(period, id) {
+  const config = DASHBOARDS[period].find(d => d.id === id);
+  const container = document.getElementById('dashboardContainer');
+  if (!config) { showError(container, '#'); return; }
+
+  showLoading(container);
+
+  const src = resolvePath(config.path);
+
+  // 短暂延迟避免闪烁
+  setTimeout(() => {
+    const iframe = document.createElement('iframe');
+    iframe.src = src;
+    iframe.className = 'portal-frame';
+    iframe.title = config.name;
+    iframe.setAttribute('loading', 'lazy');
+    iframe.onerror = () => showError(container, src);
+    container.innerHTML = '';
+    container.appendChild(iframe);
+  }, 200);
+}
+
+// 更新下拉选项
+function updateSelect(period) {
+  const select = document.getElementById('dashboardType');
+  select.innerHTML = DASHBOARDS[period]
+    .map(d => `<option value="${d.id}">${d.name}</option>`)
+    .join('');
+}
+
+// 切换周期
+function switchPeriod(period) {
+  if (period === currentPeriod) return;
+  currentPeriod = period;
+
+  document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.period === period);
+  });
+
+  updateSelect(period);
+  loadDashboard(period, DASHBOARDS[period][0].id);
+}
 
 // 初始化
-document.addEventListener('DOMContentLoaded', function() {
-    initializeEventListeners();
-    loadDashboard(currentPeriod, currentDashboard);
-});
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchPeriod(btn.dataset.period));
+  });
 
-// 初始化事件监听
-function initializeEventListeners() {
-    // 周度/月度切换
-    const toggleBtns = document.querySelectorAll('.toggle-btn');
-    toggleBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const period = this.dataset.period;
-            if (period !== currentPeriod) {
-                switchPeriod(period);
-            }
-        });
-    });
+  document.getElementById('dashboardType').addEventListener('change', function () {
+    loadDashboard(currentPeriod, this.value);
+  });
 
-    // 看板类型选择
-    const dashboardSelect = document.getElementById('dashboardType');
-    dashboardSelect.addEventListener('change', function() {
-        const dashboardType = this.value;
-        loadDashboard(currentPeriod, dashboardType);
-    });
-}
-
-// 切换周度/月度
-function switchPeriod(period) {
-    currentPeriod = period;
-    
-    // 更新按钮状态
-    document.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.period === period);
-    });
-    
-    // 更新下拉选项
-    updateDashboardOptions(period);
-    
-    // 加载默认看板
-    const defaultDashboard = period === 'weekly' ? 'core-weekly' : 'core-monthly';
-    loadDashboard(period, defaultDashboard);
-}
-
-// 更新看板选项
-function updateDashboardOptions(period) {
-    const dashboardSelect = document.getElementById('dashboardType');
-    dashboardSelect.innerHTML = '';
-    
-    const options = dashboardConfig[period];
-    for (const [key, value] of Object.entries(options)) {
-        const option = document.createElement('option');
-        option.value = key;
-        option.textContent = value.name;
-        dashboardSelect.appendChild(option);
-    }
-    
-    // 设置默认选中
-    dashboardSelect.value = period === 'weekly' ? 'core-weekly' : 'core-monthly';
-}
-
-// 加载看板
-function loadDashboard(period, dashboardType) {
-    currentDashboard = dashboardType;
-    const container = document.getElementById('dashboardContainer');
-    
-    console.log('=== 加载看板 ===');
-    console.log('周期:', period);
-    console.log('看板类型:', dashboardType);
-    
-    // 显示加载动画
-    container.innerHTML = `
-        <div class="loading-container">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">正在加载看板...</div>
-        </div>
-    `;
-    
-    // 获取看板路径
-    const config = dashboardConfig[period][dashboardType];
-    console.log('看板配置:', config);
-    if (!config) {
-        container.innerHTML = `
-            <div class="loading-container">
-                <div class="loading-text">看板不存在</div>
-            </div>
-        `;
-        return;
-    }
-    
-    // 如果是React应用，显示提示信息
-    if (config.type === 'react') {
-        container.innerHTML = `
-            <div class="loading-container">
-                <div class="loading-text" style="max-width: 600px; text-align: center;">
-                    <h3 style="color: #FF6B35; margin-bottom: 20px;">月度核心数据看板（React应用）</h3>
-                    <p style="margin-bottom: 15px;">此看板需要单独运行React开发服务器</p>
-                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: left;">
-                        <p style="font-weight: bold; margin-bottom: 10px;">运行步骤：</p>
-                        <ol style="line-height: 2;">
-                            <li>打开终端</li>
-                            <li>执行: <code style="background: #fff; padding: 2px 8px; border-radius: 4px;">cd 核心数据看板（月度）</code></li>
-                            <li>执行: <code style="background: #fff; padding: 2px 8px; border-radius: 4px;">npm install</code> (首次运行)</li>
-                            <li>执行: <code style="background: #fff; padding: 2px 8px; border-radius: 4px;">npm start</code></li>
-                            <li>等待服务启动后，刷新此页面</li>
-                        </ol>
-                    </div>
-                    <p style="margin-top: 15px; color: #666; font-size: 14px;">或者直接访问: <a href="http://localhost:3000" target="_blank" style="color: #FF6B35;">http://localhost:3000</a></p>
-                </div>
-            </div>
-        `;
-        
-        // 尝试加载React应用（如果已经运行）
-        setTimeout(() => {
-            const iframe = document.createElement('iframe');
-            iframe.src = config.path;
-            iframe.className = 'dashboard-frame';
-            iframe.style.display = 'none';
-            
-            iframe.onload = function() {
-                console.log(`${config.name}看板加载完成`);
-                iframe.style.display = 'block';
-                container.innerHTML = '';
-                container.appendChild(iframe);
-            };
-            
-            iframe.onerror = function() {
-                console.log('React应用未运行');
-            };
-            
-            document.body.appendChild(iframe);
-            
-            // 5秒后如果还没加载成功，移除iframe
-            setTimeout(() => {
-                if (iframe.style.display === 'none') {
-                    iframe.remove();
-                }
-            }, 5000);
-        }, 1000);
-        
-        return;
-    }
-    
-    // 如果是需要服务器的看板，先检测服务器状态
-    if (config.type === 'server') {
-        // 先显示加载中
-        container.innerHTML = `
-            <div class="loading-container">
-                <div class="loading-spinner"></div>
-                <div class="loading-text">正在检测服务器状态...</div>
-            </div>
-        `;
-        
-        console.log('开始检测服务器:', config.path);
-        
-        // 使用fetch检测服务器是否运行
-        fetch(config.path, { method: 'HEAD', mode: 'no-cors' })
-            .then(() => {
-                console.log('服务器检测成功，加载iframe');
-                loadServerIframe();
-            })
-            .catch((error) => {
-                console.log('服务器检测失败:', error);
-                // 即使fetch失败，也尝试加载iframe（可能是CORS问题）
-                loadServerIframe();
-            });
-        
-        // 加载iframe的函数
-        function loadServerIframe() {
-            const iframe = document.createElement('iframe');
-            iframe.src = config.path;
-            iframe.className = 'dashboard-frame';
-            container.innerHTML = '';
-            const wrap = document.createElement('div');
-            wrap.style.cssText = 'position:relative; width:100%; height:100%;';
-            wrap.appendChild(iframe);
-            var tip = document.createElement('div');
-            tip.style.cssText = 'position:absolute; bottom:12px; left:50%; transform:translateX(-50%); z-index:10; font-size:12px; color:#666; background:rgba(255,255,255,0.95); padding:8px 16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); text-align:center;';
-            tip.innerHTML = '若上方显示 <strong>Application failed to respond</strong>，说明 Railway 服务未就绪。可本地运行：<code style="background:#f5f5f5;padding:2px 6px;">cd 用户行为看板（周度）</code> 再 <code style="background:#f5f5f5;padding:2px 6px;">npm start</code>，然后打开 <a href="http://localhost:3001/dashboard-db.html" target="_blank" rel="noopener" style="color:#ff7043;">http://localhost:3001/dashboard-db.html</a>';
-            wrap.appendChild(tip);
-            container.appendChild(wrap);
-            console.log('iframe已添加到页面');
-            
-            // 5秒后检查iframe是否加载成功
-            setTimeout(() => {
-                try {
-                    // 尝试访问iframe内容（如果成功说明同源）
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (iframeDoc && iframeDoc.body) {
-                        console.log('iframe内容可访问');
-                    }
-                } catch (e) {
-                    // 跨域错误是正常的，说明iframe已加载
-                    console.log('iframe已加载（跨域）');
-                }
-                
-                // 如果iframe的src为空或加载失败，显示启动说明
-                if (!iframe.src || iframe.src === 'about:blank') {
-                    console.log('iframe加载失败，显示启动说明');
-                    showServerInstructions();
-                }
-            }, 5000);
-        }
-        
-        // 显示启动说明的函数
-        function showServerInstructions() {
-            container.innerHTML = `
-                <div class="loading-container">
-                    <div class="loading-text" style="max-width: 700px; text-align: center;">
-                        <h3 style="color: #FF6B35; margin-bottom: 20px;">🚀 ${config.name}看板</h3>
-                        <p style="margin-bottom: 20px; font-size: 16px; color: #666;">此看板需要启动Node.js服务器才能使用</p>
-                        
-                        <div style="background: #fff5f0; padding: 24px; border-radius: 12px; text-align: left; margin-bottom: 20px; border: 2px solid #FFE8DF;">
-                            <p style="font-weight: bold; margin-bottom: 15px; color: #FF6B35; font-size: 15px;">📋 启动步骤：</p>
-                            <ol style="line-height: 2.2; color: #333; padding-left: 20px;">
-                                <li>双击运行 <code style="background: #fff; padding: 3px 10px; border-radius: 4px; color: #FF6B35; font-weight: bold;">启动用户行为看板.bat</code></li>
-                                <li>等待看到 "服务器运行在 http://localhost:3001" 提示</li>
-                                <li>刷新此页面（按F5），或重新选择"用户行为"看板</li>
-                            </ol>
-                        </div>
-                        
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: left; margin-bottom: 20px;">
-                            <p style="font-weight: bold; margin-bottom: 12px; color: #666;">💡 手动启动（可选）：</p>
-                            <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333; margin-bottom: 8px;">
-                                cd ${config.serverPath}
-                            </div>
-                            <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333; margin-bottom: 8px;">
-                                npm install <span style="color: #999;">(首次运行)</span>
-                            </div>
-                            <div style="background: #fff; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #333;">
-                                ${config.serverCommand}
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
-                            <a href="${config.path}" target="_blank" style="display: inline-block; background: #FF6B35; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='#E85A2A'" onmouseout="this.style.background='#FF6B35'">
-                                🔗 直接访问看板
-                            </a>
-                            <button onclick="location.reload()" style="background: #fff; color: #FF6B35; border: 2px solid #FF6B35; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='#FFF5F2'" onmouseout="this.style.background='#fff'">
-                                🔄 刷新页面
-                            </button>
-                        </div>
-                        
-                        <p style="margin-top: 20px; color: #999; font-size: 13px;">
-                            ⚠️ 如果服务器已启动但仍显示此页面，请点击"刷新页面"按钮
-                        </p>
-                    </div>
-                </div>
-            `;
-        }
-        
-        return;
-    }
-    
-    // 静态看板（含搜索看板）：统一用 iframe src 加载，保证 data.js/app.js 同源执行、数据与图表正常展示
-    // file:// 下用相对路径（否则 /xxx 会变成 file:///xxx 失败）；http(s) 下用根路径
-    const isFileProtocol = (window.location.protocol === 'file:');
-    const staticPath = (config.path.indexOf('/') === 0 || config.path.indexOf('http') === 0)
-        ? config.path
-        : (isFileProtocol ? config.path.replace(/^\.\//, '') : '/' + config.path.replace(/^\.\//, ''));
-    setTimeout(() => {
-        const iframe = document.createElement('iframe');
-        iframe.src = staticPath;
-        iframe.className = 'dashboard-frame';
-        iframe.onload = function() {
-            console.log(`${config.name}看板加载完成`);
-        };
-        iframe.onerror = function() {
-            container.innerHTML = `
-                <div class="loading-container">
-                    <div class="loading-text">看板加载失败，请检查文件路径</div>
-                    <p style="margin-top:12px;font-size:13px;color:#666;">可尝试<a href="${staticPath}" target="_blank" rel="noopener" style="color:#FF6B35;">直接打开</a></p>
-                </div>
-            `;
-        };
-        container.innerHTML = '';
-        container.appendChild(iframe);
-    }, 300);
-}
-
-// 监听窗口大小变化
-window.addEventListener('resize', function() {
-    // 可以在这里添加响应式处理逻辑
+  loadDashboard(currentPeriod, DASHBOARDS[currentPeriod][0].id);
 });
