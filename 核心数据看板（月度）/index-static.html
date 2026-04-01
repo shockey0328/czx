@@ -967,8 +967,9 @@
                 { 
                     label: 'ARPU', 
                     value: data.ARPU.toFixed(2), 
-                    wow: prevData ? (data.ARPU - prevData.ARPU).toFixed(2) : null,
-                    yoy: yoyData ? (data.ARPU - yoyData.ARPU).toFixed(2) : null
+                    // 对 ARPU 使用相对变化率（%），与营收口径一致
+                    wow: prevData ? calculateChange(data.ARPU, prevData.ARPU) : null,
+                    yoy: yoyData ? calculateChange(data.ARPU, yoyData.ARPU) : null
                 },
                 { 
                     label: '使用率', 
