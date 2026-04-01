@@ -895,18 +895,22 @@
 
         // 初始化看板
         function initializeDashboard() {
-            // 生成月份选择器
+            // 生成月份选择器（倒序：最新月份在上）
             const selector = document.getElementById('monthSelector');
-            monthlyData.forEach((item, index) => {
+            const options = monthlyData.map((item, index) => ({
+                index,
+                label: `${item.年份}年${item.月份}`
+            })).reverse();
+            options.forEach(opt => {
                 const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `${item.年份}年${item.月份}`;
+                option.value = opt.index;
+                option.textContent = opt.label;
                 selector.appendChild(option);
             });
             
-            // 默认选择最新月份
+            // 默认选择最新月份（倒序列表的第一个）
             currentMonth = monthlyData.length - 1;
-            selector.value = currentMonth;
+            selector.value = String(currentMonth);
             
             // 监听选择器变化
             selector.addEventListener('change', function() {
