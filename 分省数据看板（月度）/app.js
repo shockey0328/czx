@@ -170,7 +170,7 @@ let currentPeriod = 'recent12';
 let rankingCharts = {};
 let currentRankingType = 'activeUsers'; // 默认活跃用户排名，可切换：revenue / arpu / usage
 const RANKING_TOP_N = PROVINCE_LIST.length > 10 ? 15 : 7;
-const CORE_METRICS_TOP_N = 6; // 核心指标默认展示活跃用户前6省，其余折叠
+const CORE_METRICS_TOP_N = 10; // 核心指标默认展示活跃用户前10省，其余折叠
 let coreMetricsExpanded = false;
 
 // 初始化

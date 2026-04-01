@@ -129,10 +129,11 @@ body {
 }
 
 /* 模块一：核心指标卡片 */
+/* KPI 卡片区（与核心月度/渗透率看板对齐） */
 .cards-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
 }
 
 .core-metrics-toggle {
@@ -155,8 +156,8 @@ body {
 .core-metrics-extra {
     grid-column: 1 / -1;
     display: none;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
 }
 
 .core-metrics-extra.expanded {
@@ -165,11 +166,15 @@ body {
 
 .metric-card {
     background: #FF8C5A;
-    padding: 20px;
+    padding: 18px 20px;
     border-radius: 16px;
     color: white;
     box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
     transition: transform 0.3s, box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 110px;
 }
 
 .metric-card:hover {
@@ -178,15 +183,15 @@ body {
 }
 
 .metric-card h3 {
-    font-size: 18px;
-    margin-bottom: 12px;
+    font-size: 16px;
+    margin-bottom: 8px;
     font-weight: 600;
 }
 
 .metric-value {
     font-size: 28px;
     font-weight: bold;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
 .metric-label-sub {
@@ -199,14 +204,15 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    margin-top: 4px;
 }
 
 .metric-row {
     display: grid;
-    grid-template-columns: 85px 70px auto auto;
-    align-items: center;
+    grid-template-columns: 1.2fr 1.8fr;
+    align-items: flex-start;
     font-size: 13px;
-    gap: 6px;
+    gap: 4px 8px;
 }
 
 .metric-label {
@@ -221,12 +227,14 @@ body {
 }
 
 .metric-change {
+    display: inline-block;
     font-size: 11px;
-    padding: 3px 8px;
+    padding: 3px 6px;
     border-radius: 6px;
     font-weight: 500;
     white-space: nowrap;
     text-align: center;
+    margin-top: 2px;
 }
 
 .metric-change.positive {
