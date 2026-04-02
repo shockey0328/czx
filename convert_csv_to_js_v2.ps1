@@ -85,28 +85,23 @@ function ConvertCSV-ToJSON {
             $csvContent = $csvContent.Substring(1)
         }
         
-        # Parse CSV
-        $lines = $csvContent -split "`r?`n" | Where-Object { $_.Trim() -ne '' }
-        
-        if ($lines.Count -eq 0) {
+        # Parse CSV（使用 ConvertFrom-Csv，正确处理包含逗号的引号字段）
+        $rows = $csvContent | ConvertFrom-Csv
+        if (-not $rows -or $rows.Count -eq 0) {
             Write-Host "  Warning: Empty CSV file: $CsvPath" -ForegroundColor Yellow
             return $null
         }
-        
-        # Get headers
-        $headers = $lines[0] -split ',' | ForEach-Object { $_.Trim() }
-        
+
+        # 统一按首行列顺序输出，避免属性顺序不稳定
+        $headers = $rows[0].PSObject.Properties.Name
+
         # Build JSON array
         $jsonArray = @()
-        for ($i = 1; $i -lt $lines.Count; $i++) {
-            $values = $lines[$i] -split ','
+        foreach ($row in $rows) {
             $obj = [ordered]@{}
-            
-            for ($j = 0; $j -lt $headers.Count; $j++) {
-                $value = if ($j -lt $values.Count) { $values[$j].Trim() } else { $null }
-                $obj[$headers[$j]] = $value
+            foreach ($h in $headers) {
+                $obj[$h] = ($row.$h | ForEach-Object { $_.ToString().Trim() })
             }
-            
             $jsonArray += $obj
         }
         

@@ -7,7 +7,7 @@ let allData = {
     retention: []
 };
 
-let currentWeek = 12; // 默认选择最新一周（第12周）
+let currentWeek = 13; // 默认选择最新一周（第13周）
 let currentSort = 'uv';
 let currentConversionRange = 21;
 let currentConversionType = 'user'; // 'user' | 'count'，默认展示搜索用户转化率
@@ -61,8 +61,8 @@ async function loadAllData() {
         
         console.log('可用的数据集:', Object.keys(dashboardData));
         
-        // 加载每周搜索词数据（含第12周）
-        for (let i = 1; i <= 12; i++) {
+        // 加载每周搜索词数据（含第13周）
+        for (let i = 1; i <= 13; i++) {
             const key = `第${i}周搜索词`;
             if (dashboardData[key]) {
                 allData.keywords[i] = dashboardData[key];

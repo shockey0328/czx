@@ -66,6 +66,10 @@
             color: white;
             box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            min-height: 120px;
         }
 
         .metric-card:hover {
@@ -83,6 +87,7 @@
             font-size: 28px;
             font-weight: 700;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 6px;
         }
 
         .metric-card .change {
@@ -98,9 +103,11 @@
         .changes {
             display: flex;
             gap: 8px;
-            margin-top: 8px;
+            margin-top: auto;
+            padding-top: 4px;
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: flex-start;
+            width: 100%;
         }
 
         .change-item {

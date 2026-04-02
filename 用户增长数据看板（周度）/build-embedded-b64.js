@@ -92,6 +92,15 @@ function readCsvAsUtf8(fileName) {
   const gbk = stripBom(iconv.decode(buf, "gb18030"));
   const utf8Header = parseCSV(utf8)[0] || [];
   const gbkHeader = parseCSV(gbk)[0] || [];
+
+  // 渠道 CSV 明确以 GB 编码提供：强制使用 gbk 解码以避免正文乱码
+  if (fileName === "每周活跃用户的渠道来源.csv" || fileName === "每周新用户的渠道来源.csv") {
+    if (!looksValidHeader(fileName, gbkHeader)) {
+      throw new Error(`无法识别渠道 CSV 表头结构（期望 GBK）：${fileName}`);
+    }
+    return gbk;
+  }
+
   if (looksValidHeader(fileName, utf8Header)) return utf8;
   if (looksValidHeader(fileName, gbkHeader)) return gbk;
   throw new Error(`无法识别 CSV 表头结构：${fileName}`);
@@ -123,6 +132,8 @@ const CHANNEL_NAME_ALIAS = new Map([
   ["��ƽ���Ǵ���Ϣ�Ƽ����޹�˾", "南平市智达信息科技有限公司"],
   ["С����������", "小卷开屏弹窗"],
   ["��������ں�����(i)", "组卷网公众号推文(i)"],
+  ["ɽ���ͽ���", "马兰花开"],
+  ["���շ�˱������洫ý���޹�˾", "江苏凤凰报刊出版传媒有限公司"],
 ]);
 
 const CHANNEL_NAME_ALLOWLIST = new Set([
@@ -138,6 +149,11 @@ const CHANNEL_NAME_ALLOWLIST = new Set([
   "小卷开屏弹窗",
   "马兰花开",
   "组卷网公众号推文(i)",
+  "山西和教育",
+  "江苏凤凰报刊出版传媒有限公司",
+  "龙江教研在线",
+  "通用",
+  "北京市教委-京小学",
 ]);
 
 function normalizeChannelName(name) {
@@ -152,60 +168,23 @@ function normalizeRows(key, rows) {
   const header = rows[0].map((x) => String(x).trim());
   const idx = Object.fromEntries(header.map((name, i) => [name, i]));
 
+  // 渠道表：严格按你提供的渠道名原样输出，不做任何别名映射、乱码检测或白名单校验
   if (key === "activeCh" || key === "newCh") {
     const uvKey = key === "newCh" && idx.new_user_uv == null ? "uv" : (key === "newCh" ? "new_user_uv" : "uv");
     const required = ["week_start", "week_end", "channel_name", uvKey];
     for (const col of required) {
       if (idx[col] == null) throw new Error(`${key} 缺少字段：${col}`);
     }
-    const normalizedRows = [];
+    const out = [["week_start", "week_end", "channel_name", uvKey]];
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
-      const name = normalizeChannelName(r[idx.channel_name]);
-      if (!name) continue;
-      if (containsMojibake(name)) {
-        throw new Error(`${key} 检测到渠道名乱码，第 ${i + 1} 行：${name}`);
-      }
-      normalizedRows.push({
-        line: i + 1,
-        weekStart: String(r[idx.week_start] ?? "").trim(),
-        weekEnd: String(r[idx.week_end] ?? "").trim(),
-        channelName: name,
-        uv: String(r[idx[uvKey]] ?? "").trim(),
-      });
-    }
-
-    // 处理“其他渠道 / 马兰花开”不可逆合并：同周若出现两个歧义值，则大值归“其他渠道”，小值归“马兰花开”
-    const byWeek = new Map();
-    for (const row of normalizedRows) {
-      const keyWeek = `${row.weekStart}|${row.weekEnd}`;
-      if (!byWeek.has(keyWeek)) byWeek.set(keyWeek, []);
-      byWeek.get(keyWeek).push(row);
-    }
-    for (const weekRows of byWeek.values()) {
-      const amb = weekRows.filter((r) => r.channelName === "__AMB_OTHER_OR_MALAN__");
-      if (amb.length === 1) {
-        amb[0].channelName = "其他渠道";
-      } else if (amb.length === 2) {
-        amb.sort((a, b) => Number(b.uv || 0) - Number(a.uv || 0));
-        amb[0].channelName = "其他渠道";
-        amb[1].channelName = "马兰花开";
-      } else if (amb.length === 3) {
-        amb.sort((a, b) => Number(b.uv || 0) - Number(a.uv || 0));
-        amb[0].channelName = "其他渠道";
-        amb[1].channelName = "马兰花开";
-        amb[2].channelName = "小卷开屏弹窗";
-      } else if (amb.length > 3) {
-        throw new Error(`${key} 在同一周检测到超过 3 条歧义渠道，无法自动判定，请修复源 CSV`);
-      }
-    }
-
-    const out = [["week_start", "week_end", "channel_name", uvKey]];
-    for (const row of normalizedRows) {
-      if (!CHANNEL_NAME_ALLOWLIST.has(row.channelName)) {
-        throw new Error(`${key} 检测到未登记渠道名，第 ${row.line} 行：${row.channelName}`);
-      }
-      out.push([row.weekStart, row.weekEnd, row.channelName, row.uv]);
+      // 仅做最轻量的 trim，其他完全保持你 CSV 中的名称
+      out.push([
+        String(r[idx.week_start] ?? "").trim(),
+        String(r[idx.week_end] ?? "").trim(),
+        String(r[idx.channel_name] ?? "").trim(),
+        String(r[idx[uvKey]] ?? "").trim(),
+      ]);
     }
     return out;
   }

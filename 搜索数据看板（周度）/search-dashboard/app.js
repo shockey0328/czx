@@ -6,7 +6,7 @@ let allData = {
     retention: []
 };
 
-let currentWeek = 1;
+let currentWeek = 13;
 let currentSort = 'uv';
 let currentConversionRange = 21;
 let currentRetentionWeeks = 5;
@@ -35,14 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // 加载所有数据
 async function loadAllData() {
     try {
-        // 加载每周搜索词数据
-        for (let i = 1; i <= 8; i++) {
-            const response = await fetch(`week${i}-keywords.csv`);
-            const buffer = await response.arrayBuffer();
-            const decoder = new TextDecoder('utf-8');
-            const text = decoder.decode(buffer);
-            allData.keywords[i] = parseCSV(text);
-        }
+        // 加载每周搜索词数据（当前版本已改为嵌入 data.js，这里仅保留兼容逻辑）
 
         // 加载漏斗数据
         const funnelResponse = await fetch('funnel.csv');
