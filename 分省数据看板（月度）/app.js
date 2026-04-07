@@ -485,13 +485,16 @@ function updateMonthlyMetrics(province, selectedMonth) {
     });
 }
 
-// 模块三：更新趋势图表（始终以数据的最新月份为终点，展示近 3/6/12 个月）
+// 模块三：更新趋势图表（以“当前选中月份”为终点，展示近 3/6/12 个月）
 function updateTrendCharts(province, period, selectedMonth) {
     const data = provinceTrendData[province];
     if (!data || data.length === 0) return;
     
-    // 始终用最新月份作为终点，保证趋势图有完整 3/6/12 个月
-    const endIndex = data.length - 1;
+    // 以当前筛选月份作为趋势终点；若未命中则回退到最新月份
+    let endIndex = data.findIndex(d => d.月份 === selectedMonth);
+    if (endIndex === -1) {
+        endIndex = data.length - 1;
+    }
     let startIndex = 0;
     if (period === 'recent3') {
         startIndex = Math.max(0, endIndex - 2);

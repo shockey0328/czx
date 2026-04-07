@@ -401,7 +401,7 @@
 
         .ai-title {
             color: var(--color-primary);
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 600;
             margin: 0;
             display: flex;
@@ -411,14 +411,14 @@
         .ai-title::before {
             content: '';
             width: 3px;
-            height: 18px;
+            height: 15px;
             background: var(--color-primary);
             margin-right: 10px;
             border-radius: 2px;
         }
 
         .deepseek-badge {
-            font-size: 10px;
+            font-size: 9px;
             color: #666;
             background: #f0f0f0;
             padding: 3px 8px;
@@ -455,7 +455,7 @@
         .analysis-section h5 {
             color: var(--color-primary);
             margin-bottom: 10px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             padding-bottom: 5px;
             border-bottom: 2px solid var(--color-primary);
@@ -468,6 +468,37 @@
             padding: 12px;
             height: calc(100% - 35px);
             border-left: 3px solid #FF6B35;
+            font-size: 10px; /* 统一 AI 分析内容字号基线 */
+        }
+
+        /* AI 分析内容区：所有内联元素字号继承，避免“粗体/徽标/summary”字号不一致 */
+        .ai-analysis .analysis-content * {
+            font-size: inherit;
+        }
+
+        .ai-analysis .analysis-content .change-item {
+            font-size: inherit;
+        }
+
+        .ai-analysis .analysis-content .module-label {
+            font-size: inherit;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+
+        .ai-analysis .analysis-content .module-text {
+            font-size: inherit;
+            font-weight: 400;
+            color: #555;
+        }
+
+        .ai-analysis .analysis-content .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 6px;
         }
 
         .key-metrics-display {
@@ -486,19 +517,19 @@
         }
 
         .metric-display .label {
-            font-size: 9px;
+            font-size: 8px;
             color: #666;
             margin-bottom: 2px;
         }
 
         .metric-display .value {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 700;
             color: #FF6B35;
         }
 
         .analysis-text {
-            font-size: 11px;
+            font-size: 10px;
             line-height: 1.4;
             color: #555;
         }
@@ -512,7 +543,7 @@
         .analysis-list li {
             margin-bottom: 6px;
             padding-left: 12px;
-            font-size: 11px;
+            font-size: 10px;
             line-height: 1.4;
             color: #555;
             position: relative;
@@ -541,7 +572,7 @@
         .status-btn {
             padding: 4px 12px;
             border-radius: 15px;
-            font-size: 10px;
+            font-size: 9px;
             border: none;
             cursor: pointer;
             font-weight: 500;
@@ -1145,7 +1176,7 @@
         <!-- 右下：AI数据分析 -->
         <div class="panel ai-analysis">
             <div class="ai-header">
-                <h3 class="ai-title">🤖 AI数据分析</h3>
+                <h3 class="ai-title">AI数据分析</h3>
             </div>
             <div class="ai-content">
                 <div class="ai-grid" id="aiAnalysis">
@@ -1190,7 +1221,7 @@
                         </div>
                         <div class="ai-message-content">
                             <div class="ai-message-bubble">
-                                您好！我是你的AI数据分析助手小橙子🍊，有什么需要我帮助的吗？我可以帮您分析数据趋势、解读指标变化、提供运营建议等。
+                                您好！我是你的AI数据分析助手小橙子，有什么需要我帮助的吗？我可以帮您分析数据趋势、解读指标变化、提供运营建议等。
                             </div>
                             <div class="ai-message-time">刚刚</div>
                         </div>
@@ -1202,6 +1233,7 @@
                         <button class="suggestion-btn" data-question="分析一下本周的用户变化情况">分析用户变化</button>
                         <button class="suggestion-btn" data-question="营收下降的主要原因是什么？">营收分析</button>
                         <button class="suggestion-btn" data-question="给出提升使用率的建议">使用率建议</button>
+                        <button class="suggestion-btn" data-question="请先检查本周AI分析是否需要补充数据，如果需要，请告诉我需要补充哪些信息，并让我补齐后重新生成分析。">补充并重生成</button>
                     </div>
                     <div class="ai-chat-input-container">
                         <input type="text" id="aiChatInput" placeholder="请输入您的问题..." maxlength="500">
@@ -1224,6 +1256,125 @@
         let currentWeek = null;
         let charts = {};
         let aiChatHistory = []; // AI对话历史
+        // 小橙子补充信息：当助手需要用户补充数据后，会通过标记回传给这里，随后重新生成 AI 分析
+        let aiSupplementalContext = {};
+
+        function buildSupplementalContextText(ctx) {
+            if (!ctx || typeof ctx !== "object") return "";
+            const entries = Object.entries(ctx).filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== "");
+            if (entries.length === 0) return "";
+            return entries.map(([k, v]) => `${k}：${v}`).join("\n");
+        }
+
+        function extractAssistantControl(text) {
+            const triggerMatch = String(text || "").match(/【触发分析生成】\s*(true|false)/i);
+            const trigger = triggerMatch ? triggerMatch[1].toLowerCase() === "true" : false;
+
+            const suppMatch = String(text || "").match(/【补充数据】([\s\S]*?)(?:【触发分析生成】|$)/);
+            let supplemental = {};
+            if (suppMatch) {
+                let jsonStr = String(suppMatch[1] || "").trim();
+                jsonStr = jsonStr.replace(/^```json\s*/i, "").replace(/^```/i, "");
+                jsonStr = jsonStr.replace(/```$/i, "").trim();
+                const start = jsonStr.indexOf("{");
+                const end = jsonStr.lastIndexOf("}");
+                if (start >= 0 && end > start) jsonStr = jsonStr.slice(start, end + 1);
+                try {
+                    supplemental = JSON.parse(jsonStr);
+                } catch (_) {
+                    supplemental = {};
+                }
+            }
+
+            return { trigger, supplemental };
+        }
+
+        function formatWeekRangeForAnalysis(currentData) {
+            // currentData.起始日期 / 结尾日期 like: "2026年3月19日"
+            const start = String(currentData?.起始日期 || '');
+            const end = String(currentData?.结尾日期 || '');
+            const toMMDD = (s) => {
+                const m = s.match(/(\d{1,2})月(\d{1,2})日/);
+                if (!m) return '';
+                return `${String(m[1]).padStart(2, '0')}月${String(m[2]).padStart(2, '0')}日`;
+            };
+            const startMMDD = toMMDD(start);
+            const endMMDD = toMMDD(end);
+            if (startMMDD && endMMDD) return `${startMMDD}~${endMMDD}`;
+            return `${start}~${end}`.replace(/^\~|\~$/g, '');
+        }
+
+        function formatPercentChange(value) {
+            if (value == null) return null;
+            const s = String(value).trim();
+            if (!s || s === '—') return null;
+            // 兼容 calculateChange 返回的 "↑ 3.2%" / "+3.2%" 等
+            const m = s.match(/([+-]?\d+(?:\.\d+)?)\s*(%|pp)?/);
+            if (!m) return s;
+            const num = m[1];
+            const unit = m[2] || '';
+            const sign = num.startsWith('-') ? '' : '+';
+            return `${sign}${num}${unit || (s.includes('pp') ? 'pp' : s.includes('%') ? '%' : '')}`.replace('++', '+');
+        }
+
+        function pickStatusForMetric(wowStr, yoyStr, isRateMetric) {
+            // 简化版健康度：根据阈值判定红黄绿（由模型最终判断也可，这里仅给模型参考）
+            const parseNum = (s) => {
+                const m = String(s || '').match(/([+-]?\d+(?:\.\d+)?)/);
+                return m ? Number(m[1]) : NaN;
+            };
+            const wow = parseNum(wowStr);
+            const yoy = parseNum(yoyStr);
+            const wowAbs = Math.abs(wow);
+            const yoyAbs = Math.abs(yoy);
+            const wowBad = Number.isFinite(wow) && wow < 0;
+            const yoyBad = Number.isFinite(yoy) && yoy < 0;
+            const wowWarn = isRateMetric ? (wowBad && wowAbs > 2) : (wowBad && wowAbs > 5);
+            const yoyWarn = isRateMetric ? (yoyBad && yoyAbs > 5) : (yoyBad && yoyAbs > 10);
+            if (wowWarn || yoyWarn) return 'red';
+            if ((Number.isFinite(wow) && wowBad) || (Number.isFinite(yoy) && yoyBad)) return 'yellow';
+            if ((Number.isFinite(wow) && wow >= 0) && ((Number.isFinite(yoy) && yoy >= 0) || !Number.isFinite(yoy))) return 'green';
+            return 'yellow';
+        }
+
+        function getDailySeriesForCurrentWeek() {
+            const cw = normalizeCurrentWeek(currentWeek);
+            if (!cw) return { dateRange: null, dau: [], paidUsers: [], revenue: [], usageRate: [] };
+            const cur = findWeeklyRow(cw.year, cw.week);
+            if (!cur) return { dateRange: null, dau: [], paidUsers: [], revenue: [], usageRate: [] };
+
+            const parseCNDate = (s) => {
+                // "2026年3月19日" -> Date
+                const m = String(s || '').match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+                if (!m) return null;
+                return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            };
+            const startDate = parseCNDate(cur.起始日期);
+            const endDate = parseCNDate(cur.结尾日期);
+            if (!startDate || !endDate) return { dateRange: null, dau: [], paidUsers: [], revenue: [], usageRate: [] };
+
+            const inRange = (d) => d >= startDate && d <= endDate;
+
+            const dau = (window.dailyActiveUsers || [])
+                .filter(it => inRange(new Date(it.date)))
+                .map(it => ({ date: it.date, value: it.uv }));
+
+            const paid = (window.dailyPaidUsers || [])
+                .filter(it => inRange(new Date(it.date)))
+                .map(it => ({ date: it.date, paidUsers: it.paidUsers, revenue: it.revenue }));
+
+            const usage = (window.dailyUsageRate || [])
+                .filter(it => inRange(new Date(it.date)))
+                .map(it => ({ date: it.date, usageRate: it.usageRate }));
+
+            return {
+                dateRange: { start: startDate.toISOString().slice(0, 10), end: endDate.toISOString().slice(0, 10) },
+                dau,
+                paidUsers: paid.map(x => ({ date: x.date, value: x.paidUsers })),
+                revenue: paid.map(x => ({ date: x.date, value: x.revenue })),
+                usageRate: usage.map(x => ({ date: x.date, value: x.usageRate }))
+            };
+        }
 
         /** 统一为数字，避免 JSON/下拉框把 year、week 解析成字符串导致 === 匹配失败（同比/环比不显示） */
         function normalizeCurrentWeek(raw) {
@@ -1884,6 +2035,31 @@
                     updateCharts();
                 });
             });
+
+            // AI 数据分析：刷新分析
+            const aiRefreshBtn = document.querySelector('.status-btn.refresh');
+            if (aiRefreshBtn) {
+                aiRefreshBtn.addEventListener('click', function() {
+                    const analysisElement = document.getElementById('aiAnalysis');
+                    if (analysisElement) {
+                        analysisElement.innerHTML = '<div class="loading">正在重新生成分析...</div>';
+                    }
+                    generateAIAnalysis();
+                });
+            }
+
+            // AI 数据分析：智能分析（清空补充上下文后重算）
+            const aiSmartBtn = document.querySelector('.status-btn.active');
+            if (aiSmartBtn) {
+                aiSmartBtn.addEventListener('click', function() {
+                    aiSupplementalContext = {};
+                    const analysisElement = document.getElementById('aiAnalysis');
+                    if (analysisElement) {
+                        analysisElement.innerHTML = '<div class="loading">正在生成智能分析...</div>';
+                    }
+                    generateAIAnalysis();
+                });
+            }
         }
 
         // 填充周度选择器
@@ -2335,75 +2511,176 @@
             // 计算关键变化指标
             const metrics = calculateKeyMetrics(currentData, lastWeekData, lastYearData);
             
-            // 暂时直接使用本地分析进行测试
-            console.log('直接使用本地分析进行测试');
-            try {
-                const fallbackAnalysis = generateOptimizedFallbackAnalysis(currentData, lastWeekData, lastYearData, metrics);
-                analysisElement.innerHTML = fallbackAnalysis;
-                return; // 暂时跳过API调用
-            } catch (fallbackError) {
-                console.error('本地分析失败:', fallbackError);
-                analysisElement.innerHTML = `
-                    <div class="ai-column">
-                        <div class="analysis-section">
-                            <h5>分析出错</h5>
-                            <div class="analysis-content">
-                                <div class="analysis-text">
-                                    本地分析出现错误: ${fallbackError.message}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
             // 获取教育场景信息
             const weekInfo = getWeekScenarioInfo(currentWeek);
+
+            const supplementalText = buildSupplementalContextText(aiSupplementalContext);
+            const daily = getDailySeriesForCurrentWeek();
+            const weekRange = formatWeekRangeForAnalysis(currentData);
+
+            const wowUser = formatPercentChange(metrics.userWoW);
+            const wowRetention = formatPercentChange(metrics.retentionWoW);
+            const wowRevenue = formatPercentChange(metrics.revenueWoW);
+            const wowArpu = formatPercentChange(metrics.arpuWoW);
+            const wowDeep = formatPercentChange(metrics.deepAccessWoW);
+            const wowUsage = formatPercentChange(metrics.usageWoW);
+            const wowVip = formatPercentChange(metrics.vipActiveWoW);
+
+            const yoyUser = formatPercentChange(metrics.userYoY);
+            const yoyRetention = formatPercentChange(metrics.retentionYoY);
+            const yoyRevenue = formatPercentChange(metrics.revenueYoY);
+            const yoyArpu = formatPercentChange(metrics.arpuYoY);
+            const yoyDeep = formatPercentChange(metrics.deepAccessYoY);
+            const yoyUsage = formatPercentChange(metrics.usageYoY);
+            const yoyVip = formatPercentChange(metrics.vipActiveYoY);
+
+            const inputPayload = {
+                product_name: "橙子学",
+                analysis_date: `${currentWeek.year}年${weekRange}`,
+                period_context: `${weekInfo.description || '正常学习周期'}`,
+                core_weekly_metrics: {
+                    user: {
+                        wau: { value: currentData.活跃用户, wow: wowUser, yoy: yoyUser },
+                        retention: { value: currentData.次周留存率, wow: wowRetention, yoy: yoyRetention }
+                    },
+                    revenue: {
+                        revenue: { value: currentData.营收, wow: wowRevenue, yoy: yoyRevenue },
+                        arpu: { value: currentData.ARPU, wow: wowArpu, yoy: yoyArpu }
+                    },
+                    usage: {
+                        deep_access_rate: { value: currentData.深度访问率, wow: wowDeep, yoy: yoyDeep },
+                        usage_rate: { value: currentData.使用率, wow: wowUsage, yoy: yoyUsage },
+                        vip_active_rate: { value: currentData.大会员活跃率, wow: wowVip, yoy: yoyVip }
+                    }
+                },
+                daily_trends: {
+                    date_range: daily.dateRange,
+                    dau: daily.dau,
+                    paid_users: daily.paidUsers,
+                    revenue: daily.revenue,
+                    usage_rate: daily.usageRate
+                },
+                supplemental: supplementalText ? supplementalText : null
+            };
+
+            // 按你的规范：要求输出 JSON（供前端卡片渲染）
+            const prompt = `# 角色
+你是"小橙子"，橙子学 K12 学生学习平台的 AI 数据分析助手。
+你负责每周对核心业务数据进行分析，输出三个板块的结论卡片，并在数据不足时主动引导用户补充。
+
+# 业务背景
+- 产品类型：K12 学生学习平台（覆盖小学/初中/高中）
+- 用户特征：学生为核心使用者，家长为付费决策者
+- 关键周期因素（分析时必须纳入考量）：
+  - 春季学期（2~6月）/ 暑假（7~8月）/ 秋季学期（9~1月）/ 寒假（1~2月）
+  - 考试节点：月考、期中、期末、中考、高考
+  - 开学季：2月底~3月初、9月初（用户回流高峰）
+  - 寒暑假：使用时长通常上升，付费行为可能波动
+  - 节假日：五一、国庆、春节等短期影响活跃
+  - 周内规律：学期中工作日活跃通常高于周末，寒暑假可能反转
+- 必须区分"周期性正常波动"与"真正的异常变化"，优先用同比判断趋势合理性
+
+# 数据输入
+以下为本周的结构化输入数据（请勿臆造未提供的信息）：
+${JSON.stringify(inputPayload, null, 2)}
+
+# 分析逻辑
+
+## 第1步：核心表现
+对7个指标逐一判定健康状态：
+
+| 状态 | 判定规则 |
+|------|----------|
+| 向好 | 环比正向，且同比正向或持平 |
+| 关注 | 环比正向但同比为负；或环比持平但同比为负；或环比小幅负向（绝对值指标 ≤5%，比率指标 ≤2pp） |
+| 预警 | 环比负向超阈值（绝对值指标 >5%，比率指标 >2pp）；或同比大幅落后（绝对值指标 >10%，比率指标 >5pp） |
+
+特殊规则：
+- 环比为负但符合学习周期规律 → 降一级判定
+- 环比为正但同比为负 → 标记“关注”（在恢复但未回到正常水平）
+
+输出一句话总结，概括本周整体健康度。
+
+## 第2步：关键变化
+综合周度指标 + 每日趋势，提炼 3~5 条关键发现：
+
+### 分析维度：
+a) 周度指标的环比/同比变化
+b) 每日趋势中的异常日与拐点（某天偏离周均值超 ±20% 为异常）
+c) 指标间的交叉矛盾，包括但不限于：
+   - WAU↑ + ARPU↓ → 增长稀释付费浓度
+   - WAU↑ + 使用率持平 → 新用户质量可能偏低
+   - 营收↑ + ARPU↓ → 靠量不靠质
+   - 深度访问率↑ + 大会员活跃↓ → 免费用户深度使用，付费用户流失
+   - 使用率持平 + 深度访问率↑ → 用的人没变多，但用得更深
+   - DAU某日骤降 + 使用率当日正常 → 外部因素导致部分用户未访问
+   - 营收某日飙升 + 付费用户未同步 → 大单或高客单价拉动
+
+### 输出规则（收敛展示，避免信息过载）：
+- 每条关键发现包含：具体数字 + 环比/同比 + 归因（结合学习周期）；不要展开长篇背景
+- 关键发现只输出 3~5 条：优先覆盖“预警/关注”；“向好”可合并为 1 条正向总结
+- 策略建议只输出 3~5 条，必须可执行且短句
+- 数据不足无法归因：对应 finding 标记 need_supplement=true，并在 data_gaps 提出补充项（最多 0~3 条）
+- 不要输出/不要新增额外模块字段（例如 trend_insights、cross_analysis、趋势洞察、交叉分析等），所有内容都落在 key_findings / suggestions / data_gaps 内
+
+## 第3步：策略建议
+- 针对“预警”和“关注”指标给出可执行建议
+- 总共 3~5 条（短句、可落地）
+- 必须结合 K12 业务场景（考试冲刺、开学拉新、假期留存、家长触达、会员权益等）
+- 每条标注优先级（P0/P1/P2）
+
+# 输出格式（JSON）
+你必须只输出一个 JSON 对象（禁止 markdown/代码块/项目符号），结构必须严格符合：
+{
+  "analysis_date": "YYYY年MM月DD日~MM月DD日",
+  "period_context": "当前学习周期阶段（如：春季学期第4周，临近月考）",
+  "core_metrics": {
+    "summary": "一句话总结本周整体表现（50字以内）",
+    "user": [
+      { "name": "周活", "value": "X.X万", "wow": "+X.X%", "yoy": "+X.X%", "status": "green|yellow|red" },
+      { "name": "次周留存", "value": "XX%", "wow": "+Xpp", "yoy": "+Xpp", "status": "green|yellow|red" }
+    ],
+    "revenue": [
+      { "name": "营收", "value": "XX.X万", "wow": "+X.X%", "yoy": "+X.X%", "status": "green|yellow|red" },
+      { "name": "ARPU", "value": "X.XX", "wow": "-X.X%", "yoy": "+X.X%", "status": "green|yellow|red" }
+    ],
+    "usage": [
+      { "name": "深度访问率", "value": "XX%", "wow": "+Xpp", "yoy": "+Xpp", "status": "green|yellow|red" },
+      { "name": "使用率", "value": "XX%", "wow": "持平", "yoy": "+Xpp", "status": "green|yellow|red" },
+      { "name": "大会员活跃", "value": "XX%", "wow": "+Xpp", "yoy": "-Xpp", "status": "green|yellow|red" }
+    ]
+  },
+  "key_findings": [
+    { "dimension": "用户|营收|使用", "status": "green|yellow|red", "finding": "变化描述，含具体数字与环比同比（60字以内）", "cause": "归因分析", "need_supplement": false }
+  ],
+  "suggestions": [
+    { "dimension": "用户|营收|使用", "action": "具体建议（25字以内）", "priority": "P0|P1|P2" }
+  ],
+  "data_gaps": [
+    { "question": "需要补充什么数据", "related_finding": "关联第几条关键发现", "reason": "为什么需要" }
+  ],
+  "health_grade": "A+|A|B+|B|C|D"
+}
+
+# 输出规范（控制长度）
+1. 万级用户保留1位小数，营收保留1位小数，ARPU保留2位小数，比率保留整数
+2. pp（百分点）用于比率指标变化，%用于绝对值指标变化率，严格区分
+3. 环比"持平"定义：绝对值指标 ≤1%，比率指标 ≤0.5pp
+4. 不编造数据，数据不足时放入 data_gaps 并在对应 finding 中标记 need_supplement: true
+5. key_findings 每条 finding ≤60字
+6. suggestions 每条 action ≤25字
+7. summary ≤50字
+
+# 语言风格
+- 简洁、专业、数据驱动
+- 结论先行，归因跟上
+- 不说"建议关注"等空话，说具体做什么
+- 正面表现一笔带过，问题和风险重点展开
+- 趋势相关的描述具体到"周几"`;
             
-            // 构建针对学生产品的分析提示词
-            const prompt = `你是教育行业资深数据分析师，请基于以下学生产品的周度数据进行专业分析：
-
-【产品背景】学生学习产品，用户主要为在校学生
-【时间场景】${currentWeek.year}年第${currentWeek.week}周（${weekInfo.description}）
-
-【当前数据】${currentWeek.year}年第${currentWeek.week}周：
-• 活跃用户：${formatNumber(currentData.活跃用户)}人
-• 营收：${formatNumber(currentData.营收)}元  
-• ARPU：${currentData.ARPU}元
-• 次周留存率：${currentData.次周留存率}%
-• 使用率：${currentData.使用率}%
-• 深度访问率：${currentData.深度访问率}%
-• 大会员活跃率：${currentData.大会员活跃率}%
-
-${lastWeekData ? `【环比变化】vs上周：
-• 活跃用户：${metrics.userWoW}
-• 营收：${metrics.revenueWoW}
-• ARPU：${metrics.arpuWoW}
-• 留存率：${metrics.retentionWoW}
-• 使用率：${metrics.usageWoW}` : '【说明】首周数据，无环比对比'}
-
-${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年第${currentWeek.week}周）：
-• 活跃用户：${metrics.userYoY}
-• 营收：${metrics.revenueYoY}
-• ARPU：${metrics.arpuYoY}
-• 次周留存率：${metrics.retentionYoY}
-• 使用率：${metrics.usageYoY}
-• 深度访问率：${metrics.deepAccessYoY}
-• 大会员活跃率：${metrics.vipActiveYoY}` : ''}
-
-【分析要求】请按照以下3个维度分析，每个维度2-3个要点：
-
-1. 【用户维度】分析活跃用户和留存率变化，结合学习场景判断原因
-2. 【收入维度】分析营收和ARPU变化，区分用户规模vs付费意愿的影响
-3. 【使用维度】分析使用率和大会员活跃率，结合学习动机和场景需求
-
-【教育场景分析要点】
-- 用户变化需考虑学期、考试、假期等教育周期因素
-- 收入分析要明确是用户规模还是付费意愿驱动的变化
-- 使用率变化要结合学生的学习动机和实际学习场景
-- 每个维度的策略建议要具体可执行，符合学生用户特点
-- 语言简洁专业，每个要点标注维度标签如【用户】【收入】【使用】`;
+            // 强约束：必须以 { 开头、以 } 结尾，避免模型输出 bullet/markdown 导致解析失败
+            const hardFence = `\n\n【最终输出硬约束】\n- 你的回复必须“第一字符就是 {”，且“最后一个非空字符就是 }”\n- 不要输出 \`json\`、不要输出代码块标记（\`\`\`）、不要输出项目符号（•/-/*）\n- 只输出一个 JSON 对象，不要输出多个 JSON\n`;
+            const finalPrompt = prompt + hardFence;
 
             try {
                 console.log('开始调用DeepSeek API...');
@@ -2421,11 +2698,11 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
                         messages: [
                             {
                                 role: 'system',
-                                content: '你是教育行业资深数据分析师，深度理解学生用户行为和教育产品特点。擅长结合学习场景分析数据变化，提出符合教育规律的运营策略。回答要简洁精准，逻辑一致。'
+                                content: '你是"小橙子"，K12 学生学习平台的 AI 数据分析助手。你必须只输出严格合法的 JSON（不要 markdown，不要解释文字），并严格符合用户提示词给定的 schema。'
                             },
                             {
                                 role: 'user',
-                                content: prompt
+                                content: finalPrompt
                             }
                         ],
                         temperature: 0.2,  // 进一步降低随机性
@@ -2514,8 +2791,323 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
         }
 
         // 优化的AI分析结果格式化 - 新设计风格
+        function renderAIAnalysisFromJson(obj) {
+            const safe = (v) => (v == null ? '' : String(v));
+            const esc = (s) => safe(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+
+            const pill = (status) => {
+                const s = String(status || '').toLowerCase();
+                if (s === 'green') return '<span class="status-dot" style="background:#10b981;"></span>';
+                if (s === 'yellow') return '<span class="status-dot" style="background:#f59e0b;"></span>';
+                if (s === 'red') return '<span class="status-dot" style="background:#ef4444;"></span>';
+                return '';
+            };
+
+            const renderMetrics = (metricsArr) => {
+                const arr = Array.isArray(metricsArr) ? metricsArr : [];
+                if (arr.length === 0) return '<div class="analysis-text">暂无</div>';
+                return `
+                    <div class="analysis-content">
+                        <ul class="analysis-list">
+                            ${arr.map(m => {
+                                const name = esc(m.name);
+                                const value = esc(m.value);
+                                const wow = esc(m.wow);
+                                const yoy = esc(m.yoy);
+                                return `<li>${pill(m.status)}<strong>${name}</strong>：${value}（环比 ${wow} / 同比 ${yoy}）</li>`;
+                            }).join('')}
+                        </ul>
+                    </div>
+                `;
+            };
+
+            const renderListCards = (arr, mapper, emptyText) => {
+                const a = Array.isArray(arr) ? arr : [];
+                if (a.length === 0) return `<div class="analysis-text">${esc(emptyText || '暂无')}</div>`;
+                return `
+                    <div class="analysis-content">
+                        <ul class="analysis-list">
+                            ${a.map(mapper).join('')}
+                        </ul>
+                    </div>
+                `;
+            };
+
+            const asObj = (x) => (x && typeof x === 'object' && !Array.isArray(x)) ? x : null;
+            const asStr = (x) => (typeof x === 'string') ? x.trim() : '';
+            const normDim = (v) => {
+                const s = String(v || '').trim();
+                if (!s) return '';
+                // 兼容“收入/营收”等口径
+                if (s.includes('营收') || s.includes('收入')) return '营收';
+                if (s.includes('使用')) return '使用';
+                if (s.includes('用户')) return '用户';
+                return s;
+            };
+            const pickByDim = (arr, dim, limit) => {
+                const a = Array.isArray(arr) ? arr : [];
+                const out = [];
+                for (const it of a) {
+                    const o = asObj(it);
+                    const d0 = o ? normDim(o.dimension) : '';
+                    if (d0 === dim) out.push(it);
+                    if (out.length >= (limit || 2)) break;
+                }
+                return out;
+            };
+            const renderFindingItem = (x) => {
+                const xo = asObj(x);
+                if (!xo) return `<li>${esc(asStr(x))}</li>`;
+                const dim = esc(normDim(xo.dimension || ''));
+                const st = esc(xo.status || '');
+                const finding = esc(xo.finding || xo.text || '');
+                const cause = esc(xo.cause || '');
+                const head = (dim ? `【${dim}】` : '') + (finding || '');
+                const tail = cause ? `<div style="margin-top:4px;color:var(--color-text-muted);font-size:inherit;">${cause}</div>` : '';
+                return `<li>${pill(st)}${head}${tail}</li>`;
+            };
+            const renderSuggestionItem = (x) => {
+                const xo = asObj(x);
+                if (!xo) return `<li>${esc(asStr(x))}</li>`;
+                const dim = esc(normDim(xo.dimension || ''));
+                const act = esc(xo.action || xo.suggestion || '');
+                const pri = esc(xo.priority || '');
+                const head = (dim ? `<strong>【${dim}】</strong>` : '') + act;
+                const badge = pri ? ` <span class="change-item" style="margin-left:6px;">${pri}</span>` : '';
+                return `<li>${head}${badge}</li>`;
+            };
+            const summarizeFindingsLine = (arr, dim) => {
+                const picked = pickByDim(arr, dim, 2);
+                if (!picked.length) return '<span style="color:var(--color-text-muted);">暂无</span>';
+                const parts = picked.map(it => {
+                    const o = asObj(it);
+                    if (!o) return esc(asStr(it));
+                    return esc(o.finding || o.text || '');
+                }).filter(Boolean);
+                const first = asObj(picked[0]);
+                const st = first ? esc(first.status || '') : '';
+                return `${pill(st)}${parts.join('；')}`;
+            };
+            const summarizeSuggestionsLine = (arr, dim) => {
+                const picked = pickByDim(arr, dim, 2);
+                if (!picked.length) return '<span style="color:var(--color-text-muted);">暂无</span>';
+                const parts = picked.map(it => {
+                    const o = asObj(it);
+                    if (!o) return esc(asStr(it));
+                    const act = esc(o.action || o.suggestion || '');
+                    const pri = esc(o.priority || '');
+                    return pri ? `${act}（${pri}）` : act;
+                }).filter(Boolean);
+                return parts.join('；');
+            };
+            const renderModuleSummary = (label, html) => `
+                <div style="display:flex;gap:10px;align-items:flex-start;margin:10px 0;">
+                    <div class="module-label" style="min-width:44px;">${label}</div>
+                    <div class="module-text" style="flex:1;line-height:1.5;">${html}</div>
+                </div>
+            `;
+
+            // 兼容两种 schema：新版 core_metrics（三块数组）/旧版 dimensions.metrics
+            const core = obj.core_metrics || {};
+            const d = obj.dimensions || {};
+            const user = (core.user || d.user || {});
+            const revenue = (core.revenue || d.revenue || {});
+            const usage = (core.usage || d.usage || {});
+
+            const userMetrics = Array.isArray(user) ? user : (user.metrics || []);
+            const revenueMetrics = Array.isArray(revenue) ? revenue : (revenue.metrics || []);
+            const usageMetrics = Array.isArray(usage) ? usage : (usage.metrics || []);
+
+            // 收敛展示：只展示 3 个板块（核心表现 / 关键变化 / 策略建议），避免模块过多
+            const summaryText = (core.summary != null ? core.summary : obj.summary) || '';
+            const analysisDate = esc(obj.analysis_date || '');
+            const periodContext = esc(obj.period_context || '');
+            const healthGrade = esc(obj.health_grade || '');
+            const keyFindingsAll = Array.isArray(obj.key_findings) ? obj.key_findings : [];
+            const suggestionsAll = Array.isArray(obj.suggestions) ? obj.suggestions : [];
+            const dataGaps = Array.isArray(obj.data_gaps) ? obj.data_gaps.slice(0, 3) : [];
+
+            const coreBlock = `
+                <div class="analysis-section">
+                    <h5>核心表现</h5>
+                    <div class="analysis-content">
+                        <div class="analysis-text">${esc(summaryText)}</div>
+                        <div class="analysis-text" style="margin-top:8px;color:var(--color-text-muted);">
+                            健康度：<strong>${healthGrade}</strong>
+                        </div>
+                        <div class="analysis-text" style="margin-top:6px;color:var(--color-text-muted);">
+                            ${analysisDate}${periodContext ? ` · ${periodContext}` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const col1 = `
+                <div class="analysis-section">
+                    <h5>关键变化（按模块）</h5>
+                    <div class="analysis-content" style="padding-top:4px;">
+                        ${renderModuleSummary('用户', summarizeFindingsLine(keyFindingsAll, '用户'))}
+                        ${renderModuleSummary('营收', summarizeFindingsLine(keyFindingsAll, '营收'))}
+                        ${renderModuleSummary('使用', summarizeFindingsLine(keyFindingsAll, '使用'))}
+                    </div>
+                </div>
+            `;
+
+            const col2 = `
+                <div class="analysis-section">
+                    <h5>策略建议（按模块）</h5>
+                    <div class="analysis-content" style="padding-top:4px;">
+                        ${renderModuleSummary('用户', summarizeSuggestionsLine(suggestionsAll, '用户'))}
+                        ${renderModuleSummary('营收', summarizeSuggestionsLine(suggestionsAll, '营收'))}
+                        ${renderModuleSummary('使用', summarizeSuggestionsLine(suggestionsAll, '使用'))}
+                    </div>
+                </div>
+                <div class="analysis-section">
+                    <h5>数据缺口（如需补充）</h5>
+                    ${renderListCards(dataGaps, (x) => {
+                        const xo = asObj(x);
+                        if (!xo) return `<li>${esc(asStr(x))}</li>`;
+                        const q = esc(xo.question || '');
+                        const reason = esc(xo.reason || '');
+                        const head = q ? `<strong>${q}</strong>` : '';
+                        const tail = reason ? `<div style="margin-top:4px;color:var(--color-text-muted);font-size:inherit;">${reason}</div>` : '';
+                        return `<li>${head}${tail}</li>`;
+                    }, '暂无数据缺口')}
+                </div>
+            `;
+
+            return `
+                <div class="ai-column">${coreBlock}</div>
+                <div class="ai-column">${col1}</div>
+                <div class="ai-column">${col2}</div>
+            `;
+        }
+
+        function tryParseJsonFromModel(text) {
+            const raw = String(text || '').trim();
+            if (!raw) return null;
+
+            // 1) 去掉常见的 markdown/bullet 前缀（例如 "• ```json"、"- {" 等）
+            let s = raw
+                .replace(/^[\s•\-–—]+```json\s*/i, '')
+                .replace(/^[\s•\-–—]+```/i, '')
+                .replace(/```[\s•\-–—]*$/i, '')
+                .trim();
+
+            // 2) 若每行都带 bullet，把行首 bullet 去掉再拼回去
+            const lines = s.split(/\r?\n/).map(l => l.replace(/^\s*[•\-\*]+\s*/, ''));
+            s = lines.join('\n').trim();
+
+            // 3) 从文本里提取第一段完整 JSON 对象（基于大括号计数）
+            const firstBrace = s.indexOf('{');
+            if (firstBrace < 0) return null;
+            let depth = 0;
+            let inStr = false;
+            let escaped = false;
+            for (let i = firstBrace; i < s.length; i++) {
+                const ch = s[i];
+                if (inStr) {
+                    if (escaped) {
+                        escaped = false;
+                    } else if (ch === '\\\\') {
+                        escaped = true;
+                    } else if (ch === '"') {
+                        inStr = false;
+                    }
+                    continue;
+                } else {
+                    if (ch === '"') {
+                        inStr = true;
+                        continue;
+                    }
+                    if (ch === '{') depth++;
+                    if (ch === '}') depth--;
+                    if (depth === 0) {
+                        const candidate = s.slice(firstBrace, i + 1).trim();
+                        try {
+                            return JSON.parse(candidate);
+                        } catch (_) {
+                            // 常见修复：智能引号、尾随逗号、不可见控制字符
+                            try {
+                                const repaired = candidate
+                                    .replace(/[\u201C\u201D]/g, '"')
+                                    .replace(/[\u2018\u2019]/g, "'")
+                                    .replace(/,\s*([}\]])/g, '$1')
+                                    .replace(/[\u0000-\u001F\u007F]/g, (m) => (m === '\n' || m === '\r' || m === '\t') ? m : '');
+                                return JSON.parse(repaired);
+                            } catch (__) {
+                                return null;
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
         function formatAIAnalysisOptimized(analysis, currentData, metrics) {
             try {
+                const parsed = tryParseJsonFromModel(analysis);
+                if (parsed && typeof parsed === 'object') {
+                    return renderAIAnalysisFromJson(parsed);
+                }
+
+                // 如果“看起来像 JSON”，但解析失败：不要再用段落/列表兜底（否则会把 JSON 字段当要点，导致更乱）
+                const trimmed = String(analysis || '').trim();
+                const looksLikeJson = /^\s*\{/.test(trimmed) && (trimmed.includes('"analysis_date"') || trimmed.includes('"core_metrics"'));
+                if (looksLikeJson) {
+                    const rawOut = String(analysis || '').slice(0, 4000);
+                    const esc = (s) => String(s ?? '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                    return `
+                        <div class="ai-column">
+                            <div class="analysis-section">
+                                <h5>核心表现</h5>
+                                <div class="analysis-content">
+                                    <div class="key-metrics-display">
+                                        <div class="metric-display">
+                                            <div class="label">活跃用户</div>
+                                            <div class="value">${formatNumber(currentData.活跃用户)}</div>
+                                        </div>
+                                        <div class="metric-display">
+                                            <div class="label">营收</div>
+                                            <div class="value">${formatNumber(currentData.营收)}</div>
+                                        </div>
+                                    </div>
+                                    <div class="analysis-text" style="margin-top:10px;color:var(--color-text-muted);">
+                                        AI 返回的 JSON 格式不合法，已暂用“核心指标”展示；请点击“刷新分析”重新生成。
+                                    </div>
+                                    <details style="margin-top:10px;">
+                                        <summary style="cursor:pointer;color:var(--color-text-muted);">查看原始输出（前 4000 字）</summary>
+                                        <pre style="white-space:pre-wrap;word-break:break-word;margin-top:8px;">${esc(rawOut)}</pre>
+                                    </details>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ai-column">
+                            <div class="analysis-section">
+                                <h5>关键变化</h5>
+                                <div class="analysis-content"><div class="analysis-text">等待重新生成有效 JSON…</div></div>
+                            </div>
+                        </div>
+                        <div class="ai-column">
+                            <div class="analysis-section">
+                                <h5>策略建议</h5>
+                                <div class="analysis-content"><div class="analysis-text">等待重新生成有效 JSON…</div></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 // 智能解析AI回复
                 let sections = [];
                 
@@ -2680,6 +3272,12 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
             
             // 基于教育场景的策略建议
             const strategies = generateEducationStrategies(currentData, lastWeekData, metrics, weekInfo);
+
+            // 如果小橙子已补充信息，则在策略建议里显式纳入，避免“补了但结果不变”
+            const supplementalText = buildSupplementalContextText(aiSupplementalContext);
+            if (supplementalText) {
+                strategies.unshift(`【补充信息】${supplementalText.replace(/\n/g, '；')}`);
+            }
 
             // 三列布局
             return `
@@ -3071,6 +3669,7 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
             
             // 添加用户消息到界面
             addMessageToChat('user', message);
+            aiChatHistory.push({ role: 'user', content: message });
             
             // 显示AI正在输入
             showTypingIndicator();
@@ -3084,6 +3683,18 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
                 
                 // 添加AI回复到界面
                 addMessageToChat('ai', aiResponse);
+                aiChatHistory.push({ role: 'assistant', content: aiResponse });
+
+                // 解析小橙子控制标记：如需补充数据并触发重新生成
+                const control = extractAssistantControl(aiResponse);
+                if (control && control.trigger) {
+                    aiSupplementalContext = control.supplemental || {};
+                    const analysisElement = document.getElementById('aiAnalysis');
+                    if (analysisElement) {
+                        analysisElement.innerHTML = '<div class="loading">已接收补充信息，正在重新生成分析...</div>';
+                    }
+                    generateAIAnalysis();
+                }
                 
             } catch (error) {
                 console.error('AI助手调用失败:', error);
@@ -3096,14 +3707,32 @@ ${lastYearData ? `【同比变化】vs去年同期（${currentWeek.year - 1}年�
         async function callAIAssistant(userMessage) {
             // 构建上下文信息
             const contextInfo = buildDataContext();
+            const historyText = aiChatHistory && aiChatHistory.length
+                ? aiChatHistory.slice(-6).map(m => `${m.role === 'user' ? '用户' : '小橙子'}：${m.content}`).join("\n")
+                : '';
             
-            const prompt = `你是小橙子🍊，一个专业的教育数据分析AI助手。请基于以下数据回答用户问题：
+            const supplementalForAssistant = buildSupplementalContextText(aiSupplementalContext);
+            const supplementalLine = supplementalForAssistant ? `\n【小橙子已获取的补充信息】\n${supplementalForAssistant}` : '';
+
+            const prompt = `你是小橙子，一个专业的教育数据分析AI助手。请基于以下数据回答用户问题：${supplementalLine}
 
 【当前数据背景】
 ${contextInfo}
 
+${historyText ? `【对话历史】\n${historyText}` : ''}
+
 【用户问题】
 ${userMessage}
+
+【如果需要补充数据（必须遵循）】
+1) 如果你判断当前数据不足以给出高质量结论：请输出
+【需要补充的数据】(最多3条，用中文列出字段/数字要求)
+【触发分析生成】false
+不要输出【补充数据】。
+2) 如果你判断数据已足够：请输出
+【需要补充的数据】无
+【补充数据】{...JSON...}  (只填写你从对话中提取到的补充字段)
+【触发分析生成】true
 
 【回答要求】
 1. 以小橙子的身份回答，语气友好专业
@@ -3125,7 +3754,7 @@ ${userMessage}
                     messages: [
                         {
                             role: 'system',
-                            content: '你是小橙子🍊，一个专业友好的教育数据分析AI助手。你擅长分析学生产品数据，理解教育场景，提供实用的运营建议。回答要简洁专业，语气亲切。'
+                            content: '你是小橙子，需要和右侧“AI数据分析”面板联动：当你输出【触发分析生成】true时，页面会把【补充数据】写入上下文并重新生成右侧AI分析。不要输出与联动无关的长篇内容，必须严格包含控制标记。'
                         },
                         {
                             role: 'user',
@@ -3201,7 +3830,13 @@ ${userMessage}
             context += `
 
 【场景信息】${weekInfo.description}`;
-            
+
+            const supplementalForContext = buildSupplementalContextText(aiSupplementalContext);
+            if (supplementalForContext) {
+                context += `
+
+【小橙子补充信息】${supplementalForContext}`;
+            }
             return context;
         }
         

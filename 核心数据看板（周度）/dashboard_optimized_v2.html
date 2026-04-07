@@ -1427,11 +1427,11 @@
             const metrics = calculateKeyMetrics(currentData, lastWeekData, lastYearData);
             
             // 构建精确的分析提示词
-            const prompt = `你是资深数据分析师，请基于以下周度业务数据进行专业分析：
+            const prompt = `你是教育行业资深数据分析师，请基于以下学生产品的周度数据做“可落地”的分析与运营建议（不要输出与任务无关的前言/总结）。
 
 【当前数据】${currentWeek.year}年第${currentWeek.week}周：
 • 活跃用户：${formatNumber(currentData.活跃用户)}人
-• 营收：${formatNumber(currentData.营收)}元  
+• 营收：${formatNumber(currentData.营收)}元
 • ARPU：${currentData.ARPU}元
 • 次周留存率：${currentData.次周留存率}%
 • 使用率：${currentData.使用率}%
@@ -1442,24 +1442,30 @@ ${lastWeekData ? `【环比变化】vs上周：
 • 活跃用户：${metrics.userWoW}
 • 营收：${metrics.revenueWoW}
 • ARPU：${metrics.arpuWoW}
-• 留存率：${metrics.retentionWoW}
-• 使用率：${metrics.usageWoW}` : '【说明】首周数据，无环比对比'}
+• 次周留存率：${metrics.retentionWoW}
+• 使用率：${metrics.usageWoW}` : '【说明】首周数据，暂无环比对比'}
 
 ${lastYearData ? `【同比变化】vs去年同期：
 • 活跃用户：${metrics.userYoY}
-• 营收：${metrics.revenueYoY}` : ''}
+• 营收：${metrics.revenueYoY}
+• ARPU：${metrics.arpuYoY}
+• 次周留存率：${metrics.retentionYoY}
+• 使用率：${metrics.usageYoY}` : '【说明】暂无同比对比'}
 
-【分析要求】请提供3个部分，每部分2-3个要点：
+【输出格式（必须严格遵守，只输出 1 和 2 两段）】
+1. 【关键变化】
+要求：按“用户/收入/使用”三个子方向给出 2-3 个要点；每个要点用一行，并标注维度标签：【用户】/【收入】/【使用】；需要明确写出“趋势 + 可能原因（结合教育周期） + 影响的核心指标（留存/使用/ARPU等）”。
+2. 【策略建议】
+要求：给出 3-5 条可执行动作；每条必须包含：
+（1）动作对象（如新用户/老用户/大会员/特定年级场景）
+（2）动作内容（做什么）
+（3）预期收益（写明希望提升/拉动的指标）
+（4）落地方式/节奏（例如本周/下周/按考试周）
 
-1. 核心变化：识别最关键的指标变化（重点关注>10%的显著变化）
-2. 趋势判断：基于数据变化分析业务健康度和发展趋势
-3. 行动建议：针对具体问题给出可执行的运营策略
-
-【注意事项】
-- 重点分析用户增长与营收的关联性
-- 关注留存率对长期发展的影响
-- 每个建议要具体可执行，避免空泛表述
-- 语言简洁专业，每个要点10-15字`;
+【约束】
+- 不要编造数据；如果环比/同比缺失，必须写“暂无可比数据”并给出原因解释框架
+- 语言简洁专业，每个要点尽量控制在 12-25 个中文字符
+- 不要出现“数据口径不清”“我无法判断”等空话；要给出可验证的运营验证方案（例如 AB/观察指标/埋点检查）`;
 
             try {
                 console.log('开始调用DeepSeek API...');
@@ -1477,7 +1483,7 @@ ${lastYearData ? `【同比变化】vs去年同期：
                         messages: [
                             {
                                 role: 'system',
-                                content: '你是资深业务数据分析师，擅长从数据中发现问题并提出具体可行的解决方案。回答要简洁精准，重点突出，每个建议都要具体可执行。'
+                                content: '你是资深教育行业数据分析师。必须只输出用户提示词要求的“1.【关键变化】/2.【策略建议】”两段，严格遵守要点与格式；不要输出其他内容。回答简洁专业、逻辑一致。'
                             },
                             {
                                 role: 'user',
