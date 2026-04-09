@@ -188,6 +188,7 @@
         <div class="card rounded-3xl p-5 sm:p-7">
           <div class="border-b border-orange-100/80 pb-4 mb-1">
             <h3 class="text-lg font-semibold text-brand">活跃用户趋势</h3>
+            <p class="mt-1 text-xs text-stone-500">橙色实线为当年日度活跃；蓝色虚线为去年同期（与「第 n 周」对齐的同日），优先用日度表；无日度时按周度核心表将该周指标均摊到每日。</p>
           </div>
           <div id="chartActive" class="mt-4 h-[220px] min-h-[200px] sm:mt-5 sm:h-[280px]"></div>
         </div>
@@ -195,6 +196,7 @@
         <div class="card rounded-3xl p-5 sm:p-7">
           <div class="border-b border-orange-100/80 pb-4 mb-1">
             <h3 class="text-lg font-semibold text-brand">新用户趋势</h3>
+            <p class="mt-1 text-xs text-stone-500">当年与去年同期新增用户（同周同日对齐）；去年无日度时按该周核心表新增用户均摊到每日。</p>
           </div>
           <div id="chartNewMix" class="mt-4 h-[240px] min-h-[220px] sm:mt-5 sm:h-[300px]"></div>
         </div>
@@ -202,6 +204,7 @@
         <div class="card rounded-3xl p-5 sm:p-7">
           <div class="border-b border-orange-100/80 pb-4 mb-1">
             <h3 class="text-lg font-semibold text-brand">新用户占比趋势</h3>
+            <p class="mt-1 text-xs text-stone-500">当年与去年同期新用户占比；去年无日度时用该周核心表「新增用户占比」作为日内常数对照。</p>
           </div>
           <div id="chartNewShare" class="mt-4 h-[220px] min-h-[200px] sm:mt-5 sm:h-[280px]"></div>
         </div>
@@ -306,7 +309,7 @@
     </main>
   </div>
 
-  <script src="./embedded-csv-b64.js?v=20260326-3"></script>
+  <script src="./embedded-csv-b64.js?v=20260409-1"></script>
   <script>
     // ---------------------------
     // 1) CSV 数据加载（替代 Mock）
@@ -355,6 +358,8 @@
 
     let coreWeeks = [];            // {weekNo, startISO, endISO}
     let dailyRows = [];           // {dtISO, active_uv, new_uv, old_uv, sharePct}
+    /** dtISO -> 日度行，用于趋势图与同比日对齐 */
+    let dailyByDate = new Map();
     let activeChannelRows = [];  // {week_startISO, week_endISO, channel_name, uv}
     let newChannelRows = [];
 
@@ -428,6 +433,17 @@
       return Number(raw.replace(/,/g, "").replace(/%/g, ""));
     }
 
+    /**
+     * 表头容错：优先匹配候选字段名，匹配不到时可回退到固定列位次
+     */
+    function pickHeaderIndex(header, candidates, fallbackIdx = -1) {
+      for (const c of candidates) {
+        const i = header.indexOf(c);
+        if (i >= 0) return i;
+      }
+      return fallbackIdx;
+    }
+
     function parseSlashDate(s) {
       // 2026/1/1 或 2026/01/01
       const [y, m, d] = String(s).trim().split("/");
@@ -451,6 +467,24 @@
       const d = new Date(dateObj);
       d.setDate(d.getDate() + days);
       return d;
+    }
+
+    /** 两个 ISO 日期（当日 0 点）之间的整数天差：isoA - isoB */
+    function diffDaysISO(isoA, isoB) {
+      const a = parseISODate(isoA);
+      const b = parseISODate(isoB);
+      return Math.round((a.getTime() - b.getTime()) / 86400000);
+    }
+
+    /** 某日落在当年 coreWeeks 的哪一周（仅 CURRENT_YEAR） */
+    function findWeekMetaForISODate(dtISO) {
+      const t = parseISODate(dtISO);
+      for (const w of coreWeeks) {
+        const s = parseISODate(w.startISO);
+        const e = parseISODate(w.endISO);
+        if (t >= s && t <= e) return w;
+      }
+      return null;
     }
 
     /** 渠道表 week_start/week_end 可能是 2026-01-05 或 2026/1/5，统一为 ISO 便于与核心周对齐 */
@@ -794,14 +828,14 @@
       const coreTable = parseCSV(coreText);
       const coreHeader = coreTable[0];
       const coreIdx = {
-        weekNo: coreHeader.indexOf("第n周"),
-        start: coreHeader.indexOf("周开始日期"),
-        end: coreHeader.indexOf("周结束日期"),
-        active: coreHeader.indexOf("活跃用户"),
-        news: coreHeader.indexOf("新增用户"),
-        share: coreHeader.indexOf("新增用户占比"),
-        retention: coreHeader.indexOf("新用户次周留存"),
-        cum: coreHeader.indexOf("累计用户"),
+        weekNo: pickHeaderIndex(coreHeader, ["第n周"], 0),
+        start: pickHeaderIndex(coreHeader, ["周开始日期"], 1),
+        end: pickHeaderIndex(coreHeader, ["周结束日期"], 2),
+        active: pickHeaderIndex(coreHeader, ["活跃用户"], 4),
+        news: pickHeaderIndex(coreHeader, ["新增用户"], 5),
+        share: pickHeaderIndex(coreHeader, ["新增用户占比"], 7),
+        retention: pickHeaderIndex(coreHeader, ["新用户次周留存"], 8),
+        cum: pickHeaderIndex(coreHeader, ["累计用户"], 9),
       };
 
       const coreRowsParsed = coreTable.slice(1).map(r => {
@@ -849,11 +883,11 @@
       const dailyTable = parseCSV(dailyText);
       const dailyHeader = dailyTable[0];
       const dailyIdx = {
-        dt: dailyHeader.indexOf("dt"),
-        active: dailyHeader.indexOf("active_uv"),
-        news: dailyHeader.indexOf("new_uv"),
-        old: dailyHeader.indexOf("old_uv"),
-        share: dailyHeader.indexOf("新用户占比"),
+        dt: pickHeaderIndex(dailyHeader, ["dt"], 0),
+        active: pickHeaderIndex(dailyHeader, ["active_uv"], 1),
+        news: pickHeaderIndex(dailyHeader, ["new_uv"], 2),
+        old: pickHeaderIndex(dailyHeader, ["old_uv"], 3),
+        share: pickHeaderIndex(dailyHeader, ["新用户占比"], 4),
       };
 
       dailyRows = dailyTable.slice(1).map(r => {
@@ -867,6 +901,7 @@
         };
       });
       dailyRows.sort((a, b) => parseISODate(a.dtISO) - parseISODate(b.dtISO));
+      dailyByDate = new Map(dailyRows.map(d => [d.dtISO, d]));
 
       // 计算每周新增用户（new_uv 为新用户，不会跨天重复计入），用于替代 mock.newUsers（保证与日度口径一致）
       const weeklyNewFromDaily = [];
@@ -971,9 +1006,16 @@
      */
     function getDailyTrendSlice(rangeKey) {
       if (!dailyRows.length || !coreWeeks.length) {
-        return { labels: [], active: [], newUsers: [], growth: [], share: [] };
+        return {
+          labels: [],
+          active: [],
+          newUsers: [],
+          share: [],
+          activeLy: [],
+          newUsersLy: [],
+          shareLy: [],
+        };
       }
-      const byDate = new Map(dailyRows.map(d => [d.dtISO, d]));
       const endIdx = Math.min(Math.max(0, selectedWeekIdx), coreWeeks.length - 1);
       let startISO;
       const endISO = coreWeeks[endIdx].endISO;
@@ -988,10 +1030,29 @@
       }
       const startD = parseISODate(startISO);
       const endD = parseISODate(endISO);
-      const inRange = dailyRows.filter(d => {
+      let inRange = dailyRows.filter(d => {
         const dt = parseISODate(d.dtISO);
-        return dt >= startD && dt <= endD;
+        if (dt < startD || dt > endD) return false;
+        return String(d.dtISO).startsWith(String(CURRENT_YEAR));
       });
+
+      // 如果当前选中周（例如最新一周）在日度表中尚未覆盖完整，回退为“当前可用的最近 7/28/84 天”
+      if (!inRange.length) {
+        const yearRows = dailyRows.filter(d => String(d.dtISO).startsWith(String(CURRENT_YEAR)));
+        if (yearRows.length) {
+          const last = yearRows[yearRows.length - 1];
+          const lastD = parseISODate(last.dtISO);
+          let spanDays;
+          if (rangeKey === "week") spanDays = 6;
+          else if (rangeKey === "4w") spanDays = 27;  // 近 4 周 ≈ 28 天
+          else spanDays = 83;                         // 近 12 周 ≈ 84 天
+          const startAlt = addDays(lastD, -spanDays);
+          inRange = yearRows.filter(d => {
+            const dt = parseISODate(d.dtISO);
+            return dt >= startAlt && dt <= lastD;
+          });
+        }
+      }
       const labels = inRange.map(d => {
         const parts = d.dtISO.split("-");
         const m = parts[1];
@@ -1001,15 +1062,39 @@
       const active = inRange.map(d => d.active_uv);
       const newUsers = inRange.map(d => d.new_uv);
       const share = inRange.map(d => d.sharePct);
-      const growth = inRange.map(d => {
-        const prevISO = toISODate(addDays(parseISODate(d.dtISO), -1));
-        const prevRow = byDate.get(prevISO);
-        if (!prevRow) return 0;
-        const pv = prevRow.new_uv;
-        if (pv === 0) return 0;
-        return ((d.new_uv - pv) / pv) * 100;
-      });
-      return { labels, active, newUsers, growth, share };
+      const activeLy = [];
+      const newUsersLy = [];
+      const shareLy = [];
+      for (const d of inRange) {
+        const wm = findWeekMetaForISODate(d.dtISO);
+        let lyA = null;
+        let lyN = null;
+        let lyS = null;
+        if (wm) {
+          const lyRow = coreRowByYearWeek.get(`${CURRENT_YEAR - 1}-${wm.weekNo}`);
+          if (lyRow && lyRow.startISO && lyRow.endISO) {
+            const off = diffDaysISO(d.dtISO, wm.startISO);
+            const lyISO = toISODate(addDays(parseISODate(lyRow.startISO), off));
+            const rowLyDaily = dailyByDate.get(lyISO);
+            if (rowLyDaily) {
+              lyA = rowLyDaily.active_uv;
+              lyN = rowLyDaily.new_uv;
+              lyS = rowLyDaily.sharePct;
+            } else {
+              const nd = diffDaysISO(lyRow.endISO, lyRow.startISO) + 1;
+              if (nd > 0) {
+                lyA = lyRow.active / nd;
+                lyN = lyRow.newUsers / nd;
+                lyS = lyRow.sharePct;
+              }
+            }
+          }
+        }
+        activeLy.push(lyA);
+        newUsersLy.push(lyN);
+        shareLy.push(lyS);
+      }
+      return { labels, active, newUsers, share, activeLy, newUsersLy, shareLy };
     }
 
     /** 横轴点较多时旋转标签，避免重叠 */
@@ -1081,11 +1166,29 @@
       return formatInt(v);
     }
 
-    function buildAreaChartOptions(weeks, activeSlice) {
+    const LEGEND_CUR = `${CURRENT_YEAR}年`;
+    const LEGEND_YOY = `${CURRENT_YEAR - 1}年同期`;
+
+    function axisTooltipHtml(title, rows) {
+      let html = `<div style="font-weight:700;margin-bottom:6px;">${title}</div>`;
+      for (const { marker, name, text } of rows) {
+        html += `<div>${marker || ""}${name}：<span style="font-weight:900;">${text}</span></div>`;
+      }
+      return html;
+    }
+
+    /** 活跃用户：当年实线 + 去年同期虚线 */
+    function buildActiveDualYearLineOptions(weeks, activeCur, activeLy) {
       const ax = getCategoryAxisExtra(weeks.length);
+      const n = weeks.length;
       return {
         backgroundColor: "transparent",
-        grid: { left: 48, right: 18, top: 18, bottom: ax.bottom },
+        grid: { left: 48, right: 18, top: 40, bottom: ax.bottom },
+        legend: {
+          data: [LEGEND_CUR, LEGEND_YOY],
+          top: 2,
+          textStyle: { color: "rgba(68,64,60,0.82)", fontSize: 11 }
+        },
         tooltip: {
           trigger: "axis",
           axisPointer: { type: "line" },
@@ -1093,12 +1196,14 @@
           borderWidth: 0,
           textStyle: { color: "#fff" },
           formatter: (params) => {
-            const p = params && params[0];
-            if (!p) return "";
-            return [
-              `<div style="font-weight:700;margin-bottom:6px;">${p.axisValue}</div>`,
-              `<div>活跃用户：<span style="color:#FB923C;font-weight:900;">${formatInt(p.data)}</span></div>`
-            ].join("");
+            const arr = Array.isArray(params) ? params : [params];
+            const x = arr[0]?.axisValue ?? "";
+            const rows = [];
+            for (const p of arr) {
+              if (p.data == null || p.data === "") continue;
+              rows.push({ marker: p.marker, name: p.seriesName, text: formatInt(p.data) });
+            }
+            return axisTooltipHtml(x, rows);
           }
         },
         xAxis: {
@@ -1118,75 +1223,68 @@
         },
         series: [
           {
-            name: "活跃用户",
+            name: LEGEND_CUR,
             type: "line",
             smooth: true,
-            symbol: "none",
-            data: activeSlice,
+            symbol: n > 45 ? "none" : "circle",
+            symbolSize: 6,
+            connectNulls: false,
+            data: activeCur,
             lineStyle: { width: 3, color: "#FF6B35" },
+            itemStyle: { color: "#FF6B35" },
             areaStyle: {
               color: {
                 type: "linear",
                 x: 0, y: 0, x2: 0, y2: 1,
                 colorStops: [
-                  { offset: 0, color: "rgba(234,88,12,0.32)" },
+                  { offset: 0, color: "rgba(234,88,12,0.22)" },
                   { offset: 1, color: "rgba(234,88,12,0.00)" }
                 ]
               }
             }
+          },
+          {
+            name: LEGEND_YOY,
+            type: "line",
+            smooth: true,
+            symbol: n > 45 ? "none" : "circle",
+            symbolSize: 5,
+            connectNulls: false,
+            data: activeLy,
+            lineStyle: { width: 2, type: "dashed", color: "#2563EB" },
+            itemStyle: { color: "#2563EB" }
           }
         ]
       };
     }
 
-    function buildDualAxisChartOptions(weeks, newSlice, growthSlice) {
+    /** 新用户：当年与去年同期两条折线 */
+    function buildNewUsersDualYearLineOptions(weeks, newCur, newLy) {
       const ax = getCategoryAxisExtra(weeks.length);
       const n = weeks.length;
-      const barSeries = {
-        name: "新增用户",
-        type: "bar",
-        data: newSlice,
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: "#FDBA74" },
-            { offset: 1, color: "#FF6B35" }
-          ])
-        },
-        emphasis: { focus: "series" }
-      };
-      if (n > 40) {
-        barSeries.barMaxWidth = 12;
-      } else if (n > 14) {
-        barSeries.barMaxWidth = 22;
-        barSeries.barWidth = "55%";
-      } else {
-        barSeries.barWidth = "38%";
-      }
       return {
         backgroundColor: "transparent",
-        grid: { left: 52, right: 52, top: 18, bottom: ax.bottom },
-        legend: { show: false },
+        grid: { left: 52, right: 18, top: 40, bottom: ax.bottom },
+        legend: {
+          data: [LEGEND_CUR, LEGEND_YOY],
+          top: 2,
+          textStyle: { color: "rgba(68,64,60,0.82)", fontSize: 11 }
+        },
         tooltip: {
           trigger: "axis",
-          axisPointer: { type: "shadow" },
+          axisPointer: { type: "line" },
           backgroundColor: "rgba(17,24,39,0.92)",
           borderWidth: 0,
           textStyle: { color: "#fff" },
           formatter: (params) => {
-            const x = params && params[0] ? params[0].axisValue : "";
-            let barV = null;
-            let lineV = null;
-            for (const p of params) {
-              if (p.seriesName === "新增用户") barV = p.data;
-              if (p.seriesName === "日环比增长率") lineV = p.data;
+            const arr = Array.isArray(params) ? params : [params];
+            const x = arr[0]?.axisValue ?? "";
+            const rows = [];
+            for (const p of arr) {
+              if (p.data == null || p.data === "") continue;
+              rows.push({ marker: p.marker, name: p.seriesName, text: formatInt(p.data) });
             }
-            const barText = barV == null ? "-" : `${formatInt(barV)}`;
-            const lineText = lineV == null ? "-" : `${(Math.round(lineV * 10) / 10).toFixed(1)}%`;
-            return [
-              `<div style="font-weight:700;margin-bottom:6px;">${x}</div>`,
-              `<div>新增用户：<span style="color:#FB923C;font-weight:900;">${barText}</span></div>`,
-              `<div>日环比增长率：<span style="color:#FF6B35;font-weight:900;">${lineText}</span></div>`
-            ].join("");
+            return axisTooltipHtml(x, rows);
           }
         },
         xAxis: {
@@ -1196,51 +1294,56 @@
           axisLine: { lineStyle: { color: "rgba(107,114,128,0.25)" } },
           axisLabel: { color: "rgba(68,64,60,0.82)", rotate: ax.rotate, interval: ax.interval }
         },
-        yAxis: [
-          {
-            type: "value",
-            name: "新增用户",
-            nameTextStyle: { color: "rgba(68,64,60,0.72)" },
-            axisLabel: {
-              color: "rgba(68,64,60,0.82)",
-              formatter: yAxisNumberFormatter
-            },
-            splitLine: { lineStyle: { color: "rgba(107,114,128,0.12)" } }
+        yAxis: {
+          type: "value",
+          name: "新增用户",
+          nameTextStyle: { color: "rgba(68,64,60,0.72)" },
+          axisLabel: {
+            color: "rgba(68,64,60,0.82)",
+            formatter: yAxisNumberFormatter
           },
-          {
-            type: "value",
-            name: "日环比(%)",
-            nameTextStyle: { color: "rgba(68,64,60,0.72)" },
-            axisLabel: {
-              color: "rgba(68,64,60,0.82)",
-              formatter: (v) => `${(Math.round(v * 10) / 10).toFixed(1)}%`
-            },
-            splitLine: { show: false }
-          }
-        ],
+          splitLine: { lineStyle: { color: "rgba(107,114,128,0.12)" } }
+        },
         series: [
-          barSeries,
           {
-            name: "日环比增长率",
+            name: LEGEND_CUR,
             type: "line",
-            yAxisIndex: 1,
-            data: growthSlice,
             smooth: true,
             symbol: n > 45 ? "none" : "circle",
             symbolSize: 6,
-            lineStyle: { width: 3, color: "#FB923C" },
-            itemStyle: { color: "#FB923C" }
+            connectNulls: false,
+            data: newCur,
+            lineStyle: { width: 3, color: "#FF6B35" },
+            itemStyle: { color: "#FF6B35" }
+          },
+          {
+            name: LEGEND_YOY,
+            type: "line",
+            smooth: true,
+            symbol: n > 45 ? "none" : "circle",
+            symbolSize: 5,
+            connectNulls: false,
+            data: newLy,
+            lineStyle: { width: 2, type: "dashed", color: "#2563EB" },
+            itemStyle: { color: "#2563EB" }
           }
         ]
       };
     }
 
-    function buildShareChartOptions(weeks, shareSlice) {
-      const health = 30; // 健康阈值
+    /** 新用户占比：当年与去年同期两条折线（参考线仅对照当年尺度） */
+    function buildShareDualYearLineOptions(weeks, shareCur, shareLy) {
+      const health = 30;
       const ax = getCategoryAxisExtra(weeks.length);
+      const n = weeks.length;
       return {
         backgroundColor: "transparent",
-        grid: { left: 52, right: 18, top: 18, bottom: ax.bottom },
+        grid: { left: 52, right: 18, top: 40, bottom: ax.bottom },
+        legend: {
+          data: [LEGEND_CUR, LEGEND_YOY],
+          top: 2,
+          textStyle: { color: "rgba(68,64,60,0.82)", fontSize: 11 }
+        },
         tooltip: {
           trigger: "axis",
           axisPointer: { type: "line" },
@@ -1248,12 +1351,15 @@
           borderWidth: 0,
           textStyle: { color: "#fff" },
           formatter: (params) => {
-            const p = params && params[0];
-            if (!p) return "";
-            return [
-              `<div style="font-weight:700;margin-bottom:6px;">${p.axisValue}</div>`,
-              `<div>新用户占比：<span style="color:#FB923C;font-weight:900;">${(Math.round(p.data * 10) / 10).toFixed(1)}%</span></div>`
-            ].join("");
+            const arr = Array.isArray(params) ? params : [params];
+            const x = arr[0]?.axisValue ?? "";
+            const rows = [];
+            for (const p of arr) {
+              if (p.data == null || p.data === "") continue;
+              const v = (Math.round(p.data * 10) / 10).toFixed(1);
+              rows.push({ marker: p.marker, name: p.seriesName, text: `${v}%` });
+            }
+            return axisTooltipHtml(x, rows);
           }
         },
         xAxis: {
@@ -1273,12 +1379,15 @@
         },
         series: [
           {
-            name: "新用户占比",
+            name: LEGEND_CUR,
             type: "line",
-            data: shareSlice,
+            data: shareCur,
             smooth: true,
-            symbol: "none",
+            symbol: n > 45 ? "none" : "circle",
+            symbolSize: 6,
+            connectNulls: false,
             lineStyle: { width: 3, color: "#FF6B35" },
+            itemStyle: { color: "#FF6B35" },
             markLine: {
               symbol: "none",
               silent: true,
@@ -1292,6 +1401,17 @@
               lineStyle: { type: "dashed", width: 2, color: "rgba(234,88,12,0.5)" },
               data: [{ yAxis: health }]
             }
+          },
+          {
+            name: LEGEND_YOY,
+            type: "line",
+            data: shareLy,
+            smooth: true,
+            symbol: n > 45 ? "none" : "circle",
+            symbolSize: 5,
+            connectNulls: false,
+            lineStyle: { width: 2, type: "dashed", color: "#2563EB" },
+            itemStyle: { color: "#2563EB" }
           }
         ]
       };
@@ -1300,10 +1420,10 @@
     function updateCharts(rangeKey) {
       if (typeof echarts === "undefined") return;
       currentTrendRange = rangeKey;
-      const { labels, active, newUsers, growth, share } = getDailyTrendSlice(rangeKey);
-      chartActive && chartActive.setOption(buildAreaChartOptions(labels, active), true);
-      chartNewMix && chartNewMix.setOption(buildDualAxisChartOptions(labels, newUsers, growth), true);
-      chartNewShare && chartNewShare.setOption(buildShareChartOptions(labels, share), true);
+      const { labels, active, newUsers, share, activeLy, newUsersLy, shareLy } = getDailyTrendSlice(rangeKey);
+      chartActive && chartActive.setOption(buildActiveDualYearLineOptions(labels, active, activeLy), true);
+      chartNewMix && chartNewMix.setOption(buildNewUsersDualYearLineOptions(labels, newUsers, newUsersLy), true);
+      chartNewShare && chartNewShare.setOption(buildShareDualYearLineOptions(labels, share, shareLy), true);
     }
 
     function initCharts() {

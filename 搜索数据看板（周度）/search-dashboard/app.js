@@ -6,7 +6,7 @@ let allData = {
     retention: []
 };
 
-let currentWeek = 13;
+let currentWeek = 14;
 let currentSort = 'uv';
 let currentConversionRange = 21;
 let currentRetentionWeeks = 5;
