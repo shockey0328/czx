@@ -7,7 +7,7 @@ let allData = {
     retention: []
 };
 
-let currentWeek = 14; // 默认选择最新一周（第14周）
+let currentWeek = 1; // 初始值，loadAllData 后会自动更新为最新周
 let currentSort = 'uv';
 let currentConversionRange = 21;
 let currentConversionType = 'user'; // 'user' | 'count'，默认展示搜索用户转化率
@@ -61,14 +61,26 @@ async function loadAllData() {
         
         console.log('可用的数据集:', Object.keys(dashboardData));
         
-        // 加载每周搜索词数据（含第14周）
-        for (let i = 1; i <= 14; i++) {
+        // 自动检测 dashboardData 中所有「第N周搜索词」，无需硬编码最大周数
+        const weekNums = Object.keys(dashboardData)
+            .map(k => { const m = k.match(/^第(\d+)周搜索词$/); return m ? parseInt(m[1]) : null; })
+            .filter(n => n !== null)
+            .sort((a, b) => a - b);
+
+        for (const i of weekNums) {
             const key = `第${i}周搜索词`;
-            if (dashboardData[key]) {
-                allData.keywords[i] = dashboardData[key];
-                console.log(`第${i}周数据加载成功，共 ${allData.keywords[i].length} 条`);
-            } else {
-                console.warn(`未找到第${i}周数据`);
+            allData.keywords[i] = dashboardData[key];
+            console.log(`第${i}周数据加载成功，共 ${allData.keywords[i].length} 条`);
+        }
+
+        // 默认选中最新周，并动态生成周选择器选项
+        if (weekNums.length > 0) {
+            currentWeek = weekNums[weekNums.length - 1];
+            const selector = document.getElementById('weekSelector');
+            if (selector) {
+                selector.innerHTML = weekNums.slice().reverse().map(n =>
+                    `<option value="${n}"${n === currentWeek ? ' selected' : ''}>2026年第${n}周</option>`
+                ).join('');
             }
         }
 

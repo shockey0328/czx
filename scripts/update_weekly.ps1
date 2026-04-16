@@ -1,5 +1,5 @@
-# =============================================================================
-# Zhou Du Kan Ban Yi Jian Geng Xin
+﻿# =============================================================================
+# 周度看板一键更新
 # =============================================================================
 Set-StrictMode -Off
 $ErrorActionPreference = "Continue"
@@ -83,28 +83,58 @@ $results += [PSCustomObject]@{ 看板 = "周度搜索数据看板"; 状态 = if 
 Write-Step "周度用户增长数据看板"
 $ok = $false
 try {
-    $gbk = [System.Text.Encoding]::GetEncoding("GBK")
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-    foreach ($key in @("activeCh", "newCh")) {
-        $csvPath = $GROWTH_CSV[$key]
-        if (-not (Test-Path $csvPath)) { continue }
-        $bytes = [System.IO.File]::ReadAllBytes($csvPath)
-        $utf8Try = [System.Text.Encoding]::UTF8.GetString($bytes)
-        if (-not ($utf8Try -match "[\u4e00-\u9fa5]")) {
-            $text = $gbk.GetString($bytes)
-            if ($text -match "[\u4e00-\u9fa5]") {
-                [System.IO.File]::WriteAllText($csvPath, $text, $utf8NoBom)
-                Write-Host "    GBK->UTF8: $([System.IO.Path]::GetFileName($csvPath))" -ForegroundColor DarkGray
-            }
-        }
+
+    # 渠道名乱码映射表（normalized.csv 里的乱码 -> 正确中文）
+    $channelAlias = @{
+        "ѧ��"                               = "学伴"
+        "���������ŵײ���ť"                  = "组卷网服务号底部按钮"
+        "��������"                          = "其他渠道"
+        "��������ں����û�����"               = "组卷网公众号新用户提醒"
+        "��������ںŵײ���ť"                  = "组卷网公众号底部按钮"
+        "С����ҳbanner"                     = "小卷首页banner"
+        "�������������û�����"               = "组卷网服务号新用户提醒"
+        "��ƽ���Ǵ���Ϣ�Ƽ����޹�˾"         = "南平市智达信息科技有限公司"
+        "С���������"                        = "小卷开屏弹窗"
+        "��������ں�����(i)"                 = "组卷网公众号推文(i)"
+        "ɽ���ͽ���"                         = "马兰花开"
+        "���շ�˱������洫ý���޹�˾"         = "江苏凤凰报刊出版传媒有限公司"
+        "�����н�ί-��Сѧ"                   = "北京市教委-京小学"
+        "ͨ��"                               = "通用"
+        "���ݴ�ѧ�����������"               = "山西和教育"
+        "��������ں�����"                    = "龙江教研在线"
     }
+
+    # 读取渠道 CSV，在内存中修复渠道名，返回修复后的 UTF-8 字节（不修改原文件）
+    function Get-FixedChannelCsvBytes($csvPath) {
+        $lines = Get-Content $csvPath -Encoding UTF8
+        $fixed = foreach ($line in $lines) {
+            if (-not $line.Trim()) { continue }
+            $cols = $line -split ","
+            if ($cols.Count -ge 3) {
+                $name = $cols[2]
+                if ($channelAlias.ContainsKey($name)) {
+                    $cols[2] = $channelAlias[$name]
+                }
+            }
+            $cols -join ","
+        }
+        return [System.Text.Encoding]::UTF8.GetBytes(($fixed -join "`n"))
+    }
+
     $b64 = @{}
-    foreach ($key in @("core", "daily", "activeCh", "newCh")) {
+    foreach ($key in @("core", "daily")) {
         $csvPath = $GROWTH_CSV[$key]
         if (-not (Test-Path $csvPath)) { throw "找不到：$csvPath" }
-        $bytes = [System.IO.File]::ReadAllBytes($csvPath)
-        $b64[$key] = [Convert]::ToBase64String($bytes)
+        $b64[$key] = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($csvPath))
     }
+    foreach ($key in @("activeCh", "newCh")) {
+        $csvPath = $GROWTH_CSV[$key]
+        if (-not (Test-Path $csvPath)) { throw "找不到：$csvPath" }
+        $fixedBytes = Get-FixedChannelCsvBytes $csvPath
+        $b64[$key] = [Convert]::ToBase64String($fixedBytes)
+    }
+
     $js  = "var EMBEDDED_CSV_B64 = {`n"
     $js += "  core: `"$($b64['core'])`",`n"
     $js += "  daily: `"$($b64['daily'])`",`n"

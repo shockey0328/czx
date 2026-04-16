@@ -441,20 +441,7 @@
     <div class="header">
         <div class="header-title">搜索数据看板</div>
         <select class="week-selector" id="weekSelector">
-            <option value="14" selected>2026年第14周</option>
-            <option value="13">2026年第13周</option>
-            <option value="12">2026年第12周</option>
-            <option value="11">2026年第11周</option>
-            <option value="10">2026年第10周</option>
-            <option value="9">2026年第9周</option>
-            <option value="8">2026年第8周</option>
-            <option value="7">2026年第7周</option>
-            <option value="6">2026年第6周</option>
-            <option value="5">2026年第5周</option>
-            <option value="4">2026年第4周</option>
-            <option value="3">2026年第3周</option>
-            <option value="2">2026年第2周</option>
-            <option value="1">2026年第1周</option>
+            <!-- 周选项由 app.js 根据 data.js 动态生成，无需手动维护 -->
         </select>
     </div>
 
@@ -592,7 +579,7 @@
         </div>
     </div>
 
-    <script src="data.js?v=14"></script>
+    <script src="data.js?v=auto"></script>
     <script>
         (function(){
             if (typeof dashboardData === 'undefined') {
@@ -622,7 +609,7 @@
             appJsLoaded = true;
             var script = document.createElement('script');
             // 使用相对路径，由页面顶部的 <base> 统一解析（含 fetch+srcdoc 注入场景）
-            script.src = 'app.js?v=14';
+            script.src = 'app.js?v=auto';
             script.onload = function() { console.log('✅ app.js加载完成'); };
             script.onerror = function() {
                 console.error('❌ app.js加载失败，请检查路径:', script.src);
