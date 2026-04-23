@@ -1,0 +1,60 @@
+# 橙子学数据看板（CZX Dashboard）— Cursor 项目规则
+
+面向 AI 与协作者：说明本仓技术栈、目录约定、编码与协作习惯。修改看板前请先核对此文件与 `README.md`。
+
+## 1. 项目概览
+
+- **定位**：多子看板集合的数据可视化门户，以 **静态站点 + 本地/云端 HTTP 服务** 访问；主入口通过 **iframe** 嵌套各子看板。
+- **语言与文案**：产品界面与看板内文案以 **中文** 为主；代码注释、Git 说明可用中文，需清晰可读。
+
+## 2. 技术栈（按子项目）
+
+| 区域 | 技术 |
+| --- | --- |
+| **根目录门户** | HTML5、`main.js` 路由/iframe、`styles.css`、`weekly-dashboard-theme.css`（周度子页视觉统一时参考） |
+| **周度看板（多数）** | 原生 **JavaScript** + **CSS** + **Chart.js** 或 **ECharts**；数据多为 **CSV** 或经脚本生成的 `data.js` 等 |
+| **核心数据看板（月度）** | **Create React App**（`react-scripts`），**React 18**，**Recharts**，**PapaParse**，**Axios**；生产入口以仓内 `index-static.html` 等静态页为门户集成 |
+| **用户行为看板（周度）** | **Vite 5** + **React 18** + **Ant Design 5**；后端 **Node.js** + **Express**（如 `server-with-db.js`），**better-sqlite3**，**xlsx**；可选 **OpenAI** 兼容接口；`package.json` 为 **`"type": "module"`**（ESM） |
+| **搜索数据看板（周度）** | 轻量 **Node** 本地服务 + **ECharts**；`iconv-lite` 处理编码 |
+| **分省/渗透率等** | 以静态 HTML/JS/CSV 为主；分省有 **Python**（如 `read_excel.py`）与 **Node** 脚本（`xlsx`、趋势数据构建） |
+| **数据与工具脚本** | **PowerShell**（如 `convert_csv_to_js_v2.ps1`）、**Python**（`convert_csv_to_js.py` 等）。用户环境要求用 **Conda 激活虚拟环境后再跑 Python** |
+| **Serverless / API** | 根目录 `api/` 下为 **Vercel Serverless**（如 AI 分析，依赖环境变量，见各文件注释） |
+| **部署** | 主要 **Vercel**（`vercel.json`）；部分服务 **Railway**（`railway.json`）；以仓内 `DEPLOY.md` 等文档为准 |
+
+## 3. 目录结构（约定）
+
+- **根目录**
+  - `index.html`：统一门户；`main.js` 内 **`DASHBOARDS`** 配置周度/月度子看板路径，**增删看板时须同步改此处**。
+  - `styles.css`、`logo.png`、各类 `启动*.bat` / `测试*.html`：本地与联调用。
+  - `libs/`：公共库（如 Chart.js 等，以实际内容为准）。
+  - `api/`：Vercel 无服务器函数，勿在客户端暴露密钥。
+  - `scripts/`：根级脚本（若有）。
+- **子看板目录**（名称含 **周度/月度** 与业务名，**中文目录名勿随意重命名**，否则门户路径与 `vercel.json` 的 rewrite/headers 会断）
+  - 例：`核心数据看板（周度）/`、`用户增长数据看板（周度）/`、`搜索数据看板（周度）/`、`用户行为看板（周度）/`、`核心数据看板（月度）/`、`各模块渗透率看板（月度）/`、`分省数据看板（月度）/` 等；各目录自有 `index.html` 或 `package.json`、数据文件与 `README`。
+- **`.cursor/`**
+  - `skills/`：本仓专用 Skill（如周度看板主题、设计顾问类）；改版周度子页、统一视觉时 **应先读对应 `SKILL.md`**。
+
+## 4. 代码与工程规范
+
+- **范围**：只改与需求相关的文件；不要顺带大范围格式化或重命名未涉及的目录。
+- **前端**
+  - 子看板已混用 **CRA、Vite、纯静态**：改某个子项目时 **以该目录下 `package.json` 与构建命令为准**。
+  - 新增依赖时注明用途；**门户 iframe 内页面** 注意资源路径为相对根目录的 URL，与本地 `file://` 行为不同。
+- **Node**
+  - 用户行为等子项目若为 ESM，**使用 `import`/`export`**，与 `"type": "module"` 一致。
+  - 服务端敏感配置走 **环境变量**（如 `.env` / `.env.example`），**不要**把密钥写进代码或提交进 Git。
+- **Python**
+  - 数据分析与转换脚本保持依赖明确；**执行前激活 Conda 环境**（按用户/团队约定环境名操作）。
+- **数据**
+  - CSV/大文件是否走 **Git LFS** 以团队现状为准；避免无意义地提交巨文件。
+- **样式与体验**
+  - 周度子看板与门户嵌套风格对齐时，参考 `.cursor/skills/chengzi-weekly-dashboard/SKILL.md` 与 `weekly-dashboard-theme.css`。
+
+## 5. 运行与调试（摘要）
+
+- 主门户需 **HTTP 访问**（如 `python -m http.server` 或项目自带 bat），不要依赖直接双击 `index.html` 打开（尤其含 iframe 时）。
+- 全功能（含用户行为后端）时按 `README` 使用 **`npm start`（根或子目录）** 与对应端口说明。
+
+## 6. 协作文档
+
+- 总体说明见 **`README.md`**；发布与平台差异见 **`DEPLOY.md` / `Vercel*・Railway*・SECURITY.md`** 等（以文件名为准）；更细的目录树可参考 **`项目结构说明.md`（若与 `main.js` 不一致，以 `main.js` 与现网 `vercel.json` 为优先）**。

@@ -505,6 +505,39 @@
       return new TextDecoder("utf-8").decode(bytes);
     }
 
+    function looksHeaderOk(key, headerLine) {
+      const h = String(headerLine || "");
+      if (key === "core") return h.includes("第n周") && h.includes("周开始日期") && h.includes("累计用户");
+      if (key === "daily") return h.includes("dt") && h.includes("active_uv") && (h.includes("新用户占比") || h.includes("new_user_rate"));
+      if (key === "activeCh") return h.includes("week_start") && h.includes("channel_name") && h.includes("uv");
+      if (key === "newCh") return h.includes("week_start") && h.includes("channel_name") && (h.includes("new_user_uv") || /(^|,)uv(,|$)/i.test(h));
+      return true;
+    }
+
+    function decodeCsvBytesSmart(key, bytes) {
+      // 先 UTF-8；如果表头不对，或正文出现典型乱码，再尝试 GB18030
+      const tryDecode = (enc) => {
+        try {
+          return new TextDecoder(enc).decode(bytes);
+        } catch (e) {
+          return null;
+        }
+      };
+      const utf8 = tryDecode("utf-8");
+      if (utf8) {
+        const headLine = String(utf8).split(/\r?\n/, 1)[0] || "";
+        const bodySample = String(utf8).slice(0, 4000);
+        const hasMojibake = /锟斤拷|�/.test(bodySample);
+        if (looksHeaderOk(key, headLine) && !hasMojibake) return utf8;
+      }
+      const gb = tryDecode("gb18030") || tryDecode("gbk");
+      if (gb) {
+        const headLine = String(gb).split(/\r?\n/, 1)[0] || "";
+        if (looksHeaderOk(key, headLine)) return gb;
+      }
+      return utf8 || gb || "";
+    }
+
     /** 排除 SPA/404 页返回的 HTML（仍可能 res.ok） */
     function looksLikeCsvText(text) {
       const t = String(text || "").trim();
@@ -529,7 +562,8 @@
         try {
           const res = await fetch(u, { cache: "no-store" });
           if (res.ok) {
-            const text = await res.text();
+            const buf = await res.arrayBuffer();
+            const text = decodeCsvBytesSmart(key, new Uint8Array(buf));
             if (looksLikeCsvText(text)) return text;
           }
         } catch (e) {
