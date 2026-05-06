@@ -37,11 +37,13 @@ const TrendCharts = ({ data, selectedMonth }) => {
           {payload.map((entry, index) => (
             <p key={index} style={{ color: entry.color }}>
               {entry.dataKey}: {
-                entry.dataKey === '活跃用户' || entry.dataKey === '营收' 
+                entry.value == null || (typeof entry.value === 'number' && isNaN(entry.value))
+                  ? '—'
+                  : entry.dataKey === '活跃用户' || entry.dataKey === '营收'
                   ? entry.value.toLocaleString()
                   : entry.dataKey === '使用率'
                   ? `${entry.value}%`
-                  : entry.value.toFixed(2)
+                  : Number(entry.value).toFixed(2)
               }
             </p>
           ))}

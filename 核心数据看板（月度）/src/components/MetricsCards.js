@@ -29,28 +29,28 @@ const MetricsCards = ({ currentData, allData, selectedMonth }) => {
 
   // 计算环比（数值型）
   const calculateMoMPercent = (current, last) => {
-    if (!last || last === 0) return 'N/A';
+    if (current == null || last == null || isNaN(current) || isNaN(last) || last === 0) return 'N/A';
     const change = ((current - last) / last * 100).toFixed(2);
     return `${change > 0 ? '+' : ''}${change}%`;
   };
 
   // 计算环比（百分比型）
   const calculateMoMPP = (current, last) => {
-    if (last === undefined || last === null) return 'N/A';
+    if (current == null || last == null || isNaN(current) || isNaN(last)) return 'N/A';
     const change = (current - last).toFixed(2);
     return `${change > 0 ? '+' : ''}${change}pp`;
   };
 
   // 计算同比（数值型）
   const calculateYoYPercent = (current, lastYear) => {
-    if (!lastYear || lastYear === 0) return 'N/A';
+    if (current == null || lastYear == null || isNaN(current) || isNaN(lastYear) || lastYear === 0) return 'N/A';
     const change = ((current - lastYear) / lastYear * 100).toFixed(2);
     return `${change > 0 ? '+' : ''}${change}%`;
   };
 
   // 计算同比（百分比型）
   const calculateYoYPP = (current, lastYear) => {
-    if (lastYear === undefined || lastYear === null) return 'N/A';
+    if (current == null || lastYear == null || isNaN(current) || isNaN(lastYear)) return 'N/A';
     const change = (current - lastYear).toFixed(2);
     return `${change > 0 ? '+' : ''}${change}pp`;
   };
@@ -66,13 +66,19 @@ const MetricsCards = ({ currentData, allData, selectedMonth }) => {
   const userMetrics = [
     {
       label: '活跃用户',
-      value: formatNumber(currentData.月活),
+      value: currentData.月活 != null ? formatNumber(currentData.月活) : '—',
       mom: calculateMoMPercent(currentData.月活, lastMonthData?.月活),
       yoy: calculateYoYPercent(currentData.月活, lastYearData?.月活)
     },
     {
+      label: '新增用户',
+      value: currentData.新增用户 != null ? formatNumber(currentData.新增用户) : '—',
+      mom: calculateMoMPercent(currentData.新增用户, lastMonthData?.新增用户),
+      yoy: calculateYoYPercent(currentData.新增用户, lastYearData?.新增用户)
+    },
+    {
       label: '月留存率',
-      value: `${currentData.次月留存}%`,
+      value: currentData.次月留存 != null ? `${currentData.次月留存}%` : '—',
       mom: calculateMoMPP(currentData.次月留存, lastMonthData?.次月留存),
       yoy: calculateYoYPP(currentData.次月留存, lastYearData?.次月留存)
     }
@@ -81,25 +87,25 @@ const MetricsCards = ({ currentData, allData, selectedMonth }) => {
   const revenueMetrics = [
     {
       label: '营收',
-      value: formatNumber(currentData.营收),
+      value: currentData.营收 != null ? formatNumber(currentData.营收) : '—',
       mom: calculateMoMPercent(currentData.营收, lastMonthData?.营收),
       yoy: calculateYoYPercent(currentData.营收, lastYearData?.营收)
     },
     {
       label: '订单',
-      value: formatNumber(currentData.订单),
+      value: currentData.订单 != null ? formatNumber(currentData.订单) : '—',
       mom: calculateMoMPercent(currentData.订单, lastMonthData?.订单),
       yoy: calculateYoYPercent(currentData.订单, lastYearData?.订单)
     },
     {
       label: 'ARPU',
-      value: currentData.ARPU.toFixed(2),
+      value: currentData.ARPU != null ? currentData.ARPU.toFixed(2) : '—',
       mom: calculateMoMPercent(currentData.ARPU, lastMonthData?.ARPU),
       yoy: calculateYoYPercent(currentData.ARPU, lastYearData?.ARPU)
     },
     {
       label: 'ARPPU',
-      value: currentData.ARPPU.toFixed(2),
+      value: currentData.ARPPU != null ? currentData.ARPPU.toFixed(2) : '—',
       mom: calculateMoMPercent(currentData.ARPPU, lastMonthData?.ARPPU),
       yoy: calculateYoYPercent(currentData.ARPPU, lastYearData?.ARPPU)
     }
@@ -108,19 +114,19 @@ const MetricsCards = ({ currentData, allData, selectedMonth }) => {
   const usageMetrics = [
     {
       label: '深度访问率',
-      value: `${currentData.深度访问率}%`,
+      value: currentData.深度访问率 != null ? `${currentData.深度访问率}%` : '—',
       mom: calculateMoMPP(currentData.深度访问率, lastMonthData?.深度访问率),
       yoy: calculateYoYPP(currentData.深度访问率, lastYearData?.深度访问率)
     },
     {
       label: '使用率',
-      value: `${currentData.使用率}%`,
+      value: currentData.使用率 != null ? `${currentData.使用率}%` : '—',
       mom: calculateMoMPP(currentData.使用率, lastMonthData?.使用率),
       yoy: calculateYoYPP(currentData.使用率, lastYearData?.使用率)
     },
     {
       label: '大会员活跃率',
-      value: `${currentData.大会员活跃率}%`,
+      value: currentData.大会员活跃率 != null ? `${currentData.大会员活跃率}%` : '—',
       mom: calculateMoMPP(currentData.大会员活跃率, lastMonthData?.大会员活跃率),
       yoy: calculateYoYPP(currentData.大会员活跃率, lastYearData?.大会员活跃率)
     }

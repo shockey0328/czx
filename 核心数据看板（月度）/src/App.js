@@ -29,21 +29,38 @@ function App() {
         const bText = await bResponse.text();
         const bParsed = Papa.parse(bText, { header: true });
 
+        const toInt = (v) => {
+          if (v == null || String(v).trim() === '') return null;
+          const n = parseInt(String(v).replace(/,/g, '').trim(), 10);
+          return Number.isFinite(n) ? n : null;
+        };
+        const toFloat = (v) => {
+          if (v == null || String(v).trim() === '') return null;
+          const n = parseFloat(String(v).replace(/,/g, '').trim());
+          return Number.isFinite(n) ? n : null;
+        };
+        const toPercent = (v) => {
+          if (v == null || String(v).trim() === '') return null;
+          const n = parseFloat(String(v).replace(/%/g, '').trim());
+          return Number.isFinite(n) ? n : null;
+        };
+
         // 处理月度数据
         const processedMonthlyData = monthlyParsed.data
           .filter(row => row.年份 && row.月份)
           .map(row => ({
             年份: parseInt(row.年份.replace('年', '')),
             月份: parseInt(row.月份.replace('月', '')),
-            月活: parseInt(row.月活),
-            次月留存: parseFloat(row.次月留存.replace('%', '')),
-            营收: parseInt(row.营收),
-            订单: parseInt(row.订单),
-            ARPU: parseFloat(row.ARPU),
-            ARPPU: parseFloat(row.ARPPU),
-            深度访问率: parseFloat(row.深度访问率.replace('%', '')),
-            使用率: parseFloat(row.使用率.replace('%', '')),
-            大会员活跃率: parseFloat(row.大会员活跃率.replace('%', ''))
+            月活: toInt(row.月活),
+            新增用户: toInt(row.新增用户),
+            次月留存: toPercent(row.次月留存),
+            营收: toInt(row.营收),
+            订单: toInt(row.订单),
+            ARPU: toFloat(row.ARPU),
+            ARPPU: toFloat(row.ARPPU),
+            深度访问率: toPercent(row.深度访问率),
+            使用率: toPercent(row.使用率),
+            大会员活跃率: toPercent(row.大会员活跃率)
           }));
 
         // 处理B端数据

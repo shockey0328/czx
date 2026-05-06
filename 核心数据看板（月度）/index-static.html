@@ -220,6 +220,10 @@
             text-align: center;
             border: 2px solid #FFA366;
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 132px;
         }
 
         .b2b-metric-card:hover {
@@ -237,6 +241,16 @@
             font-size: 18px;
             font-weight: 700;
             color: #ff7043;
+        }
+
+        .b2b-metric-card .changes {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
         }
 
         /* AI分析样式 */
@@ -851,6 +865,41 @@
         let currentMonth = null;
         let charts = {};
 
+        function safeParseIntCell(val) {
+            if (val == null || String(val).trim() === '') return null;
+            const n = parseInt(String(val).replace(/,/g, '').trim(), 10);
+            return Number.isFinite(n) ? n : null;
+        }
+        function safeParseFloatCell(val) {
+            if (val == null || String(val).trim() === '') return null;
+            const n = parseFloat(String(val).replace(/,/g, '').trim());
+            return Number.isFinite(n) ? n : null;
+        }
+        function safeParsePercentCell(val) {
+            if (val == null || String(val).trim() === '') return null;
+            const n = parseFloat(String(val).replace(/%/g, '').trim());
+            return Number.isFinite(n) ? n : null;
+        }
+        function parseB2BWanAmount(val) {
+            if (val == null || String(val).trim() === '') return null;
+            const n = parseFloat(String(val).replace(/万/g, '').trim());
+            return Number.isFinite(n) ? n : null;
+        }
+        function findB2BRow(yearStr, monthStr) {
+            return bData.find(d => d.年份 === yearStr && d.月份 === monthStr);
+        }
+        function getB2BPrevMonthRow(yearStr, monthStr) {
+            let y = parseInt(String(yearStr).replace('年', ''), 10);
+            let m = parseInt(String(monthStr).replace('月', ''), 10);
+            m -= 1;
+            if (m < 1) { y -= 1; m = 12; }
+            return findB2BRow(y + '年', m + '月');
+        }
+        function getB2BYoYRow(yearStr, monthStr) {
+            const y = parseInt(String(yearStr).replace('年', ''), 10) - 1;
+            return findB2BRow(y + '年', monthStr);
+        }
+
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
@@ -865,15 +914,16 @@
                 monthlyData = dashboardData['月度核心数据'].map(row => ({
                     年份: row['年份'],
                     月份: row['月份'],
-                    月活: parseInt(row['月活']),
-                    次月留存: parseFloat(row['次月留存'].replace('%', '')),
-                    营收: parseFloat(row['营收']),
-                    订单: parseInt(row['订单']),
-                    ARPU: parseFloat(row['ARPU']),
-                    ARPPU: parseFloat(row['ARPPU']),
-                    深度访问率: parseFloat(row['深度访问率'].replace('%', '')),
-                    使用率: parseFloat(row['使用率'].replace('%', '')),
-                    大会员活跃率: parseFloat(row['大会员活跃率'].replace('%', ''))
+                    月活: safeParseIntCell(row['月活']),
+                    新增用户: safeParseIntCell(row['新增用户']),
+                    次月留存: safeParsePercentCell(row['次月留存']),
+                    营收: safeParseFloatCell(row['营收']),
+                    订单: safeParseIntCell(row['订单']),
+                    ARPU: safeParseFloatCell(row['ARPU']),
+                    ARPPU: safeParseFloatCell(row['ARPPU']),
+                    深度访问率: safeParsePercentCell(row['深度访问率']),
+                    使用率: safeParsePercentCell(row['使用率']),
+                    大会员活跃率: safeParsePercentCell(row['大会员活跃率'])
                 }));
                 
                 console.log('月度数据加载成功，共', monthlyData.length, '条');
@@ -952,41 +1002,50 @@
             const prevData = currentMonth > 0 ? monthlyData[currentMonth - 1] : null;
             const yoyData = getYoYData(data);
             
+            const fmtInt = (n) => (n != null && !isNaN(n)) ? Number(n).toLocaleString() : '—';
+            const fmtPct = (n) => (n != null && !isNaN(n)) ? n + '%' : '—';
+            const fmtWanFromYuan = (n) => (n != null && !isNaN(n)) ? (n / 10000).toFixed(1) + '万' : '—';
+
             const metrics = [
                 { 
                     label: '月活用户', 
-                    value: data.月活.toLocaleString(), 
+                    value: fmtInt(data.月活), 
                     wow: prevData ? calculateChange(data.月活, prevData.月活) : null,
                     yoy: yoyData ? calculateChange(data.月活, yoyData.月活) : null
                 },
                 { 
+                    label: '新增用户', 
+                    value: fmtInt(data.新增用户), 
+                    wow: prevData ? calculateChange(data.新增用户, prevData.新增用户) : null,
+                    yoy: yoyData ? calculateChange(data.新增用户, yoyData.新增用户) : null
+                },
+                { 
                     label: '次月留存率', 
-                    value: data.次月留存 + '%', 
+                    value: fmtPct(data.次月留存), 
                     wow: prevData ? calculateChangepp(data.次月留存, prevData.次月留存) : null,
                     yoy: yoyData ? calculateChangepp(data.次月留存, yoyData.次月留存) : null
                 },
                 { 
                     label: '营收', 
-                    value: (data.营收 / 10000).toFixed(1) + '万', 
+                    value: fmtWanFromYuan(data.营收), 
                     wow: prevData ? calculateChange(data.营收, prevData.营收) : null,
                     yoy: yoyData ? calculateChange(data.营收, yoyData.营收) : null
                 },
                 { 
                     label: 'ARPU', 
-                    value: data.ARPU.toFixed(2), 
-                    // 对 ARPU 使用相对变化率（%），与营收口径一致
+                    value: (data.ARPU != null && !isNaN(data.ARPU)) ? data.ARPU.toFixed(2) : '—', 
                     wow: prevData ? calculateChange(data.ARPU, prevData.ARPU) : null,
                     yoy: yoyData ? calculateChange(data.ARPU, yoyData.ARPU) : null
                 },
                 { 
                     label: '使用率', 
-                    value: data.使用率 + '%', 
+                    value: fmtPct(data.使用率), 
                     wow: prevData ? calculateChangepp(data.使用率, prevData.使用率) : null,
                     yoy: yoyData ? calculateChangepp(data.使用率, yoyData.使用率) : null
                 },
                 { 
                     label: '大会员活跃率', 
-                    value: data.大会员活跃率 + '%', 
+                    value: fmtPct(data.大会员活跃率), 
                     wow: prevData ? calculateChangepp(data.大会员活跃率, prevData.大会员活跃率) : null,
                     yoy: yoyData ? calculateChangepp(data.大会员活跃率, yoyData.大会员活跃率) : null
                 }
@@ -1007,12 +1066,14 @@
 
         // 计算变化百分比
         function calculateChange(current, previous) {
+            if (current == null || previous == null || isNaN(current) || isNaN(previous) || previous === 0) return null;
             const change = ((current - previous) / previous * 100).toFixed(1);
             return (change >= 0 ? '+' : '') + change + '%';
         }
 
         // 计算百分点变化（用于百分比指标）
         function calculateChangepp(current, previous) {
+            if (current == null || previous == null || isNaN(current) || isNaN(previous)) return null;
             const change = (current - previous).toFixed(1);
             return (change >= 0 ? '+' : '') + change + 'pp';
         }
@@ -1063,21 +1124,40 @@
                 document.getElementById('b2bMetrics').innerHTML = '<p style="text-align:center;color:#999;">当前月份暂无B端数据</p>';
                 return;
             }
-            
-            const metrics = [
-                { label: '签约金额', value: currentB2B.签约金额 },
-                { label: '开票金额', value: currentB2B.开票金额 },
-                { label: '到款金额', value: currentB2B.到款金额 },
-                { label: '订单数', value: currentB2B.订单数 },
-                { label: '新签', value: currentB2B.新签 },
-                { label: '续签', value: currentB2B.续签 }
+
+            const prevB2B = getB2BPrevMonthRow(currentData.年份, currentData.月份);
+            const yoyB2B = getB2BYoYRow(currentData.年份, currentData.月份);
+
+            const b2bMetricDefs = [
+                { label: '签约金额', display: currentB2B.签约金额, curNum: () => parseB2BWanAmount(currentB2B.签约金额), prevNum: () => prevB2B ? parseB2BWanAmount(prevB2B.签约金额) : null, yoyNum: () => yoyB2B ? parseB2BWanAmount(yoyB2B.签约金额) : null },
+                { label: '开票金额', display: currentB2B.开票金额, curNum: () => parseB2BWanAmount(currentB2B.开票金额), prevNum: () => prevB2B ? parseB2BWanAmount(prevB2B.开票金额) : null, yoyNum: () => yoyB2B ? parseB2BWanAmount(yoyB2B.开票金额) : null },
+                { label: '到款金额', display: currentB2B.到款金额, curNum: () => parseB2BWanAmount(currentB2B.到款金额), prevNum: () => prevB2B ? parseB2BWanAmount(prevB2B.到款金额) : null, yoyNum: () => yoyB2B ? parseB2BWanAmount(yoyB2B.到款金额) : null },
+                { label: '订单数', display: currentB2B.订单数, curNum: () => safeParseIntCell(currentB2B.订单数), prevNum: () => prevB2B ? safeParseIntCell(prevB2B.订单数) : null, yoyNum: () => yoyB2B ? safeParseIntCell(yoyB2B.订单数) : null },
+                { label: '新签', display: currentB2B.新签, curNum: () => safeParseIntCell(currentB2B.新签), prevNum: () => prevB2B ? safeParseIntCell(prevB2B.新签) : null, yoyNum: () => yoyB2B ? safeParseIntCell(yoyB2B.新签) : null },
+                { label: '续签', display: currentB2B.续签, curNum: () => safeParseIntCell(currentB2B.续签), prevNum: () => prevB2B ? safeParseIntCell(prevB2B.续签) : null, yoyNum: () => yoyB2B ? safeParseIntCell(yoyB2B.续签) : null }
             ];
+
+            const metrics = b2bMetricDefs.map(def => {
+                const c = def.curNum();
+                const p = def.prevNum();
+                const y = def.yoyNum();
+                return {
+                    label: def.label,
+                    value: def.display,
+                    wow: calculateChange(c, p),
+                    yoy: calculateChange(c, y)
+                };
+            });
             
             const grid = document.getElementById('b2bMetrics');
             grid.innerHTML = metrics.map(m => `
                 <div class="b2b-metric-card">
                     <div class="b2b-metric-label">${m.label}</div>
                     <div class="b2b-metric-value">${m.value}</div>
+                    <div class="changes">
+                        ${m.wow ? `<span class="change-item ${getChangeClass(m.wow)}">环比 ${m.wow}</span>` : ''}
+                        ${m.yoy ? `<span class="change-item ${getChangeClass(m.yoy)}">同比 ${m.yoy}</span>` : ''}
+                    </div>
                 </div>
             `).join('');
         }
@@ -1235,21 +1315,24 @@
             const prompt = `你是一个专业的数据分析师，请基于以下月度数据进行分析：
 
 【当前数据】${currentData.年份}${currentData.月份}：
-• 月活用户：${currentData.月活.toLocaleString()}人
-• 营收：${(currentData.营收 / 10000).toFixed(1)}万元
-• ARPU：${currentData.ARPU}元
-• 次月留存率：${currentData.次月留存}%
-• 使用率：${currentData.使用率}%
-• 大会员活跃率：${currentData.大会员活跃率}%
+• 月活用户：${(currentData.月活 != null ? currentData.月活.toLocaleString() : '—')}人
+• 新增用户：${(currentData.新增用户 != null ? currentData.新增用户.toLocaleString() : '—')}人
+• 营收：${(currentData.营收 != null && !isNaN(currentData.营收)) ? (currentData.营收 / 10000).toFixed(1) + '万元' : '—'}
+• ARPU：${(currentData.ARPU != null && !isNaN(currentData.ARPU)) ? currentData.ARPU.toFixed(2) + '元' : '暂无'}
+• 次月留存率：${(currentData.次月留存 != null ? currentData.次月留存 + '%' : '—')}
+• 使用率：${(currentData.使用率 != null ? currentData.使用率 + '%' : '—')}
+• 大会员活跃率：${(currentData.大会员活跃率 != null ? currentData.大会员活跃率 + '%' : '—')}
 
 ${prevData ? `【环比变化】vs上月：
-• 月活：${calculateChange(currentData.月活, prevData.月活)}
-• 营收：${calculateChange(currentData.营收, prevData.营收)}
-• 留存率：${calculateChangepp(currentData.次月留存, prevData.次月留存)}` : ''}
+• 月活：${calculateChange(currentData.月活, prevData.月活) || '—'}
+• 新增用户：${calculateChange(currentData.新增用户, prevData.新增用户) || '—'}
+• 营收：${calculateChange(currentData.营收, prevData.营收) || '—'}
+• 留存率：${calculateChangepp(currentData.次月留存, prevData.次月留存) || '—'}` : ''}
 
 ${yoyData ? `【同比变化】vs去年同月：
-• 月活：${calculateChange(currentData.月活, yoyData.月活)}
-• 营收：${calculateChange(currentData.营收, yoyData.营收)}` : ''}
+• 月活：${calculateChange(currentData.月活, yoyData.月活) || '—'}
+• 新增用户：${calculateChange(currentData.新增用户, yoyData.新增用户) || '—'}
+• 营收：${calculateChange(currentData.营收, yoyData.营收) || '—'}` : ''}
 
 请按照以下格式分析（每个维度独立一段）：
 
@@ -1368,7 +1451,7 @@ ${yoyData ? `【同比变化】vs去年同月：
                 
                 // 第一列：核心表现
                 const performanceText = sections.performance.trim() || 
-                    `月活${currentData.月活.toLocaleString()}人，营收${(currentData.营收 / 10000).toFixed(1)}万元，ARPU${currentData.ARPU}元，留存率${currentData.次月留存}%，使用率${currentData.使用率}%。`;
+                    `月活${(currentData.月活 != null ? currentData.月活.toLocaleString() : '—')}人，营收${(currentData.营收 != null && !isNaN(currentData.营收)) ? (currentData.营收 / 10000).toFixed(1) + '万元' : '—'}，ARPU${(currentData.ARPU != null && !isNaN(currentData.ARPU)) ? currentData.ARPU.toFixed(2) + '元' : '暂无'}，留存率${(currentData.次月留存 != null ? currentData.次月留存 + '%' : '—')}，使用率${(currentData.使用率 != null ? currentData.使用率 + '%' : '—')}。`;
                 
                 columns[0] = `
                     <div class="analysis-section">
@@ -1446,7 +1529,7 @@ ${yoyData ? `【同比变化】vs去年同月：
 
         // 本地分析（后备方案）
         function displayLocalAnalysis(currentData, prevData, yoyData) {
-            const performanceText = `月活${currentData.月活.toLocaleString()}人，营收${(currentData.营收 / 10000).toFixed(1)}万元，ARPU${currentData.ARPU}元，留存率${currentData.次月留存}%，使用率${currentData.使用率}%。`;
+            const performanceText = `月活${(currentData.月活 != null ? currentData.月活.toLocaleString() : '—')}人，营收${(currentData.营收 != null && !isNaN(currentData.营收)) ? (currentData.营收 / 10000).toFixed(1) + '万元' : '—'}，ARPU${(currentData.ARPU != null && !isNaN(currentData.ARPU)) ? currentData.ARPU.toFixed(2) + '元' : '暂无'}，留存率${(currentData.次月留存 != null ? currentData.次月留存 + '%' : '—')}，使用率${(currentData.使用率 != null ? currentData.使用率 + '%' : '—')}。`;
             
             const changes = [];
             if (prevData) {
@@ -1561,7 +1644,7 @@ ${yoyData ? `【同比变化】vs去年同月：
                 const contextInfo = `当前选择：${currentData.年份}${currentData.月份}
 • 月活：${currentData.月活.toLocaleString()}人
 • 营收：${(currentData.营收 / 10000).toFixed(1)}万元
-• ARPU：${currentData.ARPU}元
+• ARPU：${(currentData.ARPU != null && !isNaN(currentData.ARPU)) ? currentData.ARPU.toFixed(2) + '元' : '暂无'}
 • 留存率：${currentData.次月留存}%
 • 使用率：${currentData.使用率}%`;
 

@@ -13,11 +13,27 @@ try { iconvLite = require('iconv-lite'); } catch (_) {
 const dir = __dirname;
 const csvFiles = fs.readdirSync(dir).filter(f => f.endsWith('.csv'));
 
-function decodeContent(buf) {
+function decodeContent(buf, filename) {
+  // 首先尝试UTF-8
   const utf8 = buf.toString('utf8');
   const hasReplacement = utf8.includes('\uFFFD');
   const hasValidChinese = /[\u4e00-\u9fa5]/.test(utf8);
   const likelyMojibake = !hasValidChinese && buf.length > 50;
+  
+  // 对于B端核心数据文件，优先尝试GBK编码
+  if (filename.includes('B端核心数据')) {
+    if (iconvLite) {
+      try {
+        const gbk = iconvLite.decode(buf, 'gbk');
+        if (/[\u4e00-\u9fa5]/.test(gbk)) {
+          return gbk;
+        }
+      } catch (e) {
+        console.log('    GBK解码失败，尝试UTF-8');
+      }
+    }
+  }
+  
   if (!hasReplacement && (hasValidChinese || !iconvLite)) return utf8;
   if (iconvLite) {
     const gbk = iconvLite.decode(buf, 'gbk');
@@ -46,7 +62,7 @@ for (const file of csvFiles) {
   const name = path.basename(file, '.csv');
   try {
     const buf = fs.readFileSync(path.join(dir, file));
-    const content = decodeContent(buf);
+    const content = decodeContent(buf, file);
     const data = parseCSV(content);
     dashboardData[name] = data;
     console.log('  ✓ ' + name + ': ' + data.length + ' 条');

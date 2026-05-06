@@ -318,6 +318,14 @@
             font-variant-numeric: tabular-nums;
         }
 
+        .b2b-metric-lastyear {
+            font-size: 10px;
+            color: var(--color-text-muted);
+            margin-top: var(--space-1);
+            font-variant-numeric: tabular-nums;
+            opacity: 0.8;
+        }
+
         /* 右上：趋势分析 */
         .trends-analysis {
             grid-area: 1 / 2 / 2 / 3;
@@ -1074,6 +1082,14 @@
                         </div>
                     </div>
                     <div class="metric-item">
+                        <span class="metric-label">新用户</span>
+                        <span class="metric-value" id="newUsers">-</span>
+                        <div class="metric-changes">
+                            <span class="change-item" id="newUsersWoW">环比: -</span>
+                            <span class="change-item" id="newUsersYoY">同比: -</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
                         <span class="metric-label">次周留存率</span>
                         <span class="metric-value" id="retention">-</span>
                         <div class="metric-changes">
@@ -1450,6 +1466,7 @@
                         起始日期: row['起始日期'],
                         结尾日期: row['结尾日期'],
                         活跃用户: parseInt(row['活跃用户']),
+                        新用户: row['新用户'] ? parseInt(row['新用户']) : 0,
                         次周留存率: parseFloat(row['次周留存率'].replace('%', '')),
                         营收: parseFloat(row['营收']),
                         ARPU: parseFloat(row['ARPU']),
@@ -1524,6 +1541,7 @@
                     起始日期: '2025年1月1日',
                     结尾日期: '2025年1月7日',
                     活跃用户: 119000,
+                    新用户: 60585,
                     次周留存率: 46,
                     营收: 199039,
                     ARPU: 1.67,
@@ -1537,6 +1555,7 @@
                     起始日期: '2025年1月8日',
                     结尾日期: '2025年1月14日',
                     活跃用户: 125585,
+                    新用户: 59163,
                     次周留存率: 38,
                     营收: 173441,
                     ARPU: 1.38,
@@ -1550,6 +1569,7 @@
                     起始日期: '2025年1月15日',
                     结尾日期: '2025年1月21日',
                     活跃用户: 96407,
+                    新用户: 44094,
                     次周留存率: 27,
                     营收: 100709,
                     ARPU: 1.04,
@@ -1563,6 +1583,7 @@
                     起始日期: '2025年1月22日',
                     结尾日期: '2025年1月28日',
                     活跃用户: 59814,
+                    新用户: 24979,
                     次周留存率: 21,
                     营收: 76057,
                     ARPU: 1.27,
@@ -1576,6 +1597,7 @@
                     起始日期: '2025年1月29日',
                     结尾日期: '2025年2月4日',
                     活跃用户: 45572,
+                    新用户: 17030,
                     次周留存率: 24,
                     营收: 63968,
                     ARPU: 1.40,
@@ -1589,6 +1611,7 @@
                     起始日期: '2026年1月1日',
                     结尾日期: '2026年1月7日',
                     活跃用户: 103932,
+                    新用户: 30144,
                     次周留存率: 42,
                     营收: 232351,
                     ARPU: 2.24,
@@ -1602,6 +1625,7 @@
                     起始日期: '2026年1月8日',
                     结尾日期: '2026年1月14日',
                     活跃用户: 117167,
+                    新用户: 37154,
                     次周留存率: 43,
                     营收: 303052,
                     ARPU: 2.59,
@@ -1615,6 +1639,7 @@
                     起始日期: '2026年1月15日',
                     结尾日期: '2026年1月21日',
                     活跃用户: 133661,
+                    新用户: 42673,
                     次周留存率: 44,
                     营收: 298800,
                     ARPU: 2.24,
@@ -1628,6 +1653,7 @@
                     起始日期: '2026年1月22日',
                     结尾日期: '2026年1月28日',
                     活跃用户: 137602,
+                    新用户: 43415,
                     次周留存率: 42,
                     营收: 270348,
                     ARPU: 1.96,
@@ -1641,6 +1667,7 @@
                     起始日期: '2026年1月29日',
                     结尾日期: '2026年2月4日',
                     活跃用户: 115358,
+                    新用户: 32802,
                     次周留存率: 36,
                     营收: 206613,
                     ARPU: 1.79,
@@ -1654,6 +1681,7 @@
                     起始日期: '2025年2月5日',
                     结尾日期: '2025年2月11日',
                     活跃用户: 58613,
+                    新用户: 23606,
                     次周留存率: 30,
                     营收: 94922,
                     ARPU: 1.62,
@@ -1667,6 +1695,7 @@
                     起始日期: '2025年2月12日',
                     结尾日期: '2025年2月18日',
                     活跃用户: 55670,
+                    新用户: 21448,
                     次周留存率: 27,
                     营收: 114548,
                     ARPU: 2.06,
@@ -1680,6 +1709,7 @@
                     起始日期: '2026年2月5日',
                     结尾日期: '2026年2月11日',
                     活跃用户: 80892,
+                    新用户: 22632,
                     次周留存率: 29,
                     营收: 156161,
                     ARPU: 1.93,
@@ -1693,6 +1723,7 @@
                     起始日期: '2026年2月12日',
                     结尾日期: '2026年2月18日',
                     活跃用户: 48301,
+                    新用户: 10964,
                     次周留存率: 25,
                     营收: 79576,
                     ARPU: 1.65,
@@ -1706,6 +1737,7 @@
                     起始日期: '2025年2月19日',
                     结尾日期: '2025年2月25日',
                     活跃用户: 54060,
+                    新用户: 20883,
                     次周留存率: 29,
                     营收: 114026,
                     ARPU: 2.11,
@@ -1719,6 +1751,7 @@
                     起始日期: '2026年2月19日',
                     结尾日期: '2026年2月25日',
                     活跃用户: 57801,
+                    新用户: 15000,
                     次周留存率: 37,
                     营收: 130922,
                     ARPU: 2.27,
@@ -2142,6 +2175,7 @@
 
             // 更新指标
             updateMetric('activeUsers', currentData.活跃用户, lastWeekData?.活跃用户, lastYearData?.活跃用户, 'number');
+            updateMetric('newUsers', currentData.新用户, lastWeekData?.新用户, lastYearData?.新用户, 'number');
             updateMetric('retention', currentData.次周留存率, lastWeekData?.次周留存率, lastYearData?.次周留存率, 'percent');
             updateMetric('revenue', currentData.营收, lastWeekData?.营收, lastYearData?.营收, 'number');
             updateMetric('arpu', currentData.ARPU, lastWeekData?.ARPU, lastYearData?.ARPU, 'number');
@@ -2455,16 +2489,27 @@
             
             // 根据当前选择的周度查找对应的B端数据
             let currentB2BData = null;
+            let lastYearB2BData = null;
             const cwB2b = normalizeCurrentWeek(currentWeek);
+            
             if (cwB2b) {
                 const currentWeekData = findWeeklyRow(cwB2b.year, cwB2b.week);
                 
                 if (currentWeekData) {
-                    // 根据日期范围查找对应的B端数据
+                    // 根据日期范围查找对应的B端数据（当周）
                     currentB2BData = b2bData.find(item => 
                         item.起始日期 === currentWeekData.起始日期 && 
                         item.结尾日期 === currentWeekData.结尾日期
                     );
+                    
+                    // 查找去年同期的B端数据
+                    const lastYearWeekData = findWeeklyRow(cwB2b.year - 1, cwB2b.week);
+                    if (lastYearWeekData) {
+                        lastYearB2BData = b2bData.find(item => 
+                            item.起始日期 === lastYearWeekData.起始日期 && 
+                            item.结尾日期 === lastYearWeekData.结尾日期
+                        );
+                    }
                 }
             }
             
@@ -2472,18 +2517,19 @@
             const dataToShow = currentB2BData || b2bData[b2bData.length - 1];
             
             const metrics = [
-                { label: '签约金额', value: dataToShow.签约金额 },
-                { label: '开票金额', value: dataToShow.开票金额 },
-                { label: '回款金额', value: dataToShow.回款金额 },
-                { label: '订单数', value: dataToShow.订单数 },
-                { label: '新签', value: dataToShow.新签 },
-                { label: '续签', value: dataToShow.续签 }
+                { label: '签约金额', value: dataToShow.签约金额, lastYearValue: lastYearB2BData?.签约金额 || '-' },
+                { label: '开票金额', value: dataToShow.开票金额, lastYearValue: lastYearB2BData?.开票金额 || '-' },
+                { label: '回款金额', value: dataToShow.回款金额, lastYearValue: lastYearB2BData?.回款金额 || '-' },
+                { label: '订单数', value: dataToShow.订单数, lastYearValue: lastYearB2BData?.订单数 || '-' },
+                { label: '新签', value: dataToShow.新签, lastYearValue: lastYearB2BData?.新签 || '-' },
+                { label: '续签', value: dataToShow.续签, lastYearValue: lastYearB2BData?.续签 || '-' }
             ];
             
             container.innerHTML = metrics.map(metric => `
                 <div class="b2b-metric-card">
                     <div class="b2b-metric-label">${metric.label}</div>
                     <div class="b2b-metric-value">${metric.value}</div>
+                    ${metric.lastYearValue !== '-' ? `<div class="b2b-metric-lastyear">去年同期: ${metric.lastYearValue}</div>` : ''}
                 </div>
             `).join('');
         }
