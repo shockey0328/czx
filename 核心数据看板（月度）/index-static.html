@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>月度核心数据看板</title>
+    <link rel="stylesheet" href="../weekly-dashboard-theme.css">
     <!-- 使用本地Chart.js -->
     <script src="../libs/chart.min.js"></script>
     <style>
@@ -13,108 +14,147 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #ffffff;
-            color: #333;
-            line-height: 1.6;
-        }
-
-        .navbar {
-            background: #ffffff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo-text {
-            font-size: 24px;
-            font-weight: 600;
-            color: #FF6B35;
-        }
-
-        .month-selector {
-            padding: 10px 15px;
-            border: 2px solid #FF6B35;
-            border-radius: 8px;
-            background: white;
-            color: #333;
-            font-size: 16px;
-            min-width: 150px;
-            cursor: pointer;
-        }
-
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 24px;
+            padding: var(--space-5);
         }
 
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
+        /** KPI 总区：紧凑排版，减少纵向占用 */
+        .metrics-board {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+            margin-bottom: var(--space-4);
         }
 
-        .metric-card {
-            background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
-            border-radius: 12px;
-            padding: 20px;
-            color: white;
-            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
-            transition: all 0.3s ease;
+        .metric-cluster {
+            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            min-height: 120px;
+            max-width: 100%;
+        }
+
+        .metric-cluster-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            letter-spacing: 0.08em;
+            margin: 0 0 var(--space-2);
+            padding-bottom: var(--space-1);
+            border-bottom: 1px solid var(--color-border);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .metric-cluster-grid {
+            display: grid;
+            gap: var(--space-2);
+        }
+
+        /** 「商业化」「活跃与会员」并排一行 */
+        .metric-cluster-row--pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-5);
+            width: 100%;
+            align-items: start;
+        }
+
+        .metric-cluster--full {
+            width: 100%;
+        }
+
+        .metric-cluster--half {
+            width: 100%;
+            min-width: 0;
+        }
+
+        /** 每列内 2 张卡均分宽度 */
+        .metric-cluster-grid--2 {
+            display: grid;
+            width: 100%;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: var(--space-3);
+        }
+
+        .metric-cluster-grid--3 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            width: 100%;
+            gap: var(--space-3);
+        }
+
+        @media (max-width: 900px) {
+            .metric-cluster-row--pair {
+                grid-template-columns: 1fr;
+                gap: var(--space-4);
+            }
+        }
+
+        .metric-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-left: 3px solid var(--color-primary);
+            border-radius: var(--radius-sm);
+            padding: var(--space-3) var(--space-3);
+            box-shadow: var(--shadow-sm);
+            color: var(--color-text);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            min-height: 0;
         }
 
         .metric-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+            box-shadow: var(--shadow-md);
+            border-color: rgba(255, 107, 53, 0.28);
         }
 
         .metric-card .label {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 8px;
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin-bottom: 2px;
+            line-height: 1.3;
         }
 
         .metric-card .value {
-            font-size: 28px;
+            font-size: 1.35rem;
             font-weight: 700;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 6px;
+            color: var(--color-primary);
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 2px;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
         }
 
         .metric-card .change {
-            font-size: 12px;
-            margin-top: 8px;
-            padding: 4px 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
+            font-size: 11px;
+            margin-top: 4px;
+            padding: 2px 6px;
+            background: var(--color-well);
+            border-radius: 6px;
             display: inline-block;
         }
 
         /* 变化指标样式（中国风格：红涨绿跌） */
         .changes {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             margin-top: auto;
-            padding-top: 4px;
+            padding-top: 2px;
             flex-wrap: wrap;
             justify-content: flex-start;
             width: 100%;
         }
 
         .change-item {
-            font-size: 11px;
-            padding: 2px 6px;
+            font-size: 10px;
+            padding: 1px 5px;
             border-radius: 3px;
-            background: rgba(255, 255, 255, 0.3);
+            background: var(--color-well);
+            color: var(--color-text);
         }
 
         .change-item.positive {
@@ -128,20 +168,22 @@
         }
 
         .chart-section {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            padding: var(--space-5);
+            margin-bottom: var(--space-5);
+            box-shadow: var(--shadow-sm);
         }
 
         .chart-title {
             font-size: 18px;
-            font-weight: 600;
-            color: #FF6B35;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 3px solid #FF6B35;
+            font-weight: 700;
+            color: var(--color-primary);
+            margin-bottom: var(--space-5);
+            padding-bottom: var(--space-3);
+            border-bottom: 2px solid var(--color-border);
+            letter-spacing: -0.02em;
         }
 
         .chart-container {
@@ -155,52 +197,35 @@
             gap: 24px;
         }
 
-        /* 时间范围选择器 */
         .trends-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
         }
 
-        .period-selector {
-            display: flex;
-            gap: 8px;
-        }
-
-        .period-btn {
-            padding: 6px 16px;
-            border: 1px solid #e0e0e0;
-            background: white;
-            color: #666;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-
-        .period-btn:hover,
-        .period-btn.active {
-            background: #ff7043;
-            color: white;
-            border-color: #ff7043;
+        .trends-header .chart-title {
+            margin-bottom: 0;
         }
 
         /* 趋势图网格 */
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
+            gap: var(--space-4);
         }
 
         .chart-item {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 12px;
+            background: var(--color-well);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            padding: var(--space-3);
         }
 
         .chart-item h5 {
-            color: #333;
+            color: var(--color-text);
             margin-bottom: 8px;
             font-size: 14px;
             text-align: center;
@@ -214,11 +239,12 @@
         }
 
         .b2b-metric-card {
-            background: #f8f9fa;
-            border-radius: 8px;
+            background: var(--color-surface);
+            border-radius: var(--radius-sm);
             padding: 16px;
             text-align: center;
-            border: 2px solid #FFA366;
+            border: 1px solid var(--color-border);
+            border-top: 3px solid var(--color-primary-mid);
             transition: all 0.3s ease;
             display: flex;
             flex-direction: column;
@@ -233,14 +259,15 @@
 
         .b2b-metric-label {
             font-size: 12px;
-            color: #666;
+            color: var(--color-text-muted);
             margin-bottom: 8px;
         }
 
         .b2b-metric-value {
             font-size: 18px;
             font-weight: 700;
-            color: #ff7043;
+            color: var(--color-primary);
+            font-variant-numeric: tabular-nums;
         }
 
         .b2b-metric-card .changes {
@@ -267,24 +294,27 @@
 
         .refresh-btn {
             padding: 6px 16px;
-            border: 1px solid #e0e0e0;
-            background: white;
-            color: #666;
-            border-radius: 4px;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+            color: var(--color-text-muted);
+            border-radius: var(--radius-sm);
             cursor: pointer;
             font-size: 13px;
-            transition: all 0.2s;
+            font-family: var(--font-sans);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
         }
 
         .refresh-btn:hover {
-            background: #ff7043;
-            color: white;
-            border-color: #ff7043;
+            background: var(--color-primary);
+            color: #fff;
+            border-color: var(--color-primary);
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.22);
         }
 
         .ai-content {
-            background: white;
-            border-radius: 8px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
             padding: 15px;
             min-height: 200px;
         }
@@ -296,25 +326,25 @@
         }
 
         .analysis-section h5 {
-            color: #ff7043;
+            color: var(--color-primary);
             margin-bottom: 12px;
             font-size: 14px;
             font-weight: 600;
             padding-bottom: 5px;
-            border-bottom: 2px solid #ff7043;
+            border-bottom: 2px solid var(--color-primary);
         }
 
         .analysis-content {
-            background: #f8f9fa;
+            background: var(--color-well);
             border-radius: 6px;
             padding: 12px;
-            border-left: 3px solid #ff7043;
+            border-left: 3px solid var(--color-primary);
         }
 
         .analysis-text {
             font-size: 12px;
             line-height: 1.6;
-            color: #555;
+            color: var(--color-text-muted);
         }
 
         .analysis-list {
@@ -328,7 +358,7 @@
             padding-left: 12px;
             font-size: 12px;
             line-height: 1.5;
-            color: #555;
+            color: var(--color-text-muted);
             position: relative;
         }
 
@@ -336,7 +366,7 @@
             content: '•';
             position: absolute;
             left: 0;
-            color: #ff7043;
+            color: var(--color-primary);
             font-weight: bold;
         }
 
@@ -378,7 +408,7 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 6px 25px rgba(255, 107, 53, 0.25);
-            border: 3px solid #ff7043;
+            border: 3px solid var(--color-primary);
             transition: all 0.3s ease;
             position: relative;
         }
@@ -453,7 +483,7 @@
         }
 
         .ai-chat-header {
-            background: linear-gradient(135deg, #FF6B35, #FFA366);
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-mid));
             color: white;
             padding: 20px;
             display: flex;
@@ -505,7 +535,7 @@
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            background: #f8f9fa;
+            background: var(--color-well);
         }
 
         .ai-message {
@@ -523,7 +553,7 @@
             height: 32px;
             object-fit: contain;
             background: white;
-            border: 1px solid #ff7043;
+            border: 1px solid var(--color-primary);
             border-radius: 6px;
             padding: 2px;
         }
@@ -532,7 +562,7 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: #ff7043;
+            background: var(--color-primary);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -560,7 +590,7 @@
         }
 
         .ai-message.user .ai-message-bubble {
-            background: #ff7043;
+            background: var(--color-primary);
             color: white;
         }
 
@@ -600,7 +630,7 @@
         }
 
         .suggestion-btn:hover {
-            background: #ff7043;
+            background: var(--color-primary);
             color: white;
         }
 
@@ -621,14 +651,14 @@
         }
 
         .ai-chat-input-container input:focus {
-            border-color: #ff7043;
+            border-color: var(--color-primary);
         }
 
         .ai-chat-send-btn {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: #ff7043;
+            background: var(--color-primary);
             border: none;
             color: white;
             cursor: pointer;
@@ -658,7 +688,7 @@
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: #ff7043;
+            background: var(--color-primary);
             animation: typing 1.4s infinite;
         }
 
@@ -684,9 +714,10 @@
                 padding: 12px;
             }
             
-            .metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .metric-cluster-grid--3 {
+                grid-template-columns: 1fr;
             }
+
             
             .grid-2, .charts-grid, .b2b-grid, .ai-grid {
                 grid-template-columns: 1fr;
@@ -696,11 +727,11 @@
                 height: 300px;
             }
             
-            .period-selector {
+            .trend-range-toggle {
                 flex-wrap: wrap;
             }
             
-            .period-btn {
+            .trend-range-toggle .trend-range-btn {
                 font-size: 11px;
                 padding: 4px 12px;
             }
@@ -748,30 +779,40 @@
                 }
             }
         }
+
+        @media (max-width: 520px) {
+            .metric-cluster-grid--3,
+            .metric-cluster-grid--2 {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
-<body>
-    <div class="navbar">
-        <div class="logo-text">月度核心数据看板</div>
-        <select class="month-selector" id="monthSelector">
-            <!-- 动态生成 -->
-        </select>
-    </div>
-
-    <div class="container">
-        <!-- 核心指标卡片 -->
-        <div class="metrics-grid" id="metricsGrid">
-            <!-- 动态生成 -->
+<body class="dashboard-page-body">
+    <header class="navbar">
+        <div class="brand-block">
+            <div class="logo-text">月度核心数据</div>
         </div>
+        <div class="nav-actions">
+            <span class="week-context" id="monthContextBar" aria-live="polite">—</span>
+            <select class="week-dropdown month-dropdown" id="monthSelector" aria-label="选择月份">
+            </select>
+        </div>
+    </header>
 
-        <!-- 趋势图表 -->
-        <div class="chart-section">
+    <main class="container" id="dashboard-main" aria-label="月度核心数据">
+        <section class="month-kpi-region" aria-labelledby="month-sec-kpi">
+            <h2 id="month-sec-kpi" class="sr-only">本月核心指标</h2>
+            <div class="metrics-board" id="metricsGrid"></div>
+        </section>
+
+        <section class="chart-section" aria-labelledby="month-sec-trends">
             <div class="trends-header">
-                <h3 class="chart-title">趋势分析</h3>
-                <div class="period-selector">
-                    <button class="period-btn active" data-months="3">近3个月</button>
-                    <button class="period-btn" data-months="6">近6个月</button>
-                    <button class="period-btn" data-months="12">近12个月</button>
+                <h2 class="chart-title" id="month-sec-trends">趋势分析</h2>
+                <div class="period-selector trend-range-toggle" role="group" aria-label="趋势时间范围">
+                    <button type="button" class="trend-range-btn active" data-months="3">近3个月</button>
+                    <button type="button" class="trend-range-btn" data-months="6">近6个月</button>
+                    <button type="button" class="trend-range-btn" data-months="12">近12个月</button>
                 </div>
             </div>
             <div class="charts-grid">
@@ -794,21 +835,19 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- B端核心数据 -->
-        <div class="chart-section">
-            <h3 class="chart-title">B端核心数据</h3>
+        <section class="chart-section" aria-labelledby="month-sec-b2b">
+            <h2 class="chart-title" id="month-sec-b2b">B端核心数据</h2>
             <div class="b2b-grid" id="b2bMetrics">
                 <!-- 动态生成 -->
             </div>
-        </div>
+        </section>
 
-        <!-- AI数据分析 -->
-        <div class="chart-section ai-analysis">
+        <section class="chart-section ai-analysis" aria-labelledby="month-sec-ai">
             <div class="ai-header">
-                <h3 class="chart-title">🤖 AI数据分析</h3>
-                <button class="refresh-btn" onclick="generateAIAnalysis()">刷新分析</button>
+                <h2 class="chart-title" id="month-sec-ai">智能解读</h2>
+                <button type="button" class="refresh-btn" onclick="generateAIAnalysis()">刷新分析</button>
             </div>
             <div class="ai-content" id="aiAnalysis">
                 <div class="loading">正在分析数据...</div>
@@ -816,8 +855,8 @@
             <div class="ai-footer">
                 <span class="ai-credit">由 DeepSeek AI 提供技术支持</span>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <!-- 小橙子AI助手 -->
     <div class="ai-assistant">
@@ -976,9 +1015,9 @@
             });
             
             // 设置时间范围选择器
-            document.querySelectorAll('.period-btn').forEach(btn => {
+            document.querySelectorAll('.trend-range-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.trend-range-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                     updateCharts();
                 });
@@ -988,8 +1027,17 @@
             updateDashboard();
         }
 
+        function updateMonthContextBar() {
+            const el = document.getElementById('monthContextBar');
+            if (!el || !monthlyData || monthlyData.length === 0 || currentMonth == null) return;
+            const d = monthlyData[currentMonth];
+            if (!d) return;
+            el.textContent = `${d.年份}年${d.月份}`;
+        }
+
         // 更新看板
         function updateDashboard() {
+            updateMonthContextBar();
             updateMetrics();
             updateCharts();
             updateB2BMetrics();
@@ -1050,18 +1098,53 @@
                     yoy: yoyData ? calculateChangepp(data.大会员活跃率, yoyData.大会员活跃率) : null
                 }
             ];
-            
-            const grid = document.getElementById('metricsGrid');
-            grid.innerHTML = metrics.map(m => `
-                <div class="metric-card">
+
+            function metricCardHtml(m) {
+                return `
+                <article class="metric-card">
                     <div class="label">${m.label}</div>
                     <div class="value">${m.value}</div>
                     <div class="changes">
                         ${m.wow ? `<span class="change-item ${getChangeClass(m.wow)}">环比 ${m.wow}</span>` : ''}
                         ${m.yoy ? `<span class="change-item ${getChangeClass(m.yoy)}">同比 ${m.yoy}</span>` : ''}
                     </div>
-                </div>
-            `).join('');
+                </article>`;
+            }
+
+            const clusterUser = {
+                title: '用户规模',
+                aria: '月活、新增与留存',
+                cols: '3',
+                items: metrics.slice(0, 3),
+            };
+            const clusterBiz = {
+                title: '商业化',
+                aria: '营收与 ARPU',
+                cols: '2',
+                items: metrics.slice(3, 5),
+            };
+            const clusterEng = {
+                title: '活跃与会员',
+                aria: '使用率与大会员活跃',
+                cols: '2',
+                items: metrics.slice(5, 7),
+            };
+
+            const grid = document.getElementById('metricsGrid');
+            const sectionHtml = (c, extraClass) => `
+                <section class="metric-cluster${extraClass ? ' ' + extraClass : ''}" aria-label="${c.title} · ${c.aria}">
+                    <h3 class="metric-cluster-title">${c.title}</h3>
+                    <div class="metric-cluster-grid metric-cluster-grid--${c.cols}">
+                        ${c.items.map(metricCardHtml).join('')}
+                    </div>
+                </section>`;
+
+            grid.innerHTML =
+                sectionHtml(clusterUser, 'metric-cluster--full') +
+                `<div class="metric-cluster-row metric-cluster-row--pair">` +
+                sectionHtml(clusterBiz, 'metric-cluster--half') +
+                sectionHtml(clusterEng, 'metric-cluster--half') +
+                `</div>`;
         }
 
         // 计算变化百分比
@@ -1101,7 +1184,7 @@
 
         // 获取过滤后的数据
         function getFilteredData() {
-            const months = parseInt(document.querySelector('.period-btn.active').dataset.months);
+            const months = parseInt(document.querySelector('.trend-range-btn.active').dataset.months);
             const endIndex = currentMonth + 1;
             const startIndex = Math.max(0, endIndex - months);
             

@@ -12,6 +12,8 @@
   --color-primary: #ff6b35;
   --color-primary-soft: #fff5f0;
   --color-primary-mid: #ffb088;
+  /** 浅区底色（图表槽、列表底），略深于页面底以形成层次 */
+  --color-well: #efeae4;
   --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.06);
   --shadow-md: 0 10px 28px rgba(45, 42, 38, 0.08);
   --radius: 16px;
@@ -91,7 +93,8 @@
   }
 }
 
-.navbar .week-dropdown {
+.navbar .week-dropdown,
+.navbar .month-dropdown {
   padding: 10px 16px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -103,12 +106,75 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.navbar .week-dropdown:hover {
+.navbar .week-dropdown:hover,
+.navbar .month-dropdown:hover {
   border-color: rgba(255, 107, 53, 0.35);
 }
 
-.navbar .week-dropdown:focus {
+.navbar .week-dropdown:focus,
+.navbar .month-dropdown:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18);
+}
+
+/**
+ * 子看板内「近 N 个月」等区间切换（勿与门户 .period-btn 混名，避免嵌套时串样式）
+ */
+.trend-range-toggle {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.trend-range-toggle .trend-range-btn {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.trend-range-toggle .trend-range-btn:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.trend-range-toggle .trend-range-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.22);
+}
+
+/** 主内容区：可滚动、与 iframe 门户底同色 */
+.dashboard-page-body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/** 仅屏幕阅读器可见的区块标题，避免重复视觉噪音（qiaomu：单焦点、层级清晰） */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

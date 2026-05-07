@@ -5,10 +5,12 @@
 }
 
 body {
-    font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
-    background: #ffffff;
+    font-family: var(--font-sans);
+    background: var(--color-bg);
+    color: var(--color-text);
     min-height: 100vh;
     padding: 20px;
+    -webkit-font-smoothing: antialiased;
 }
 
 @media (max-width: 768px) {
@@ -24,10 +26,11 @@ body {
 
 /* 顶部区域 */
 .header {
-    background: white;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     padding: 25px 30px;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(255, 107, 53, 0.15);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -35,9 +38,10 @@ body {
 }
 
 .header-left h1 {
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 28px;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
 .header-right {
@@ -47,34 +51,35 @@ body {
 }
 
 .header-right label {
-    color: #555;
+    color: var(--color-text-muted);
     font-weight: 500;
 }
 
 .month-filter {
     padding: 10px 20px;
-    border: 2px solid #FF6B35;
-    border-radius: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     font-size: 15px;
     cursor: pointer;
-    background: white;
-    color: #2c3e50;
-    transition: all 0.3s;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     outline: none;
 }
 
 .month-filter:hover {
-    background: #FF6B35;
-    color: white;
+    border-color: rgba(255, 107, 53, 0.35);
 }
 
 .month-filter:focus {
-    border-color: #FFA366;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18);
 }
 
 .data-status {
     font-size: 13px;
-    color: #666;
+    color: var(--color-text-muted);
     max-width: 280px;
 }
 
@@ -102,19 +107,22 @@ body {
 
 /* 模块样式 */
 .module {
-    background: white;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     padding: 25px;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(255, 107, 53, 0.15);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
     margin-bottom: 25px;
 }
 
 .module-title {
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 22px;
+    font-weight: 700;
     margin-bottom: 20px;
     padding-bottom: 12px;
-    border-bottom: 3px solid #FF6B35;
+    border-bottom: 2px solid var(--color-border);
+    letter-spacing: -0.02em;
 }
 
 @media (max-width: 768px) {
@@ -139,10 +147,10 @@ body {
 .core-metrics-toggle {
     grid-column: 1 / -1;
     padding: 10px 20px;
-    border: 2px solid #FF6B35;
+    border: 2px solid var(--color-primary);
     border-radius: 8px;
     background: #fff;
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -312,10 +320,10 @@ body {
 
 .ranking-tab {
     padding: 8px 16px;
-    border: 2px solid #FF6B35;
+    border: 2px solid var(--color-primary);
     border-radius: 8px;
     background: #fff;
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -323,11 +331,11 @@ body {
 }
 
 .ranking-tab:hover {
-    background: #fff5f0;
+    background: var(--color-primary-soft);
 }
 
 .ranking-tab.active {
-    background: #FF6B35;
+    background: var(--color-primary);
     color: #fff;
 }
 
@@ -336,13 +344,14 @@ body {
 }
 
 .ranking-chart {
-    background: #f8f9fa;
+    background: var(--color-well);
+    border: 1px solid var(--color-border);
     padding: 20px;
-    border-radius: 16px;
+    border-radius: var(--radius-sm);
 }
 
 .ranking-chart h3 {
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 18px;
     margin-bottom: 15px;
     text-align: center;
@@ -375,7 +384,7 @@ body {
     align-items: center;
     margin-bottom: 20px;
     padding-bottom: 12px;
-    border-bottom: 3px solid #FF6B35;
+    border-bottom: 3px solid var(--color-primary);
 }
 
 .module-header-inline .module-title {
@@ -392,7 +401,7 @@ body {
 
 .province-filter {
     padding: 8px 16px;
-    border: 2px solid #FF6B35;
+    border: 2px solid var(--color-primary);
     border-radius: 16px;
     font-size: 14px;
     cursor: pointer;
@@ -404,7 +413,7 @@ body {
 }
 
 .province-filter:hover {
-    background: #FF6B35;
+    background: var(--color-primary);
     color: white;
 }
 
@@ -478,7 +487,7 @@ body {
 }
 
 .trend-title {
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 18px;
     font-weight: 600;
     margin: 0;
@@ -491,10 +500,10 @@ body {
 
 .trend-tab {
     padding: 8px 20px;
-    border: 2px solid #FF6B35;
+    border: 2px solid var(--color-primary);
     border-radius: 8px;
     background: white;
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.3s;
@@ -502,13 +511,13 @@ body {
 }
 
 .trend-tab:hover {
-    background: #FFA366;
-    border-color: #FFA366;
+    background: var(--color-primary-mid);
+    border-color: var(--color-primary-mid);
     color: white;
 }
 
 .trend-tab.active {
-    background: #FF6B35;
+    background: var(--color-primary);
     color: white;
 }
 
@@ -526,7 +535,7 @@ body {
 }
 
 .trend-chart-item h4 {
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 16px;
     margin-bottom: 15px;
     text-align: center;
@@ -636,7 +645,7 @@ body {
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    background: linear-gradient(135deg, #FF6B35 0%, #FFA366 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-mid) 100%);
     color: white;
     border: none;
     border-radius: 16px;
@@ -700,7 +709,7 @@ body {
 }
 
 .ai-content h3 {
-    color: #FF6B35;
+    color: var(--color-primary);
     font-size: 18px;
     margin-top: 20px;
     margin-bottom: 10px;
@@ -735,7 +744,7 @@ body {
     width: 40px;
     height: 40px;
     border: 4px solid #f3f3f3;
-    border-top: 4px solid #FF6B35;
+    border-top: 4px solid var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }

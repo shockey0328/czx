@@ -309,7 +309,7 @@
     </main>
   </div>
 
-  <script src="./embedded-csv-b64.js?v=20260409-1"></script>
+  <script src="./embedded-csv-b64.js?v=20260506-1"></script>
   <script>
     // ---------------------------
     // 1) CSV 数据加载（替代 Mock）
@@ -514,8 +514,13 @@
       return true;
     }
 
+    /** 与 build-embedded-b64.js 的 containsMojibake 对齐，用于渠道表 UTF-8/GB18030 二选一 */
+    function containsMojibakeSample(s) {
+      const v = String(s || "");
+      return /\uFFFD|锟斤拷|Ã|Ð|Ñ|瀛︿即|缁勫嵎|鍏朵粬娓犻亾|灏忓嵎/.test(v);
+    }
+
     function decodeCsvBytesSmart(key, bytes) {
-      // 先 UTF-8；如果表头不对，或正文出现典型乱码，再尝试 GB18030
       const tryDecode = (enc) => {
         try {
           return new TextDecoder(enc).decode(bytes);
@@ -524,13 +529,23 @@
         }
       };
       const utf8 = tryDecode("utf-8");
+      const gb = tryDecode("gb18030") || tryDecode("gbk");
+
+      if ((key === "activeCh" || key === "newCh") && utf8 && gb) {
+        const u8Bad = containsMojibakeSample(utf8);
+        const gbBad = containsMojibakeSample(gb);
+        const uHead = String(utf8).split(/\r?\n/, 1)[0] || "";
+        const gHead = String(gb).split(/\r?\n/, 1)[0] || "";
+        if (!gbBad && u8Bad && looksHeaderOk(key, gHead)) return gb;
+        if (!u8Bad && looksHeaderOk(key, uHead)) return utf8;
+        if (looksHeaderOk(key, gHead)) return gb;
+      }
+
       if (utf8) {
         const headLine = String(utf8).split(/\r?\n/, 1)[0] || "";
         const bodySample = String(utf8).slice(0, 4000);
-        const hasMojibake = /锟斤拷|�/.test(bodySample);
-        if (looksHeaderOk(key, headLine) && !hasMojibake) return utf8;
+        if (looksHeaderOk(key, headLine) && !containsMojibakeSample(bodySample)) return utf8;
       }
-      const gb = tryDecode("gb18030") || tryDecode("gbk");
       if (gb) {
         const headLine = String(gb).split(/\r?\n/, 1)[0] || "";
         if (looksHeaderOk(key, headLine)) return gb;
@@ -658,6 +673,65 @@
       return { channelNames, countsPrev, countsEnd, sharesPrev, sharesEnd };
     }
 
+    /** 活跃 / 新用户两侧使用同一套渠道名称与顺序（并集；缺侧补 0），便于左右对照 */
+    function alignDualChannelModels(activeModel, newModel) {
+      const getActiveEnd = (n) => {
+        const i = activeModel.channelNames.indexOf(n);
+        return i >= 0 ? activeModel.countsEnd[i] : 0;
+      };
+      const getActivePrev = (n) => {
+        const i = activeModel.channelNames.indexOf(n);
+        return i >= 0 ? activeModel.countsPrev[i] : 0;
+      };
+      const getNewEnd = (n) => {
+        const i = newModel.channelNames.indexOf(n);
+        return i >= 0 ? newModel.countsEnd[i] : 0;
+      };
+      const getNewPrev = (n) => {
+        const i = newModel.channelNames.indexOf(n);
+        return i >= 0 ? newModel.countsPrev[i] : 0;
+      };
+
+      const nameSet = new Set([...activeModel.channelNames, ...newModel.channelNames]);
+      const channelNames = [...nameSet].sort((a, b) => {
+        const sumB = getActiveEnd(b) + getNewEnd(b);
+        const sumA = getActiveEnd(a) + getNewEnd(a);
+        if (sumB !== sumA) return sumB - sumA;
+        return String(a).localeCompare(String(b), "zh-CN");
+      });
+
+      const endActTotal = channelNames.reduce((s, n) => s + getActiveEnd(n), 0) || 1;
+      const endNewTotal = channelNames.reduce((s, n) => s + getNewEnd(n), 0) || 1;
+      const prevActTotal = channelNames.reduce((s, n) => s + getActivePrev(n), 0) || 1;
+      const prevNewTotal = channelNames.reduce((s, n) => s + getNewPrev(n), 0) || 1;
+
+      const countsActiveEnd = channelNames.map(getActiveEnd);
+      const countsActivePrev = channelNames.map(getActivePrev);
+      const countsNewEnd = channelNames.map(getNewEnd);
+      const countsNewPrev = channelNames.map(getNewPrev);
+
+      const sharesActiveEnd = countsActiveEnd.map((c) => (c / endActTotal) * 100);
+      const sharesActivePrev = countsActivePrev.map((c) => (c / prevActTotal) * 100);
+      const sharesNewEnd = countsNewEnd.map((c) => (c / endNewTotal) * 100);
+      const sharesNewPrev = countsNewPrev.map((c) => (c / prevNewTotal) * 100);
+
+      return {
+        channelNames,
+        active: {
+          countsPrev: countsActivePrev,
+          countsEnd: countsActiveEnd,
+          sharesPrev: sharesActivePrev,
+          sharesEnd: sharesActiveEnd,
+        },
+        new: {
+          countsPrev: countsNewPrev,
+          countsEnd: countsNewEnd,
+          sharesPrev: sharesNewPrev,
+          sharesEnd: sharesNewEnd,
+        },
+      };
+    }
+
     function computeDerived() {
       cumulativeUsers = (mock.cumulativeUsers || []).slice();
       newShare = mock.newUsers.map((n, i) => (mock.activeUsers[i] ? (n / mock.activeUsers[i]) * 100 : 0));
@@ -762,16 +836,17 @@
         newPrevRange.startISO, newPrevRange.endISO
       );
 
-      mock.activeChannels = activeModel.channelNames;
-      mock.newChannels = newModel.channelNames;
-      mock.activeChannelCountW11 = activeModel.countsPrev;
-      mock.activeChannelCountW12 = activeModel.countsEnd;
-      mock.activeChannelShareW11 = activeModel.sharesPrev;
-      mock.activeChannelShareW12 = activeModel.sharesEnd;
-      mock.newChannelCountW11 = newModel.countsPrev;
-      mock.newChannelCountW12 = newModel.countsEnd;
-      mock.newChannelShareW11 = newModel.sharesPrev;
-      mock.newChannelShareW12 = newModel.sharesEnd;
+      const aligned = alignDualChannelModels(activeModel, newModel);
+      mock.activeChannels = aligned.channelNames;
+      mock.newChannels = aligned.channelNames;
+      mock.activeChannelCountW11 = aligned.active.countsPrev;
+      mock.activeChannelCountW12 = aligned.active.countsEnd;
+      mock.activeChannelShareW11 = aligned.active.sharesPrev;
+      mock.activeChannelShareW12 = aligned.active.sharesEnd;
+      mock.newChannelCountW11 = aligned.new.countsPrev;
+      mock.newChannelCountW12 = aligned.new.countsEnd;
+      mock.newChannelShareW11 = aligned.new.sharesPrev;
+      mock.newChannelShareW12 = aligned.new.sharesEnd;
     }
 
     function detectBestChannelShiftDays(rows) {
@@ -1508,19 +1583,20 @@
       const newCounts = mock.newChannelCountW12 || [];
       const newCountsPrev = mock.newChannelCountW11 || [];
 
+      // 与 computeLatestChannelModel 对齐后的顺序一致，不再按各自数量重排，避免左右行错位
       const activeRows = activeNames.map((name, i) => ({
         name,
         count: activeCounts[i],
         sharePct: mock.activeChannelShareW12[i],
         deltaPctValue: deltaPct(activeCounts[i], activeCountsPrev[i]),
-      })).sort((a, b) => b.count - a.count);
+      }));
 
       const newRows = newNames.map((name, i) => ({
         name,
         count: newCounts[i],
         sharePct: mock.newChannelShareW12[i],
         deltaPctValue: deltaPct(newCounts[i], newCountsPrev[i]),
-      })).sort((a, b) => b.count - a.count);
+      }));
 
       document.getElementById("tableActiveBody").innerHTML = activeRows.map(r => buildTableRowHTML(r)).join("");
       document.getElementById("tableNewBody").innerHTML = newRows.map(r => buildTableRowHTML(r)).join("");

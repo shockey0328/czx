@@ -647,7 +647,7 @@ function updateTrendChart() {
             plugins: {
                 legend: {
                     labels: { 
-                        color: '#ffffff',
+                        color: '#4a443c',
                         padding: 8,
                         boxWidth: 12,
                         font: {
@@ -663,7 +663,7 @@ function updateTrendChart() {
                     type: 'category',
                     labels: months,
                     ticks: { 
-                        color: '#ffffff',
+                        color: '#4a443c',
                         font: {
                             size: 11
                         },
@@ -671,14 +671,14 @@ function updateTrendChart() {
                         minRotation: 0
                     },
                     grid: { 
-                        color: 'rgba(255, 255, 255, 0.1)',
+                        color: 'rgba(45, 42, 38, 0.08)',
                         drawBorder: false
                     }
                 },
                 y: {
                     beginAtZero: false,
                     ticks: { 
-                        color: '#ffffff',
+                        color: '#4a443c',
                         font: {
                             size: 11
                         },
@@ -687,7 +687,7 @@ function updateTrendChart() {
                         }
                     },
                     grid: { 
-                        color: 'rgba(255, 255, 255, 0.1)',
+                        color: 'rgba(45, 42, 38, 0.08)',
                         drawBorder: false
                     }
                 }
@@ -777,7 +777,7 @@ function updateRankingChart() {
             scales: {
                 x: {
                     ticks: { 
-                        color: '#ffffff',
+                        color: '#4a443c',
                         font: {
                             size: 10
                         },
@@ -785,16 +785,16 @@ function updateRankingChart() {
                             return value + '%';
                         }
                     },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    grid: { color: 'rgba(45, 42, 38, 0.08)' }
                 },
                 y: {
                     ticks: { 
-                        color: '#ffffff',
+                        color: '#4a443c',
                         font: {
                             size: 10
                         }
                     },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    grid: { color: 'rgba(45, 42, 38, 0.08)' }
                 }
             }
         }
@@ -845,7 +845,7 @@ function updatePieChart() {
                 legend: {
                     position: 'bottom',
                     labels: { 
-                        color: '#ffffff',
+                        color: '#4a443c',
                         padding: 10,
                         boxWidth: 12,
                         font: {
@@ -1288,17 +1288,6 @@ function displayAnalysisResult(analysis) {
     
     // 显示结果区域
     aiResultsSection.style.display = 'grid';
-    
-    // 强制应用白色文字样式
-    setTimeout(() => {
-        // 确保所有文本都是白色，只有数字是橙色
-        const analysisElements = document.querySelectorAll('#overallAnalysis *, #optimizationSuggestions *');
-        analysisElements.forEach(el => {
-            if (!el.classList.contains('number-highlight') && !el.querySelector('.number-highlight')) {
-                el.style.color = '#ffffff';
-            }
-        });
-    }, 50);
     
     // 滚动到结果区域
     setTimeout(() => {

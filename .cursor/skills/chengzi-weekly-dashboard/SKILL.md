@@ -3,7 +3,7 @@ name: chengzi-weekly-dashboard
 description: >
   数据看板「周度」子页面的统一视觉与信息架构规范。
   触发词："周度看板"、"统一主题"、"weekly-dashboard-theme"、子看板样式对齐。
-  适用于：新增或改版周度数据看板、与门户 iframe 嵌套一致、品牌/层级统一。
+  适用于：新增或改版**周度 / 月度**数据看板、与门户 iframe 嵌套一致、品牌/层级统一（月度与周度共用同一套令牌，勿另起冷灰底或第二套主橙）。
 ---
 
 # 周度看板统一规范
@@ -22,7 +22,7 @@ description: >
 
 | 项 | 要求 |
 |----|------|
-| 共用样式 | 子页面 `<head>` 中增加 `<link rel="stylesheet" href="../weekly-dashboard-theme.css">`（路径按目录深度调整） |
+| 共用样式 | 子页面 `<head>` 中增加 `<link rel="stylesheet" href="../weekly-dashboard-theme.css">`（路径按目录深度调整；月度看板同样链接此文件） |
 | CSS 变量 | 使用 `weekly-dashboard-theme.css` 中 `:root` 的 `--color-*`，勿在子页重复定义另一套 `:root` |
 | 门户 | 根目录 `index.html` + `styles.css` 使用相同令牌，iframe 背景与 `--color-bg` 一致，避免「外灰内白」跳变 |
 
@@ -32,6 +32,7 @@ description: >
 - [ ] 主色是否全部为 `#FF6B35`（允许渐变中使用 `#ffb088` 作辅助）？
 - [ ] 页面背景是否为 `#f6f4f1`？
 - [ ] 是否已链接 `weekly-dashboard-theme.css`？
+- [ ] **结构**：主内容是否为 `<main>`，大区块是否为 `<section aria-labelledby="…">`，阅读顺序是否为「核心指标 → 趋势 → B端 → 智能解读」？趋势区间控件是否使用 `.trend-range-toggle` / `.trend-range-btn`（避免与门户 `.period-btn` 混名）？
 
 ## 参考文件
 

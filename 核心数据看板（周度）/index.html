@@ -270,60 +270,50 @@
         .b2b-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 10px;
+            gap: 12px;
         }
 
         .b2b-metric-card {
             background: var(--color-surface);
             border-radius: var(--radius-sm);
-            padding: var(--space-4);
+            padding: 16px;
             text-align: center;
             border: 1px solid var(--color-border);
+            border-top: 3px solid var(--color-primary-mid);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            position: relative;
-            overflow: hidden;
-            min-height: 72px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-        }
-
-        .b2b-metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--color-primary), #ffb088);
+            align-items: center;
+            min-height: 132px;
         }
 
         .b2b-metric-card:hover {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
         }
 
         .b2b-metric-label {
             font-size: 12px;
             color: var(--color-text-muted);
-            margin-bottom: var(--space-2);
+            margin-bottom: 8px;
             font-weight: 500;
         }
 
         .b2b-metric-value {
-            font-size: 17px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--color-primary);
             font-variant-numeric: tabular-nums;
         }
 
-        .b2b-metric-lastyear {
-            font-size: 10px;
-            color: var(--color-text-muted);
-            margin-top: var(--space-1);
-            font-variant-numeric: tabular-nums;
-            opacity: 0.8;
+        .b2b-metric-card .changes {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
         }
 
         /* 右上：趋势分析 */
@@ -333,40 +323,9 @@
 
         .trends-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: center;
             margin-bottom: 15px;
-        }
-
-        .period-selector {
-            display: flex;
-            gap: var(--space-1);
-            background: #f0ebe4;
-            padding: var(--space-1);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--color-border);
-        }
-
-        .period-btn {
-            padding: 8px 14px;
-            border: none;
-            background: transparent;
-            color: var(--color-text-muted);
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            transition: background 0.15s ease, color 0.15s ease;
-        }
-
-        .period-btn:hover {
-            color: var(--color-text);
-            background: rgba(255, 255, 255, 0.7);
-        }
-
-        .period-btn.active {
-            background: var(--color-primary);
-            color: #fff;
         }
 
         .charts-container {
@@ -989,7 +948,6 @@
             
             .b2b-grid {
                 grid-template-columns: repeat(2, 1fr);
-                grid-template-rows: repeat(3, 1fr);
             }
             
             .metrics-grid {
@@ -1050,8 +1008,8 @@
         }
     </style>
 </head>
-<body>
-    <!-- 顶部导航栏 -->
+<body class="dashboard-page-body">
+    <!-- 顶栏：周期与筛选（与月度、门户同一信息层级） -->
     <header class="navbar">
         <div class="brand-block">
             <span class="logo-text">周度核心数据</span>
@@ -1064,11 +1022,10 @@
         </div>
     </header>
 
-    <!-- 主要内容区域 - 四宫格布局 -->
-    <div class="main-content">
-        <!-- 左上：周度核心数据指标 -->
-        <div class="panel core-metrics">
-            <h3 class="panel-title">周度核心数据指标</h3>
+    <!-- 主内容：与月度同一阅读顺序（核心指标 → 趋势 → B端 → 智能解读） -->
+    <main class="main-content" id="dashboard-main" aria-label="周度核心数据">
+        <section class="panel core-metrics" aria-labelledby="wk-sec-core">
+            <h3 class="panel-title" id="wk-sec-core">核心指标</h3>
             <div class="metrics-grid">
                 <!-- 用户指标 -->
                 <div class="metric-group">
@@ -1149,16 +1106,15 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- 右上：趋势分析 -->
-        <div class="panel trends-analysis">
-            <h3 class="panel-title">趋势分析</h3>
+        <section class="panel trends-analysis" aria-labelledby="wk-sec-trends">
+            <h3 class="panel-title" id="wk-sec-trends">趋势分析</h3>
             <div class="trends-header">
-                <div class="period-selector">
-                    <button class="period-btn" data-weeks="2">近2周</button>
-                    <button class="period-btn active" data-weeks="3">近3周</button>
-                    <button class="period-btn" data-weeks="4">近4周</button>
+                <div class="trend-range-toggle" role="group" aria-label="趋势时间范围">
+                    <button type="button" class="trend-range-btn" data-weeks="2">近2周</button>
+                    <button type="button" class="trend-range-btn active" data-weeks="3">近3周</button>
+                    <button type="button" class="trend-range-btn" data-weeks="4">近4周</button>
                 </div>
             </div>
             <div class="charts-container">
@@ -1179,20 +1135,18 @@
                     <canvas id="usageChart"></canvas>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- 左下：B端核心数据指标 -->
-        <div class="panel b2b-metrics">
-            <h3 class="panel-title">B端核心数据指标</h3>
+        <section class="panel b2b-metrics" aria-labelledby="wk-sec-b2b">
+            <h3 class="panel-title" id="wk-sec-b2b">B端核心数据</h3>
             <div class="b2b-grid" id="b2bMetrics">
                 <!-- B端指标将通过JavaScript动态生成 -->
             </div>
-        </div>
+        </section>
 
-        <!-- 右下：AI数据分析 -->
-        <div class="panel ai-analysis">
+        <section class="panel ai-analysis" aria-labelledby="wk-sec-ai">
             <div class="ai-header">
-                <h3 class="ai-title">AI数据分析</h3>
+                <h3 class="ai-title" id="wk-sec-ai">智能解读</h3>
             </div>
             <div class="ai-content">
                 <div class="ai-grid" id="aiAnalysis">
@@ -1206,8 +1160,8 @@
                 </div>
                 <div class="ai-credit">由 DeepSeek AI 提供技术支持</div>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <!-- 小橙子AI助手 -->
     <div class="ai-assistant">
@@ -1485,7 +1439,10 @@
                         const dateMatch = row['起始日期'].match(/(\d{4})年/);
                         const year = dateMatch ? parseInt(dateMatch[1]) : 2026;
                         const weekNum = index + 1; // 简单递增周数
-                        
+                        const 到款列 = row['到款金额'] != null && String(row['到款金额']).trim() !== ''
+                            ? row['到款金额']
+                            : row['回款金额'];
+
                         return {
                             年份: year,
                             周数: weekNum,
@@ -1493,7 +1450,7 @@
                             结尾日期: row['结尾日期'],
                             签约金额: row['签约金额'],
                             开票金额: row['开票金额'],
-                            回款金额: row['回款金额'],
+                            到款金额: 到款列,
                             订单数: row['订单数'],
                             新签: row['新签'],
                             续签: row['续签']
@@ -1768,7 +1725,7 @@
                     结尾日期: '2026年1月7日',
                     签约金额: '1.80万',
                     开票金额: '3.05万',
-                    回款金额: '2.00万',
+                    到款金额: '2.00万',
                     订单数: 3,
                     新签: 1,
                     续签: 2
@@ -1778,7 +1735,7 @@
                     结尾日期: '2026年1月14日',
                     签约金额: '5.30万',
                     开票金额: '1.60万',
-                    回款金额: '4.40万',
+                    到款金额: '4.40万',
                     订单数: 4,
                     新签: 1,
                     续签: 3
@@ -1788,7 +1745,7 @@
                     结尾日期: '2026年1月21日',
                     签约金额: '4.89万',
                     开票金额: '1.26万',
-                    回款金额: '3.66万',
+                    到款金额: '3.66万',
                     订单数: 7,
                     新签: 5,
                     续签: 2
@@ -1798,7 +1755,7 @@
                     结尾日期: '2026年1月28日',
                     签约金额: '4.36万',
                     开票金额: '6.91万',
-                    回款金额: '4.36万',
+                    到款金额: '4.36万',
                     订单数: 5,
                     新签: 1,
                     续签: 4
@@ -1808,7 +1765,7 @@
                     结尾日期: '2026年2月4日',
                     签约金额: '4.00万',
                     开票金额: '0.00万',
-                    回款金额: '2.00万',
+                    到款金额: '2.00万',
                     订单数: 2,
                     新签: 2,
                     续签: 0
@@ -1818,7 +1775,7 @@
                     结尾日期: '2026年2月11日',
                     签约金额: '2.10万',
                     开票金额: '2.45万',
-                    回款金额: '1.75万',
+                    到款金额: '1.75万',
                     订单数: 2,
                     新签: 0,
                     续签: 2
@@ -1828,7 +1785,7 @@
                     结尾日期: '2026年2月18日',
                     签约金额: '0.00万',
                     开票金额: '0.00万',
-                    回款金额: '1.00万',
+                    到款金额: '1.00万',
                     订单数: 0,
                     新签: 0,
                     续签: 0
@@ -1838,7 +1795,7 @@
                     结尾日期: '2026年2月25日',
                     签约金额: '0.00万',
                     开票金额: '4.00万',
-                    回款金额: '0.00万',
+                    到款金额: '0.00万',
                     订单数: 0,
                     新签: 0,
                     续签: 0
@@ -2061,9 +2018,9 @@
             }
 
             // 趋势图周期选择器
-            document.querySelectorAll('.period-btn').forEach(btn => {
+            document.querySelectorAll('.trend-range-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.trend-range-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                     updateCharts();
                 });
@@ -2263,7 +2220,7 @@
         // 更新图表
         function updateCharts() {
             console.log('更新图表...');
-            const activePeriod = document.querySelector('.period-btn.active');
+            const activePeriod = document.querySelector('.trend-range-btn.active');
             const weeks = activePeriod ? parseInt(activePeriod.dataset.weeks) : 3;
             
             updateActiveUsersChart(weeks);
@@ -2476,62 +2433,137 @@
             };
         }
 
-        // 更新B端指标
+        /** 与月度 B 端一致：从「万」字符串解析数值用于环比/同比 */
+        function parseB2BWanAmount(val) {
+            if (val == null || String(val).trim() === '') return null;
+            const n = parseFloat(String(val).replace(/万/g, '').trim());
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function safeParseIntB2b(val) {
+            if (val == null || String(val).trim() === '') return null;
+            const n = parseInt(String(val).replace(/,/g, '').trim(), 10);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        /** 与月度 B 端 calculateChange 一致：相对变化率（%） */
+        function calculateChangeB2bPct(current, previous) {
+            if (current == null || previous == null || isNaN(current) || isNaN(previous) || previous === 0) return null;
+            const change = ((current - previous) / previous * 100).toFixed(1);
+            return (change >= 0 ? '+' : '') + change + '%';
+        }
+
+        function findB2bRowByWeekDates(weekRow) {
+            if (!weekRow) return null;
+            return b2bData.find(
+                (item) => item.起始日期 === weekRow.起始日期 && item.结尾日期 === weekRow.结尾日期
+            ) || null;
+        }
+
+        // 更新B端指标（字段、环比/同比、卡片结构与月度核心看板一致）
         function updateB2BMetrics() {
             console.log('更新B端指标...');
             const container = document.getElementById('b2bMetrics');
             if (!container) return;
-            
-            if (b2bData.length === 0) {
-                container.innerHTML = '<p>暂无B端数据</p>';
+
+            if (!b2bData || b2bData.length === 0) {
+                container.innerHTML = '<p style="text-align:center;color:var(--color-text-muted);">暂无B端数据</p>';
                 return;
             }
-            
-            // 根据当前选择的周度查找对应的B端数据
-            let currentB2BData = null;
-            let lastYearB2BData = null;
+
             const cwB2b = normalizeCurrentWeek(currentWeek);
-            
-            if (cwB2b) {
-                const currentWeekData = findWeeklyRow(cwB2b.year, cwB2b.week);
-                
-                if (currentWeekData) {
-                    // 根据日期范围查找对应的B端数据（当周）
-                    currentB2BData = b2bData.find(item => 
-                        item.起始日期 === currentWeekData.起始日期 && 
-                        item.结尾日期 === currentWeekData.结尾日期
-                    );
-                    
-                    // 查找去年同期的B端数据
-                    const lastYearWeekData = findWeeklyRow(cwB2b.year - 1, cwB2b.week);
-                    if (lastYearWeekData) {
-                        lastYearB2BData = b2bData.find(item => 
-                            item.起始日期 === lastYearWeekData.起始日期 && 
-                            item.结尾日期 === lastYearWeekData.结尾日期
-                        );
-                    }
-                }
+            if (!cwB2b) {
+                container.innerHTML = '<p style="text-align:center;color:var(--color-text-muted);">请选择周度</p>';
+                return;
             }
-            
-            // 如果没找到对应数据，使用最新数据
-            const dataToShow = currentB2BData || b2bData[b2bData.length - 1];
-            
-            const metrics = [
-                { label: '签约金额', value: dataToShow.签约金额, lastYearValue: lastYearB2BData?.签约金额 || '-' },
-                { label: '开票金额', value: dataToShow.开票金额, lastYearValue: lastYearB2BData?.开票金额 || '-' },
-                { label: '回款金额', value: dataToShow.回款金额, lastYearValue: lastYearB2BData?.回款金额 || '-' },
-                { label: '订单数', value: dataToShow.订单数, lastYearValue: lastYearB2BData?.订单数 || '-' },
-                { label: '新签', value: dataToShow.新签, lastYearValue: lastYearB2BData?.新签 || '-' },
-                { label: '续签', value: dataToShow.续签, lastYearValue: lastYearB2BData?.续签 || '-' }
+
+            const currentWeekData = findWeeklyRow(cwB2b.year, cwB2b.week);
+            if (!currentWeekData) {
+                container.innerHTML = '<p style="text-align:center;color:var(--color-text-muted);">未找到该周核心数据</p>';
+                return;
+            }
+
+            const currentB2B = findB2bRowByWeekDates(currentWeekData);
+            if (!currentB2B) {
+                container.innerHTML = '<p style="text-align:center;color:var(--color-text-muted);">当前周暂无B端数据</p>';
+                return;
+            }
+
+            const prevWeekData = findWeeklyRow(cwB2b.year, cwB2b.week - 1);
+            const prevB2B = findB2bRowByWeekDates(prevWeekData);
+            const lastYearWeekData = findWeeklyRow(cwB2b.year - 1, cwB2b.week);
+            const yoyB2B = findB2bRowByWeekDates(lastYearWeekData);
+
+            const b2bMetricDefs = [
+                {
+                    label: '签约金额',
+                    display: currentB2B.签约金额,
+                    curNum: () => parseB2BWanAmount(currentB2B.签约金额),
+                    prevNum: () => (prevB2B ? parseB2BWanAmount(prevB2B.签约金额) : null),
+                    yoyNum: () => (yoyB2B ? parseB2BWanAmount(yoyB2B.签约金额) : null),
+                },
+                {
+                    label: '开票金额',
+                    display: currentB2B.开票金额,
+                    curNum: () => parseB2BWanAmount(currentB2B.开票金额),
+                    prevNum: () => (prevB2B ? parseB2BWanAmount(prevB2B.开票金额) : null),
+                    yoyNum: () => (yoyB2B ? parseB2BWanAmount(yoyB2B.开票金额) : null),
+                },
+                {
+                    label: '到款金额',
+                    display: currentB2B.到款金额,
+                    curNum: () => parseB2BWanAmount(currentB2B.到款金额),
+                    prevNum: () => (prevB2B ? parseB2BWanAmount(prevB2B.到款金额) : null),
+                    yoyNum: () => (yoyB2B ? parseB2BWanAmount(yoyB2B.到款金额) : null),
+                },
+                {
+                    label: '订单数',
+                    display: currentB2B.订单数,
+                    curNum: () => safeParseIntB2b(currentB2B.订单数),
+                    prevNum: () => (prevB2B ? safeParseIntB2b(prevB2B.订单数) : null),
+                    yoyNum: () => (yoyB2B ? safeParseIntB2b(yoyB2B.订单数) : null),
+                },
+                {
+                    label: '新签',
+                    display: currentB2B.新签,
+                    curNum: () => safeParseIntB2b(currentB2B.新签),
+                    prevNum: () => (prevB2B ? safeParseIntB2b(prevB2B.新签) : null),
+                    yoyNum: () => (yoyB2B ? safeParseIntB2b(yoyB2B.新签) : null),
+                },
+                {
+                    label: '续签',
+                    display: currentB2B.续签,
+                    curNum: () => safeParseIntB2b(currentB2B.续签),
+                    prevNum: () => (prevB2B ? safeParseIntB2b(prevB2B.续签) : null),
+                    yoyNum: () => (yoyB2B ? safeParseIntB2b(yoyB2B.续签) : null),
+                },
             ];
-            
-            container.innerHTML = metrics.map(metric => `
+
+            const metrics = b2bMetricDefs.map((def) => {
+                const c = def.curNum();
+                const p = def.prevNum();
+                const y = def.yoyNum();
+                return {
+                    label: def.label,
+                    value: def.display,
+                    wow: calculateChangeB2bPct(c, p),
+                    yoy: calculateChangeB2bPct(c, y),
+                };
+            });
+
+            container.innerHTML = metrics
+                .map(
+                    (m) => `
                 <div class="b2b-metric-card">
-                    <div class="b2b-metric-label">${metric.label}</div>
-                    <div class="b2b-metric-value">${metric.value}</div>
-                    ${metric.lastYearValue !== '-' ? `<div class="b2b-metric-lastyear">去年同期: ${metric.lastYearValue}</div>` : ''}
-                </div>
-            `).join('');
+                    <div class="b2b-metric-label">${m.label}</div>
+                    <div class="b2b-metric-value">${m.value}</div>
+                    <div class="changes">
+                        ${m.wow ? `<span class="change-item ${getChangeClass(m.wow)}">环比 ${m.wow}</span>` : ''}
+                        ${m.yoy ? `<span class="change-item ${getChangeClass(m.yoy)}">同比 ${m.yoy}</span>` : ''}
+                    </div>
+                </div>`
+                )
+                .join('');
         }
 
         // 生成AI分析（调用DeepSeek API）

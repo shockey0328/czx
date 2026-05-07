@@ -5,10 +5,11 @@
 }
 
 body {
-    font-family: 'Microsoft YaHei', Arial, sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    color: #ffffff;
+    font-family: var(--font-sans);
+    background: var(--color-bg);
+    color: var(--color-text);
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
 }
 
 .dashboard {
@@ -17,23 +18,24 @@ body {
     margin: 0 auto;
 }
 
-/* 标题样式 */
+/* 标题样式 — 与周度门户、月度核心对齐 */
 .dashboard-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    padding: 15px 20px;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: var(--space-4) var(--space-5);
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
 }
 
 .dashboard-header h1 {
-    font-size: 1.8rem;
-    color: #ff6b35;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    letter-spacing: -0.02em;
     margin: 0;
 }
 
@@ -48,33 +50,45 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    background: var(--color-well);
     padding: 10px 14px;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
 }
 
 .filter-group label {
     font-weight: 600;
-    color: #ff6b35;
+    color: var(--color-text-muted);
     font-size: 13px;
     white-space: nowrap;
 }
 
 .filter-group select {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #ffffff;
-    padding: 5px 8px;
-    border-radius: 4px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
     font-size: 13px;
+    font-family: var(--font-sans);
     min-width: 90px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.filter-group select:hover {
+    border-color: rgba(255, 107, 53, 0.35);
+}
+
+.filter-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18);
 }
 
 .filter-group select option {
-    background: #1a1a2e;
-    color: #ffffff;
+    background: var(--color-surface);
+    color: var(--color-text);
 }
 
 /* KPI卡片样式 */
@@ -86,39 +100,34 @@ body {
 }
 
 .kpi-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--color-primary);
+    border-radius: var(--radius-sm);
     padding: 14px 16px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
-    transition: all 0.3s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
     position: relative;
     overflow: hidden;
     min-height: 96px;
+    box-shadow: var(--shadow-sm);
 }
 
 .kpi-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #ff6b35, #f7931e);
+    display: none;
 }
 
 .kpi-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.3);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(255, 107, 53, 0.28);
 }
 
 .kpi-icon {
     font-size: 1.4rem;
-    opacity: 0.8;
+    opacity: 0.9;
     margin-bottom: 2px;
 }
 
@@ -129,21 +138,22 @@ body {
 
 .kpi-title {
     font-size: 12px;
-    color: #cccccc;
+    color: var(--color-text-muted);
     margin-bottom: 4px;
     font-weight: 500;
 }
 
 .kpi-value {
     font-size: 1.6rem;
-    font-weight: bold;
-    color: #ff6b35;
+    font-weight: 700;
+    color: var(--color-primary);
+    font-variant-numeric: tabular-nums;
     margin-bottom: 2px;
 }
 
 .kpi-subtitle {
     font-size: 10px;
-    color: #aaaaaa;
+    color: var(--color-text-muted);
     margin-top: auto;
 }
 
@@ -166,17 +176,17 @@ body {
 }
 
 .chart-container {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     padding: 12px;
-    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .chart-container:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.2);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(255, 107, 53, 0.22);
 }
 
 .chart-header {
@@ -187,9 +197,11 @@ body {
 }
 
 .chart-header h3 {
-    color: #ff6b35;
+    color: var(--color-primary);
     font-size: 1rem;
+    font-weight: 700;
     margin: 0;
+    letter-spacing: -0.02em;
 }
 
 .time-range-buttons {
@@ -198,42 +210,45 @@ body {
 }
 
 .time-btn, .heatmap-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #ffffff;
+    background: var(--color-well);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
     padding: 5px 10px;
-    border-radius: 5px;
+    border-radius: 999px;
     font-size: 11px;
+    font-family: var(--font-sans);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .time-btn:hover, .heatmap-btn:hover {
-    background: rgba(255, 107, 53, 0.3);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
 }
 
 .time-btn.active, .heatmap-btn.active {
-    background: #ff6b35;
-    border-color: #ff6b35;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
 }
 
 /* 热力图样式 */
 .heatmap-section {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     padding: 16px;
     margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
 }
 
 /* 数据表格样式 */
 .table-section {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     padding: 16px;
+    box-shadow: var(--shadow-sm);
 }
 
 .table-container {
@@ -252,14 +267,14 @@ body {
 #dataTable td {
     padding: 12px 8px;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--color-border);
     font-size: 13px;
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 #dataTable th {
-    background: rgba(255, 107, 53, 0.3);
-    color: #ffffff;
+    background: var(--color-primary-soft);
+    color: var(--color-text);
     font-weight: 600;
     position: sticky;
     top: 0;
@@ -267,14 +282,13 @@ body {
 }
 
 #dataTable tbody tr:nth-child(even) {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--color-well);
 }
 
 #dataTable tbody tr:hover {
-    background: rgba(255, 107, 53, 0.2);
+    background: var(--color-primary-soft);
 }
 
-/* 响应式设计 */
 /* 响应式设计 */
 @media (max-width: 1200px) {
     .main-charts-section {
@@ -416,22 +430,22 @@ canvas {
 
 .heatmap-low {
     background: rgba(255, 107, 53, 0.2) !important;
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .heatmap-medium {
     background: rgba(255, 107, 53, 0.5) !important;
-    color: #ffffff;
+    color: #fff;
 }
 
 .heatmap-high {
     background: rgba(255, 107, 53, 0.7) !important;
-    color: #ffffff;
+    color: #fff;
 }
 
 .heatmap-very-high {
     background: rgba(255, 107, 53, 1) !important;
-    color: #ffffff;
+    color: #fff;
     font-weight: bold;
 }
 
@@ -442,7 +456,7 @@ canvas {
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-well);
     border-radius: 4px;
 }
 
@@ -470,14 +484,14 @@ canvas {
 .heatmap-table td {
     padding: 8px 12px;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--color-border);
     font-size: 12px;
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .heatmap-table th {
-    background: rgba(255, 107, 53, 0.3);
-    color: #ffffff;
+    background: var(--color-primary-soft);
+    color: var(--color-text);
     font-weight: 600;
 }
 
@@ -494,12 +508,12 @@ canvas {
 }
 /* AI分析板块样式 */
 .ai-analysis-section {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     padding: 16px;
     margin-top: 25px;
+    box-shadow: var(--shadow-sm);
 }
 
 /* AI分析结果区域 */
@@ -511,17 +525,17 @@ canvas {
 }
 
 .analysis-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     padding: 16px;
-    transition: all 0.3s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    box-shadow: var(--shadow-sm);
 }
 
 .analysis-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.2);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(255, 107, 53, 0.22);
 }
 
 .analysis-header {
@@ -530,7 +544,7 @@ canvas {
     gap: 12px;
     margin-bottom: 15px;
     padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .analysis-icon {
@@ -542,22 +556,23 @@ canvas {
 }
 
 .analysis-header h3 {
-    color: #ff6b35;
+    color: var(--color-primary);
     font-size: 1.1rem;
+    font-weight: 700;
     margin: 0;
 }
 
 .analysis-content {
-    color: #ffffff !important;
+    color: var(--color-text) !important;
     line-height: 1.6;
     font-size: 14px;
     min-height: 120px;
 }
 
 .analyze-btn {
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-mid));
     border: none;
-    color: #ffffff;
+    color: #fff;
     padding: 10px 20px;
     border-radius: 8px;
     font-size: 14px;
@@ -596,7 +611,7 @@ canvas {
 .ai-placeholder {
     text-align: center;
     padding: 40px 20px;
-    color: #cccccc;
+    color: var(--color-text-muted);
 }
 
 .ai-icon {
@@ -610,8 +625,9 @@ canvas {
 }
 
 .ai-analysis-content {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
+    background: var(--color-well);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     padding: 20px;
     min-height: 200px;
 }
@@ -622,14 +638,14 @@ canvas {
     align-items: center;
     justify-content: center;
     padding: 40px 20px;
-    color: #ff6b35;
+    color: var(--color-primary);
 }
 
 .loading-spinner {
     width: 40px;
     height: 40px;
     border: 3px solid rgba(255, 107, 53, 0.3);
-    border-top: 3px solid #ff6b35;
+    border-top: 3px solid var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 15px;
@@ -641,18 +657,18 @@ canvas {
 }
 
 .ai-result {
-    color: #ffffff !important;
+    color: var(--color-text) !important;
     line-height: 1.6;
     font-size: 14px;
 }
 
 .ai-result p {
     margin-bottom: 10px;
-    color: #ffffff !important;
+    color: var(--color-text) !important;
 }
 
 .ai-result strong {
-    color: #ffffff !important;
+    color: var(--color-text) !important;
     font-weight: 600;
 }
 
@@ -700,7 +716,7 @@ canvas {
         min-height: 100px;
     }
 }
-/* 强制AI分析内容为统一的白色文字 */
+/* AI 分析正文与页面同为深字，数字强调用主色 */
 .analysis-content,
 .analysis-content *,
 .ai-result,
@@ -711,10 +727,9 @@ canvas {
 #optimizationSuggestions *,
 .ai-analysis-content,
 .ai-analysis-content * {
-    color: #ffffff !important;
+    color: var(--color-text) !important;
 }
 
-/* 只有数字和百分比用橙色强调 */
 .analysis-content .highlight-number,
 .ai-result .highlight-number,
 #overallAnalysis .highlight-number,
@@ -723,23 +738,21 @@ canvas {
 .ai-result .number-highlight,
 #overallAnalysis .number-highlight,
 #optimizationSuggestions .number-highlight {
-    color: #ff6b35 !important;
+    color: var(--color-primary) !important;
     font-weight: 600;
 }
 
-/* 确保strong标签也是白色，除非是数字 */
 .analysis-content strong,
 .ai-result strong,
 #overallAnalysis strong,
 #optimizationSuggestions strong {
-    color: #ffffff !important;
+    color: var(--color-text) !important;
     font-weight: 600;
 }
 
-/* 数字相关的strong标签用橙色 */
 .analysis-content strong.number-highlight,
 .ai-result strong.number-highlight,
 #overallAnalysis strong.number-highlight,
 #optimizationSuggestions strong.number-highlight {
-    color: #ff6b35 !important;
+    color: var(--color-primary) !important;
 }
