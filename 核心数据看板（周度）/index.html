@@ -44,11 +44,10 @@
             background: var(--color-bg);
             color: var(--color-text);
             line-height: 1.6;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            /* 周度看板：取消 100vh + overflow:hidden 强填，改为整页竖向流动；
+               每段（核心指标 / 趋势 / B 端 / 智能解读）一个清晰节，避免内部强行 inner-scroll */
         }
 
         /* 顶栏：品牌 + 周上下文（焦点）+ 周选择 */
@@ -130,11 +129,8 @@
         }
 
         .main-content {
-            flex: 1;
-            min-height: 0;
-            display: grid;
-            grid-template-columns: 1.18fr 1fr;
-            grid-template-rows: minmax(0, 1.15fr) minmax(0, 0.85fr);
+            display: flex;
+            flex-direction: column;
             gap: var(--space-5);
             padding: var(--space-5);
             background: var(--color-bg);
@@ -145,110 +141,173 @@
             border-radius: var(--radius);
             padding: var(--space-5);
             box-shadow: var(--shadow-md);
-            overflow: auto;
             border: 1px solid var(--color-border);
         }
 
-        .panel-title {
+        /* 段头：标题与右侧操作（如时间范围 toggle）同行，节省纵向空间 */
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
+            flex-wrap: wrap;
+        }
+
+        /* 复制按钮：主色 ghost；点击后短暂变实心反馈 */
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 107, 53, 0.32);
+            background: var(--color-surface);
             color: var(--color-primary);
+            font-size: 12px;
+            font-weight: 500;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--color-primary-soft);
+        }
+
+        .copy-btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18);
+        }
+
+        .copy-btn.copied {
+            background: var(--color-primary);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        .copy-btn svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            color: var(--color-text);
             font-size: 17px;
             font-weight: 700;
-            margin-bottom: var(--space-4);
-            display: flex;
-            align-items: center;
+            margin: 0;
             letter-spacing: -0.02em;
+            line-height: 1.3;
         }
 
-        .panel-title::before {
-            content: '';
-            width: 4px;
-            height: 20px;
-            background: linear-gradient(180deg, var(--color-primary) 0%, #ffb088 100%);
-            margin-right: var(--space-3);
-            border-radius: 2px;
+        /* panel 直接子元素 panel-title（无 panel-header 包裹时）保留 margin-bottom */
+        .panel > .panel-title {
+            margin-bottom: var(--space-4);
         }
 
-        /* 左上：周度核心数据指标 */
-        .core-metrics {
-            grid-area: 1 / 1 / 2 / 2;
-        }
-
+        /* 核心数据指标：8 卡铺成同列宽网格（用户=3 列、收入=2 列、使用=3 列） */
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(8, minmax(0, 1fr));
             gap: var(--space-4);
         }
 
         .metric-group {
-            background: #faf9f7;
+            background: var(--color-surface);
             border-radius: var(--radius-sm);
             padding: var(--space-4);
             border: 1px solid var(--color-border);
-            border-left: 4px solid var(--color-primary);
-            min-height: 140px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 1px 2px rgba(45, 42, 38, 0.04);
+            display: grid;
+            gap: var(--space-3);
+            align-content: start;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
 
         .metric-group:hover {
+            box-shadow: 0 6px 18px rgba(45, 42, 38, 0.08);
             transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
+        }
+
+        /* 三个 group 各自占多少列 + 内部的 metric-item 列数 */
+        .metric-group:nth-child(1) {
+            grid-column: span 3;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .metric-group:nth-child(2) {
+            grid-column: span 2;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .metric-group:nth-child(3) {
+            grid-column: span 3;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .metric-group h4 {
+            grid-column: 1 / -1;
             color: var(--color-primary);
-            margin-bottom: var(--space-3);
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 700;
-            text-align: center;
-            border-bottom: 1px solid var(--color-border);
+            letter-spacing: 0.04em;
+            text-transform: none;
             padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--color-border);
+            text-align: left;
         }
 
         .metric-item {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            margin-bottom: var(--space-3);
-            padding: var(--space-2) 0;
-            border-bottom: 1px solid rgba(232, 227, 219, 0.9);
-            text-align: center;
+            align-items: flex-start;
+            gap: var(--space-1);
+            margin: 0;
+            padding: 0;
+            border-bottom: none;
+            text-align: left;
+            min-width: 0;
         }
 
         .metric-item:last-child {
-            margin-bottom: 0;
+            margin: 0;
             border-bottom: none;
         }
 
         .metric-label {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--color-text-muted);
-            margin-bottom: var(--space-2);
+            margin: 0;
             font-weight: 500;
+            line-height: 1.25;
         }
 
         .metric-value {
-            font-size: 22px;
+            font-size: 26px;
             font-weight: 700;
             color: var(--color-text);
-            margin-bottom: var(--space-2);
+            margin: 0;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.02em;
+            line-height: 1.1;
         }
 
         .metric-changes {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: var(--space-1);
             align-items: center;
+            flex-wrap: wrap;
+            margin-top: 2px;
         }
 
         .change-item {
             font-size: 11px;
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 999px;
             background: #f0ebe4;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
+            line-height: 1.25;
         }
 
         /* 中国风格颜色：红涨绿跌 */
@@ -262,151 +321,128 @@
             color: #388e3c;
         }
 
-        /* 左下：B端核心数据指标 */
-        .b2b-metrics {
-            grid-area: 2 / 1 / 3 / 2;
-        }
-
+        /* B 端核心数据：6 卡横向并列 */
         .b2b-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: var(--space-3);
         }
 
         .b2b-metric-card {
             background: var(--color-surface);
             border-radius: var(--radius-sm);
-            padding: 16px;
-            text-align: center;
+            padding: var(--space-4);
+            text-align: left;
             border: 1px solid var(--color-border);
-            border-top: 3px solid var(--color-primary-mid);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 1px 2px rgba(45, 42, 38, 0.04);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            min-height: 132px;
+            gap: var(--space-2);
+            min-height: 124px;
+            min-width: 0;
         }
 
         .b2b-metric-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(45, 42, 38, 0.08);
         }
 
         .b2b-metric-label {
             font-size: 12px;
             color: var(--color-text-muted);
-            margin-bottom: 8px;
+            margin: 0;
             font-weight: 500;
+            line-height: 1.25;
         }
 
         .b2b-metric-value {
-            font-size: 18px;
+            font-size: 22px;
             font-weight: 700;
             color: var(--color-primary);
             font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
         }
 
         .b2b-metric-card .changes {
             display: flex;
-            gap: 8px;
+            gap: var(--space-1);
             margin-top: auto;
-            padding-top: 8px;
+            padding-top: var(--space-2);
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: flex-start;
             width: 100%;
         }
 
-        /* 右上：趋势分析 */
-        .trends-analysis {
-            grid-area: 1 / 2 / 2 / 3;
-        }
-
-        .trends-header {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
+        /* 趋势分析：4 张图横向并列；canvas 真正可读 */
         .charts-container {
-            height: calc(100% - 50px);
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: var(--space-4);
         }
 
         .chart-item {
-            background: #faf9f7;
+            background: var(--color-surface);
             border-radius: var(--radius-sm);
             padding: var(--space-4);
             border: 1px solid var(--color-border);
+            box-shadow: 0 1px 2px rgba(45, 42, 38, 0.04);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            min-width: 0;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .chart-item:hover {
+            box-shadow: 0 6px 18px rgba(45, 42, 38, 0.08);
+            transform: translateY(-1px);
         }
 
         .chart-item h5 {
-            color: var(--color-primary);
-            margin-bottom: var(--space-3);
+            color: var(--color-text);
+            margin: 0;
             font-size: 13px;
             font-weight: 600;
-            text-align: center;
+            text-align: left;
+            letter-spacing: -0.01em;
+        }
+
+        .chart-canvas-wrap {
+            position: relative;
+            width: 100%;
+            height: 200px;
         }
 
         .chart-item canvas {
-            max-height: 110px;
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            max-height: none;
         }
 
-        /* 右下：AI数据分析 */
-        .ai-analysis {
-            grid-area: 2 / 2 / 3 / 3;
-        }
-
-        .ai-header {
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .ai-title {
-            color: var(--color-primary);
-            font-size: 15px;
-            font-weight: 600;
-            margin: 0;
-            display: flex;
-            align-items: center;
-        }
-
-        .ai-title::before {
-            content: '';
-            width: 3px;
-            height: 15px;
-            background: var(--color-primary);
-            margin-right: 10px;
-            border-radius: 2px;
-        }
-
+        /* 智能解读：自适应列；不再 inner-scroll，整页随主流布局 */
         .deepseek-badge {
-            font-size: 9px;
-            color: #666;
-            background: #f0f0f0;
-            padding: 3px 8px;
-            border-radius: 12px;
-            border: 1px solid #ddd;
+            font-size: 11px;
+            color: var(--color-text-muted);
+            background: var(--color-bg);
+            padding: 3px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--color-border);
         }
 
         .ai-content {
             background: #faf9f7;
             border-radius: var(--radius-sm);
             padding: var(--space-4);
-            height: calc(100% - 80px);
-            overflow-y: auto;
             border: 1px solid var(--color-border);
         }
 
         .ai-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 15px;
-            height: 100%;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-4);
         }
 
         .ai-column {
@@ -420,22 +456,30 @@
         }
 
         .analysis-section h5 {
-            color: var(--color-primary);
+            color: var(--color-text);
             margin-bottom: 10px;
-            font-size: 12px;
-            font-weight: 600;
-            padding-bottom: 5px;
-            border-bottom: 2px solid var(--color-primary);
+            font-size: 13px;
+            font-weight: 700;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--color-border);
             position: relative;
+            letter-spacing: -0.01em;
         }
 
         .analysis-content {
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 12px;
-            height: calc(100% - 35px);
-            border-left: 3px solid #FF6B35;
-            font-size: 10px; /* 统一 AI 分析内容字号基线 */
+            background: var(--color-surface);
+            border-radius: var(--radius-sm);
+            padding: var(--space-4);
+            border: 1px solid var(--color-border);
+            box-shadow: 0 1px 2px rgba(45, 42, 38, 0.04);
+            font-size: 12px;
+            line-height: 1.6;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .analysis-content:hover {
+            box-shadow: 0 6px 18px rgba(45, 42, 38, 0.08);
+            transform: translateY(-1px);
         }
 
         /* AI 分析内容区：所有内联元素字号继承，避免“粗体/徽标/summary”字号不一致 */
@@ -496,8 +540,8 @@
         }
 
         .analysis-text {
-            font-size: 10px;
-            line-height: 1.4;
+            font-size: 12px;
+            line-height: 1.6;
             color: #555;
         }
 
@@ -510,8 +554,8 @@
         .analysis-list li {
             margin-bottom: 6px;
             padding-left: 12px;
-            font-size: 10px;
-            line-height: 1.4;
+            font-size: 12px;
+            line-height: 1.6;
             color: #555;
             position: relative;
         }
@@ -520,7 +564,7 @@
             content: '•';
             position: absolute;
             left: 0;
-            color: #FF6B35;
+            color: var(--color-primary);
             font-weight: bold;
         }
 
@@ -528,37 +572,52 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0 0 0;
+            margin-top: var(--space-3);
+            flex-wrap: wrap;
+            gap: var(--space-2);
         }
 
         .ai-status {
             display: flex;
-            gap: 8px;
+            gap: var(--space-2);
         }
 
+        /* 主色家族：active 实心、refresh ghost；与 SKILL「单主色」一致 */
         .status-btn {
-            padding: 4px 12px;
-            border-radius: 15px;
-            font-size: 9px;
-            border: none;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid transparent;
             cursor: pointer;
             font-weight: 500;
+            font-family: var(--font-sans);
+            transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
         }
 
         .status-btn.active {
-            background: #4CAF50;
-            color: white;
+            background: var(--color-primary);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.22);
         }
 
         .status-btn.refresh {
-            background: #f0f0f0;
-            color: #666;
-            border: 1px solid #ddd;
+            background: var(--color-surface);
+            color: var(--color-primary);
+            border-color: rgba(255, 107, 53, 0.32);
+        }
+
+        .status-btn.refresh:hover {
+            background: var(--color-primary-soft);
+        }
+
+        .status-btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18);
         }
 
         .ai-credit {
-            font-size: 9px;
-            color: #999;
+            font-size: 11px;
+            color: var(--color-text-muted);
         }
 
         .loading {
@@ -570,29 +629,28 @@
             grid-column: 1 / -1;
         }
 
-        /* 小橙子AI助手样式 */
+        /* 小橙子 AI 助手：右下角浮起，避开数据区 */
         .ai-assistant {
             position: fixed;
-            left: 30px;
-            top: 60%;
-            transform: translateY(-50%);
+            right: 24px;
+            bottom: 24px;
             z-index: 1000;
         }
 
         .ai-assistant-button {
-            width: 70px;
-            height: 70px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             background: white;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 6px 25px rgba(255, 107, 53, 0.25);
-            transition: all 0.3s ease;
+            box-shadow: 0 8px 22px rgba(255, 107, 53, 0.28);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
             position: relative;
             overflow: hidden;
-            border: 3px solid #FF6B35;
+            border: 3px solid var(--color-primary);
             padding: 8px;
         }
 
@@ -603,10 +661,10 @@
         }
 
         .ai-assistant-avatar {
-            width: 54px;
-            height: 54px;
+            width: 50px;
+            height: 50px;
             object-fit: contain;
-            /* 改为contain确保完整显示，不裁剪绿叶 */
+            /* contain：保留绿叶不裁剪 */
         }
 
         .ai-assistant-pulse {
@@ -630,35 +688,35 @@
             }
         }
 
-        /* AI对话框样式 */
+        /* AI 对话框：从浮动按钮上方向上展开 */
         .ai-chat-modal {
             position: fixed;
-            left: 30px;
-            top: 50%;
-            transform: translateY(-50%);
+            right: 24px;
+            bottom: 104px;
             width: 380px;
-            height: 600px;
+            height: min(600px, calc(100vh - 140px));
             background: white;
             border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 14px 40px rgba(45, 42, 38, 0.18);
             display: none;
             z-index: 1001;
             overflow: hidden;
+            border: 1px solid var(--color-border);
         }
 
         .ai-chat-modal.show {
             display: block;
-            animation: slideInLeft 0.3s ease;
+            animation: slideInUp 0.25s ease;
         }
 
-        @keyframes slideInLeft {
+        @keyframes slideInUp {
             from {
                 opacity: 0;
-                transform: translateY(-50%) translateX(-20px);
+                transform: translateY(12px);
             }
             to {
                 opacity: 1;
-                transform: translateY(-50%) translateX(0);
+                transform: translateY(0);
             }
         }
 
@@ -901,27 +959,32 @@
             }
         }
 
-        /* 响应式设计 */
-        @media (max-width: 1200px) {
-            .main-content {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto auto auto auto;
-                flex: none;
-                min-height: min-content;
+        /* 响应式：纵向流式布局保持不变，仅按容器宽度收敛栅格列数 */
+        @media (max-width: 1280px) {
+            .charts-container {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-            
-            .panel {
-                grid-area: auto;
+        }
+
+        @media (max-width: 1100px) {
+            .b2b-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
             }
-            
+
             .metrics-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(6, minmax(0, 1fr));
             }
-            
-            body {
-                overflow: auto;
-                height: auto;
-                min-height: 100vh;
+            .metric-group:nth-child(1) {
+                grid-column: span 6;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .metric-group:nth-child(2) {
+                grid-column: span 6;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .metric-group:nth-child(3) {
+                grid-column: span 6;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
             }
         }
 
@@ -931,79 +994,66 @@
                 height: auto;
                 padding: 15px;
                 gap: 15px;
+                align-items: stretch;
             }
-            
+
+            .nav-actions {
+                justify-content: flex-start;
+            }
+
             .main-content {
-                padding: 10px;
-                gap: 15px;
+                padding: var(--space-3);
+                gap: var(--space-4);
             }
-            
+
             .panel {
-                padding: 15px;
+                padding: var(--space-4);
             }
-            
+
             .charts-container {
                 grid-template-columns: 1fr;
             }
-            
+
+            .chart-canvas-wrap {
+                height: 220px;
+            }
+
             .b2b-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-            
-            .metrics-grid {
-                grid-template-columns: 1fr;
+
+            .metric-group:nth-child(1),
+            .metric-group:nth-child(2),
+            .metric-group:nth-child(3) {
+                grid-column: span 6;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-            
+
             .ai-grid {
                 grid-template-columns: 1fr;
             }
-            
-            .deepseek-badge {
-                font-size: 8px;
-                padding: 1px 4px;
-            }
-            
-            /* 移动端AI助手调整 */
+
             .ai-assistant {
-                left: 15px;
-                bottom: 80px;
-                top: auto;
-                transform: none;
+                right: 16px;
+                bottom: 16px;
             }
-            
+
             .ai-assistant-button {
-                width: 60px;
-                height: 60px;
+                width: 56px;
+                height: 56px;
             }
-            
+
             .ai-assistant-avatar {
                 width: 42px;
                 height: 42px;
             }
-            
+
             .ai-chat-modal {
-                left: 15px;
-                right: 15px;
-                top: 50px;
-                bottom: 50px;
+                left: 12px;
+                right: 12px;
+                bottom: 88px;
                 width: auto;
-                height: auto;
-                transform: none;
-            }
-            
-            .ai-chat-modal.show {
-                animation: slideInUp 0.3s ease;
-            }
-            
-            @keyframes slideInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
+                height: min(560px, calc(100vh - 120px));
             }
         }
     </style>
@@ -1025,7 +1075,16 @@
     <!-- 主内容：与月度同一阅读顺序（核心指标 → 趋势 → B端 → 智能解读） -->
     <main class="main-content" id="dashboard-main" aria-label="周度核心数据">
         <section class="panel core-metrics" aria-labelledby="wk-sec-core">
-            <h3 class="panel-title" id="wk-sec-core">核心指标</h3>
+            <div class="panel-header">
+                <h3 class="panel-title" id="wk-sec-core">核心指标</h3>
+                <button type="button" class="copy-btn" id="copyMetricsBtn" aria-label="复制核心指标到剪贴板">
+                    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                        <path d="M3 11V3.5C3 2.94772 3.44772 2.5 4 2.5H10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                    <span class="copy-btn-text">复制</span>
+                </button>
+            </div>
             <div class="metrics-grid">
                 <!-- 用户指标 -->
                 <div class="metric-group">
@@ -1109,8 +1168,8 @@
         </section>
 
         <section class="panel trends-analysis" aria-labelledby="wk-sec-trends">
-            <h3 class="panel-title" id="wk-sec-trends">趋势分析</h3>
-            <div class="trends-header">
+            <div class="panel-header">
+                <h3 class="panel-title" id="wk-sec-trends">趋势分析</h3>
                 <div class="trend-range-toggle" role="group" aria-label="趋势时间范围">
                     <button type="button" class="trend-range-btn" data-weeks="2">近2周</button>
                     <button type="button" class="trend-range-btn active" data-weeks="3">近3周</button>
@@ -1120,19 +1179,19 @@
             <div class="charts-container">
                 <div class="chart-item">
                     <h5>活跃用户趋势</h5>
-                    <canvas id="activeUsersChart"></canvas>
+                    <div class="chart-canvas-wrap"><canvas id="activeUsersChart"></canvas></div>
                 </div>
                 <div class="chart-item">
                     <h5>付费用户趋势</h5>
-                    <canvas id="paidUsersChart"></canvas>
+                    <div class="chart-canvas-wrap"><canvas id="paidUsersChart"></canvas></div>
                 </div>
                 <div class="chart-item">
                     <h5>营收趋势</h5>
-                    <canvas id="revenueChart"></canvas>
+                    <div class="chart-canvas-wrap"><canvas id="revenueChart"></canvas></div>
                 </div>
                 <div class="chart-item">
                     <h5>使用率趋势</h5>
-                    <canvas id="usageChart"></canvas>
+                    <div class="chart-canvas-wrap"><canvas id="usageChart"></canvas></div>
                 </div>
             </div>
         </section>
@@ -1145,8 +1204,9 @@
         </section>
 
         <section class="panel ai-analysis" aria-labelledby="wk-sec-ai">
-            <div class="ai-header">
-                <h3 class="ai-title" id="wk-sec-ai">智能解读</h3>
+            <div class="panel-header">
+                <h3 class="panel-title" id="wk-sec-ai">智能解读</h3>
+                <span class="deepseek-badge">DeepSeek AI</span>
             </div>
             <div class="ai-content">
                 <div class="ai-grid" id="aiAnalysis">
@@ -1385,6 +1445,7 @@
             loadHardcodedData();
             setupEventListeners();
             setupAIAssistant(); // 初始化AI助手
+            setupCopyMetricsButton();
             populateWeekSelector();
             updateB2BMetrics();
             
@@ -2215,6 +2276,135 @@
                 return (num / 10000).toFixed(1) + '万';
             }
             return num.toLocaleString();
+        }
+
+        /* ───── 复制核心指标到剪贴板 ─────
+         * 输出固定格式（3 行，● 起头）：
+         *   ● 周活 X万（环比X% 同比X%），新增 X万（…），次周留存 X%（环比Xpp 同比Xpp）
+         *   ● 营收 X万（…），ARPU X.XX（…）
+         *   ● 深度访问率 X%（…），使用率 X%（…），大会员活跃 X%（…）
+         */
+        function fmtCopyValue(num, type) {
+            if (num == null || !Number.isFinite(num)) return '-';
+            if (type === 'percent') {
+                return Math.round(num) + '%';
+            }
+            if (num >= 10000) {
+                const wan = num / 10000;
+                return wan.toFixed(1).replace(/\.0$/, '') + '万';
+            }
+            if (Number.isInteger(num)) return String(num);
+            return num.toFixed(2);
+        }
+
+        function fmtCopyChange(current, previous, type) {
+            if (!Number.isFinite(previous) || !Number.isFinite(current)) return null;
+            if (type === 'percent') {
+                const diff = current - previous;
+                const sign = diff >= 0 ? '+' : '-';
+                const text = Math.abs(diff).toFixed(1).replace(/\.0$/, '');
+                return `${sign}${text}pp`;
+            }
+            if (previous === 0) return null;
+            const pct = ((current - previous) / previous) * 100;
+            const sign = pct >= 0 ? '+' : '-';
+            const text = Math.abs(pct).toFixed(1).replace(/\.0$/, '');
+            return `${sign}${text}%`;
+        }
+
+        function buildCoreMetricsCopyText() {
+            const cw = normalizeCurrentWeek(currentWeek);
+            if (!cw) return '';
+            const cur = findWeeklyRow(cw.year, cw.week);
+            if (!cur) return '';
+            const lw = findWeeklyRow(cw.year, cw.week - 1);
+            const ly = findWeeklyRow(cw.year - 1, cw.week);
+
+            const wrap = (label, value, type, lwVal, lyVal) => {
+                const wow = fmtCopyChange(value, lwVal, type);
+                const yoy = fmtCopyChange(value, lyVal, type);
+                const v = fmtCopyValue(value, type);
+                const parts = [];
+                if (wow) parts.push(`环比${wow}`);
+                if (yoy) parts.push(`同比${yoy}`);
+                const tail = parts.length ? `（${parts.join(' ')}）` : '';
+                return `${label} ${v}${tail}`;
+            };
+
+            const line1 = '● ' + [
+                wrap('周活', cur.活跃用户, 'number', lw?.活跃用户, ly?.活跃用户),
+                wrap('新增', cur.新用户, 'number', lw?.新用户, ly?.新用户),
+                wrap('次周留存', cur.次周留存率, 'percent', lw?.次周留存率, ly?.次周留存率),
+            ].join('，');
+
+            const line2 = '● ' + [
+                wrap('营收', cur.营收, 'number', lw?.营收, ly?.营收),
+                wrap('ARPU', cur.ARPU, 'number', lw?.ARPU, ly?.ARPU),
+            ].join('，');
+
+            const line3 = '● ' + [
+                wrap('深度访问率', cur.深度访问率, 'percent', lw?.深度访问率, ly?.深度访问率),
+                wrap('使用率', cur.使用率, 'percent', lw?.使用率, ly?.使用率),
+                wrap('大会员活跃', cur.大会员活跃率, 'percent', lw?.大会员活跃率, ly?.大会员活跃率),
+            ].join('，');
+
+            return [line1, line2, line3].join('\n');
+        }
+
+        async function copyTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (e) {
+                    console.warn('Clipboard API 不可用，回退 execCommand', e);
+                }
+            }
+            // 兼容非 https / 旧浏览器
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            ta.style.top = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+            document.body.removeChild(ta);
+            return ok;
+        }
+
+        function setupCopyMetricsButton() {
+            const btn = document.getElementById('copyMetricsBtn');
+            if (!btn) return;
+            const textEl = btn.querySelector('.copy-btn-text');
+            const original = textEl ? textEl.textContent : '复制';
+            let resetTimer = null;
+
+            btn.addEventListener('click', async () => {
+                const text = buildCoreMetricsCopyText();
+                if (!text) {
+                    if (textEl) textEl.textContent = '暂无数据';
+                    clearTimeout(resetTimer);
+                    resetTimer = setTimeout(() => {
+                        if (textEl) textEl.textContent = original;
+                    }, 1500);
+                    return;
+                }
+                const ok = await copyTextToClipboard(text);
+                if (ok) {
+                    btn.classList.add('copied');
+                    if (textEl) textEl.textContent = '已复制';
+                } else {
+                    if (textEl) textEl.textContent = '复制失败';
+                }
+                clearTimeout(resetTimer);
+                resetTimer = setTimeout(() => {
+                    btn.classList.remove('copied');
+                    if (textEl) textEl.textContent = original;
+                }, 1500);
+            });
         }
 
         // 更新图表

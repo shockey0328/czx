@@ -15,11 +15,18 @@ const DASHBOARDS = {
 
 let currentPeriod = 'weekly';
 
+// 门户启动时刻；所有子看板 iframe URL 共用同一份 cache-buster，
+// 仅在重新打开/刷新门户时变化，避免子看板 HTML 被浏览器长期缓存而看不到样式更新。
+const PORTAL_BUILD = Date.now();
+
 // 将相对路径转为可用于 iframe src 的路径
 function resolvePath(relativePath) {
   if (relativePath.startsWith('http')) return relativePath;
-  if (window.location.protocol === 'file:') return relativePath;
-  return '/' + relativePath.replace(/^\.\//, '');
+  const base = window.location.protocol === 'file:'
+    ? relativePath
+    : '/' + relativePath.replace(/^\.\//, '');
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}v=${PORTAL_BUILD}`;
 }
 
 // 渲染加载中
