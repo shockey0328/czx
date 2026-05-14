@@ -80,74 +80,29 @@ if ($ok) { $success++ } else { $fail++ }
 $results += [PSCustomObject]@{ 看板 = "周度搜索数据看板"; 状态 = if ($ok) { "[OK]" } else { "[FAIL]" } }
 
 # ── 3. 周度用户增长数据看板 ─────────────────────────────────────────────────
+# 使用 Node build-embedded-b64.js：渠道等 CSV 可能为 UTF-8 或 GB18030（Excel 中文 Windows 常见），
+# 由 iconv-lite 判别解码；勿用 PowerShell Get-Content -Encoding UTF8 拼 embedded，否则会乱码。
 Write-Step "周度用户增长数据看板"
 $ok = $false
 try {
-    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-
-    # 渠道名乱码映射表（normalized.csv 里的乱码 -> 正确中文）
-    $channelAlias = @{
-        "ѧ��"                               = "学伴"
-        "���������ŵײ���ť"                  = "组卷网服务号底部按钮"
-        "��������"                          = "其他渠道"
-        "��������ں����û�����"               = "组卷网公众号新用户提醒"
-        "��������ںŵײ���ť"                  = "组卷网公众号底部按钮"
-        "С����ҳbanner"                     = "小卷首页banner"
-        "�������������û�����"               = "组卷网服务号新用户提醒"
-        "��ƽ���Ǵ���Ϣ�Ƽ����޹�˾"         = "南平市智达信息科技有限公司"
-        "С���������"                        = "小卷开屏弹窗"
-        "��������ں�����(i)"                 = "组卷网公众号推文(i)"
-        "ɽ���ͽ���"                         = "马兰花开"
-        "���շ�˱������洫ý���޹�˾"         = "江苏凤凰报刊出版传媒有限公司"
-        "�����н�ί-��Сѧ"                   = "北京市教委-京小学"
-        "ͨ��"                               = "通用"
-        "���ݴ�ѧ�����������"               = "山西和教育"
-        "��������ں�����"                    = "龙江教研在线"
+    Push-Location $GROWTH_WEEKLY_DIR
+    if (-not (Test-Path ".\build-embedded-b64.js")) { throw "找不到：build-embedded-b64.js" }
+    if (-not (Test-Path ".\node_modules\iconv-lite\package.json")) {
+        Write-Host "    正在安装依赖（iconv-lite）…" -ForegroundColor DarkGray
+        & npm install --no-fund --no-audit 2>&1 | ForEach-Object { Write-Host "    $_" }
+        if ($LASTEXITCODE -ne 0) { throw "npm install 失败（exit $LASTEXITCODE）" }
     }
-
-    # 读取渠道 CSV，在内存中修复渠道名，返回修复后的 UTF-8 字节（不修改原文件）
-    function Get-FixedChannelCsvBytes($csvPath) {
-        $lines = Get-Content $csvPath -Encoding UTF8
-        $fixed = foreach ($line in $lines) {
-            if (-not $line.Trim()) { continue }
-            $cols = $line -split ","
-            if ($cols.Count -ge 3) {
-                $name = $cols[2]
-                if ($channelAlias.ContainsKey($name)) {
-                    $cols[2] = $channelAlias[$name]
-                }
-            }
-            $cols -join ","
-        }
-        return [System.Text.Encoding]::UTF8.GetBytes(($fixed -join "`n"))
-    }
-
-    $b64 = @{}
-    foreach ($key in @("core", "daily")) {
-        $csvPath = $GROWTH_CSV[$key]
-        if (-not (Test-Path $csvPath)) { throw "找不到：$csvPath" }
-        $b64[$key] = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($csvPath))
-    }
-    foreach ($key in @("activeCh", "newCh")) {
-        $csvPath = $GROWTH_CSV[$key]
-        if (-not (Test-Path $csvPath)) { throw "找不到：$csvPath" }
-        $fixedBytes = Get-FixedChannelCsvBytes $csvPath
-        $b64[$key] = [Convert]::ToBase64String($fixedBytes)
-    }
-
-    $js  = "var EMBEDDED_CSV_B64 = {`n"
-    $js += "  core: `"$($b64['core'])`",`n"
-    $js += "  daily: `"$($b64['daily'])`",`n"
-    $js += "  activeCh: `"$($b64['activeCh'])`",`n"
-    $js += "  newCh: `"$($b64['newCh'])`"`n"
-    $js += "};`n"
-    [System.IO.File]::WriteAllText($GROWTH_EMBEDDED, $js, [System.Text.Encoding]::UTF8)
-    $dailyLines = (Get-Content $GROWTH_CSV["daily"] | Measure-Object -Line).Lines - 1
-    $coreLines  = (Get-Content $GROWTH_CSV["core"]  | Measure-Object -Line).Lines - 1
+    $out = & node build-embedded-b64.js 2>&1
+    $out | ForEach-Object { Write-Host "    $_" }
+    if ($LASTEXITCODE -ne 0) { throw "node build-embedded-b64.js 失败（exit $LASTEXITCODE）" }
+    $dailyLines = (Get-Content -LiteralPath $GROWTH_CSV["daily"] | Measure-Object -Line).Lines - 1
+    $coreLines  = (Get-Content -LiteralPath $GROWTH_CSV["core"]  | Measure-Object -Line).Lines - 1
     Write-OK "周度用户增长数据看板 完成（日度 $dailyLines 条，核心 $coreLines 条）"
     $ok = $true
 } catch {
     Write-Fail "周度用户增长数据看板 异常：$_"
+} finally {
+    Pop-Location
 }
 if ($ok) { $success++ } else { $fail++ }
 $results += [PSCustomObject]@{ 看板 = "周度用户增长数据看板"; 状态 = if ($ok) { "[OK]" } else { "[FAIL]" } }
