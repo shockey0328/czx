@@ -1197,7 +1197,16 @@
         </section>
 
         <section class="panel b2b-metrics" aria-labelledby="wk-sec-b2b">
-            <h3 class="panel-title" id="wk-sec-b2b">B端核心数据</h3>
+            <div class="panel-header">
+                <h3 class="panel-title" id="wk-sec-b2b">B端核心数据</h3>
+                <button type="button" class="copy-btn" id="copyB2bBtn" aria-label="复制B端核心数据到剪贴板">
+                    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                        <path d="M3 11V3.5C3 2.94772 3.44772 2.5 4 2.5H10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                    <span class="copy-btn-text">复制</span>
+                </button>
+            </div>
             <div class="b2b-grid" id="b2bMetrics">
                 <!-- B端指标将通过JavaScript动态生成 -->
             </div>
@@ -1408,11 +1417,20 @@
 
         /** 统一为数字，避免 JSON/下拉框把 year、week 解析成字符串导致 === 匹配失败（同比/环比不显示） */
         function normalizeCurrentWeek(raw) {
-            if (!raw || raw.year == null || raw.week == null) return null;
-            const year = Number(raw.year);
-            const week = Number(raw.week);
+            if (!raw) return null;
+            const yearSrc = raw.year != null ? raw.year : raw.年份;
+            const weekSrc = raw.week != null ? raw.week : raw.周数;
+            if (yearSrc == null || weekSrc == null) return null;
+            const year = Number(yearSrc);
+            const week = typeof weekSrc === 'number'
+                ? weekSrc
+                : parseInt(String(weekSrc).replace(/[^0-9]/g, ''), 10);
             if (!Number.isFinite(year) || !Number.isFinite(week)) return null;
             return { year, week };
+        }
+
+        function normalizeDateLabel(s) {
+            return String(s || '').replace(/\s/g, '');
         }
 
         function findWeeklyRow(year, week) {
@@ -1440,28 +1458,56 @@
             initWhenReady();
         });
 
+        /** 默认选中最新周，并同步下拉框（须在 populate 之后设置 value） */
+        function applyDefaultWeekSelection() {
+            if (weeklyData.length === 0) return;
+            const latestWeek = weeklyData.reduce((best, cur) => {
+                if (cur.年份 > best.年份 || (cur.年份 === best.年份 && cur.周数 > best.周数)) return cur;
+                return best;
+            });
+            currentWeek = normalizeCurrentWeek({ year: latestWeek.年份, week: latestWeek.周数 });
+            populateWeekSelector();
+            const select = document.getElementById('weekSelect');
+            if (!select || !currentWeek) return;
+            const weekKey = JSON.stringify({ year: currentWeek.year, week: currentWeek.week });
+            select.value = weekKey;
+            if (select.value !== weekKey) {
+                const opt = Array.from(select.options).find((o) => o.value === weekKey);
+                if (opt) select.value = weekKey;
+            }
+        }
+
+        function refreshWeekDashboard() {
+            updateAllMetrics();
+            try {
+                updateCharts();
+            } catch (err) {
+                console.error('趋势图更新失败:', err);
+            }
+        }
+
+        /** iframe 首次布局后补刷 B 端，避免与趋势图同批更新时被跳过 */
+        function scheduleB2bRefresh() {
+            [0, 300, 800].forEach((ms) => setTimeout(() => updateB2BMetrics(), ms));
+        }
+
         // 初始化应用
         function initializeApp() {
             loadHardcodedData();
             setupEventListeners();
             setupAIAssistant(); // 初始化AI助手
             setupCopyMetricsButton();
-            populateWeekSelector();
-            updateB2BMetrics();
-            
-            // 默认选择最新周度（按年份+周数取最大，不依赖数组顺序）
+            setupCopyB2bButton();
+
             if (weeklyData.length > 0) {
-                const latestWeek = weeklyData.reduce((best, cur) => {
-                    if (cur.年份 > best.年份 || (cur.年份 === best.年份 && cur.周数 > best.周数)) return cur;
-                    return best;
-                });
-                currentWeek = normalizeCurrentWeek({ year: latestWeek.年份, week: latestWeek.周数 });
-                document.getElementById('weekSelect').value = JSON.stringify(currentWeek);
-                updateAllMetrics();
-                updateCharts();
+                applyDefaultWeekSelection();
+                refreshWeekDashboard();
+                scheduleB2bRefresh();
                 generateAIAnalysis();
             } else {
+                populateWeekSelector();
                 updateWeekContextBar();
+                updateB2BMetrics();
             }
         }
 
@@ -1492,21 +1538,23 @@
                     console.log('周度核心数据加载成功，共', weeklyData.length, '条');
                 }
                 
-                // 加载B端核心数据
+                // 加载B端核心数据（按起止日期与周度核心数据对齐周次，避免匹配失败）
                 if (dashboardData['B端核心数据_utf8']) {
-                    // B端数据结构不同，需要从日期推算年份和周数
                     b2bData = dashboardData['B端核心数据_utf8'].map((row, index) => {
-                        // 从起始日期提取年份
                         const dateMatch = row['起始日期'].match(/(\d{4})年/);
-                        const year = dateMatch ? parseInt(dateMatch[1]) : 2026;
-                        const weekNum = index + 1; // 简单递增周数
+                        const yearFallback = dateMatch ? parseInt(dateMatch[1]) : 2026;
+                        const matchedWeek = weeklyData.find(
+                            (w) =>
+                                normalizeDateLabel(w.起始日期) === normalizeDateLabel(row['起始日期']) &&
+                                normalizeDateLabel(w.结尾日期) === normalizeDateLabel(row['结尾日期'])
+                        );
                         const 到款列 = row['到款金额'] != null && String(row['到款金额']).trim() !== ''
                             ? row['到款金额']
                             : row['回款金额'];
 
                         return {
-                            年份: year,
-                            周数: weekNum,
+                            年份: matchedWeek ? matchedWeek.年份 : yearFallback,
+                            周数: matchedWeek ? matchedWeek.周数 : index + 1,
                             起始日期: row['起始日期'],
                             结尾日期: row['结尾日期'],
                             签约金额: row['签约金额'],
@@ -2067,9 +2115,8 @@
                             currentWeek = normalizeCurrentWeek(JSON.parse(selectedWeek));
                             console.log('当前选择的周度:', currentWeek);
                             if (!currentWeek) return;
-                            updateAllMetrics();
-                            updateCharts();
-                            updateB2BMetrics(); // 添加B端数据更新
+                            refreshWeekDashboard();
+                            scheduleB2bRefresh();
                             generateAIAnalysis();
                         } catch (error) {
                             console.error('解析周度数据失败:', error);
@@ -2170,6 +2217,7 @@
             if (!cw) {
                 console.log('没有选择周度，跳过更新');
                 updateWeekContextBar();
+                updateB2BMetrics();
                 return;
             }
             
@@ -2178,6 +2226,7 @@
             if (!currentData) {
                 console.log('找不到当前周度的数据');
                 updateWeekContextBar();
+                updateB2BMetrics();
                 return;
             }
 
@@ -2201,6 +2250,7 @@
             updateMetric('usageRate', currentData.使用率, lastWeekData?.使用率, lastYearData?.使用率, 'percent');
             updateMetric('vipActive', currentData.大会员活跃率, lastWeekData?.大会员活跃率, lastYearData?.大会员活跃率, 'percent');
             updateWeekContextBar();
+            updateB2BMetrics();
         }
 
         // 更新单个指标
@@ -2375,15 +2425,15 @@
             return ok;
         }
 
-        function setupCopyMetricsButton() {
-            const btn = document.getElementById('copyMetricsBtn');
+        function setupCopyButton(btnId, buildText) {
+            const btn = document.getElementById(btnId);
             if (!btn) return;
             const textEl = btn.querySelector('.copy-btn-text');
             const original = textEl ? textEl.textContent : '复制';
             let resetTimer = null;
 
             btn.addEventListener('click', async () => {
-                const text = buildCoreMetricsCopyText();
+                const text = buildText();
                 if (!text) {
                     if (textEl) textEl.textContent = '暂无数据';
                     clearTimeout(resetTimer);
@@ -2405,6 +2455,51 @@
                     if (textEl) textEl.textContent = original;
                 }, 1500);
             });
+        }
+
+        function setupCopyMetricsButton() {
+            setupCopyButton('copyMetricsBtn', buildCoreMetricsCopyText);
+        }
+
+        /** 当前所选周的 B 端行（与 updateB2BMetrics 同源） */
+        function getCurrentB2BRow() {
+            const cw = normalizeCurrentWeek(currentWeek);
+            if (!cw) return null;
+            const weekRow = findWeeklyRow(cw.year, cw.week);
+            if (!weekRow) return null;
+            return findB2bRowByWeekDates(weekRow);
+        }
+
+        /** 复制文案示例：B端：订单1单（ 续签1单），开票金额为1万 */
+        function formatB2bWanForCopy(val) {
+            const n = parseB2BWanAmount(val);
+            if (n == null) return null;
+            if (Number.isInteger(n) || Math.abs(n - Math.round(n)) < 1e-6) {
+                return String(Math.round(n));
+            }
+            return String(Number(n.toFixed(2))).replace(/\.?0+$/, '');
+        }
+
+        function buildB2bCopyText() {
+            const row = getCurrentB2BRow();
+            if (!row) return '';
+
+            const orders = safeParseIntB2b(row.订单数) ?? 0;
+            const xin = safeParseIntB2b(row.新签) ?? 0;
+            const xu = safeParseIntB2b(row.续签) ?? 0;
+            const detailParts = [];
+            if (xin > 0) detailParts.push(`新签${xin}单`);
+            if (xu > 0) detailParts.push(`续签${xu}单`);
+            const detail = detailParts.length ? `（ ${detailParts.join(' ')}）` : '';
+
+            const wanStr = formatB2bWanForCopy(row.开票金额);
+            const invoicePart = wanStr != null ? `开票金额为${wanStr}万` : '开票金额为-';
+
+            return `B端：订单${orders}单${detail}，${invoicePart}`;
+        }
+
+        function setupCopyB2bButton() {
+            setupCopyButton('copyB2bBtn', buildB2bCopyText);
         }
 
         // 更新图表
@@ -2644,10 +2739,20 @@
         }
 
         function findB2bRowByWeekDates(weekRow) {
-            if (!weekRow) return null;
-            return b2bData.find(
-                (item) => item.起始日期 === weekRow.起始日期 && item.结尾日期 === weekRow.结尾日期
-            ) || null;
+            if (!weekRow || !b2bData || !b2bData.length) return null;
+            const start = normalizeDateLabel(weekRow.起始日期);
+            const end = normalizeDateLabel(weekRow.结尾日期);
+            const byDate = b2bData.find(
+                (item) =>
+                    normalizeDateLabel(item.起始日期) === start &&
+                    normalizeDateLabel(item.结尾日期) === end
+            );
+            if (byDate) return byDate;
+            return (
+                b2bData.find(
+                    (item) => item.年份 === weekRow.年份 && item.周数 === weekRow.周数
+                ) || null
+            );
         }
 
         // 更新B端指标（字段、环比/同比、卡片结构与月度核心看板一致）

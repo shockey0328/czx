@@ -12,6 +12,65 @@ let currentSort = 'uv';
 let currentConversionRange = 21;
 let currentConversionType = 'user'; // 'user' | 'count'，默认展示搜索用户转化率
 let currentRetentionWeeks = 5;
+const chartInstances = { funnel: null, topKeywords: null, wordCloud: null };
+
+function weekKeyFor(weekNum) {
+    return `W${String(parseInt(weekNum, 10)).padStart(2, '0')}`;
+}
+
+function getFunnelWeekNumbers() {
+    if (!allData.funnel || !allData.funnel.length) return [];
+    return allData.funnel
+        .map((item) => {
+            const m = String(item.week_key || '').match(/^W(\d+)$/i);
+            return m ? parseInt(m[1], 10) : null;
+        })
+        .filter((n) => n !== null)
+        .sort((a, b) => a - b);
+}
+
+/** 关键词周次与漏斗周次对齐：默认选「两边都有数据」的最新周 */
+function resolveDefaultWeek(weekNums) {
+    if (!weekNums.length) return 1;
+    const funnelWeeks = getFunnelWeekNumbers();
+    if (!funnelWeeks.length) return weekNums[weekNums.length - 1];
+    const latestKw = weekNums[weekNums.length - 1];
+    if (funnelWeeks.includes(latestKw)) return latestKw;
+    const overlap = funnelWeeks.filter((w) => weekNums.includes(w));
+    if (overlap.length) return overlap[overlap.length - 1];
+    return funnelWeeks[funnelWeeks.length - 1];
+}
+
+function findFunnelRow(weekNum) {
+    const n = parseInt(weekNum, 10);
+    if (!Number.isFinite(n) || !allData.funnel.length) return null;
+    const exact = allData.funnel.find((item) => item.week_key === weekKeyFor(n));
+    if (exact) return exact;
+    const funnelWeeks = getFunnelWeekNumbers();
+    const candidates = funnelWeeks.filter((w) => w <= n);
+    const fallback = candidates.length ? candidates[candidates.length - 1] : funnelWeeks[funnelWeeks.length - 1];
+    if (fallback == null) return null;
+    return allData.funnel.find((item) => item.week_key === weekKeyFor(fallback)) || null;
+}
+
+function getOrInitChart(domId, cacheKey) {
+    const el = document.getElementById(domId);
+    if (!el) return null;
+    let inst = echarts.getInstanceByDom(el);
+    if (!inst) {
+        inst = echarts.init(el);
+        if (cacheKey) chartInstances[cacheKey] = inst;
+    } else if (cacheKey) {
+        chartInstances[cacheKey] = inst;
+    }
+    return inst;
+}
+
+function resizeDashboardCharts() {
+    Object.values(chartInstances).forEach((c) => {
+        try { if (c && !c.isDisposed()) c.resize(); } catch (_) { /* ignore */ }
+    });
+}
 
 // 初始化 - 确保ECharts已加载
 function initApp() {
@@ -31,10 +90,16 @@ function initApp() {
         initEventListeners();
         console.log('✅ 开始渲染图表');
         updateAllCharts();
-        // iframe 内容器可能尚未获得尺寸，延迟触发 resize 确保图表正确显示
+        // iframe 内首次布局可能为 0 宽高，延迟重绘漏斗等图表
         setTimeout(function() {
+            updateFunnelChart();
+            resizeDashboardCharts();
             window.dispatchEvent(new Event('resize'));
         }, 400);
+        setTimeout(function() {
+            updateFunnelChart();
+            resizeDashboardCharts();
+        }, 1200);
         console.log('✅ 应用初始化完成');
     }).catch(error => {
         console.error('❌ 初始化失败:', error);
@@ -73,9 +138,9 @@ async function loadAllData() {
             console.log(`第${i}周数据加载成功，共 ${allData.keywords[i].length} 条`);
         }
 
-        // 默认选中最新周，并动态生成周选择器选项
+        // 默认选中最新周（须与漏斗数据周次对齐，避免仅有搜索词无漏斗）
         if (weekNums.length > 0) {
-            currentWeek = weekNums[weekNums.length - 1];
+            currentWeek = resolveDefaultWeek(weekNums);
             const selector = document.getElementById('weekSelector');
             if (selector) {
                 selector.innerHTML = weekNums.slice().reverse().map(n =>
@@ -243,12 +308,262 @@ function initEventListeners() {
             updateRetentionCharts();
         });
     });
+
+    setupCopyHotKeywordsButton();
+}
+
+// ── 热搜词复制：按本周 TOP100（UV）分类汇总 ──
+
+const HOT_KEYWORD_SPECIAL_TOPICS = [
+    '导数', '日语', '立体几何', '作文', '听力', '文言文', '完形填空', '阅读理解',
+    '电磁感应', '有机化学', '三角函数', '概率', '几何', '实验', '计算题'
+];
+
+const HOT_KEYWORD_LIANAO = [
+    { test: /T8|t8/, label: 'T8' },
+    { test: /九师联盟/, label: '九师联盟' },
+    { test: /天一/, label: '天一' },
+    { test: /江南十校/, label: '江南十校' },
+    { test: /名校联盟/, label: '名校联盟' },
+    { test: /苏锡常镇/, label: '苏锡常镇' },
+    { test: /联考/, label: null },
+];
+
+function compactKeyword(kw) {
+    return String(kw || '').replace(/\s+/g, '');
+}
+
+function normalizeErMoLabel(kw) {
+    const k = compactKeyword(kw);
+    if (!k || k === '二模' || k === '三模') return null;
+    if (/武汉.*(?:四调|调研)|武汉04月调研/.test(k)) return '武汉四调';
+    if (/南京.*二模/.test(k)) return '南京二模';
+    if (/深圳.*二模/.test(k)) return '深圳二模';
+    if (/济南.*二模/.test(k)) return '济南二模';
+    if (/广州.*二模|广.*州.*二模/.test(k)) return '广州二模';
+    if (/潍坊.*二模/.test(k)) return '潍坊二模';
+    if (/合肥.*二模/.test(k)) return '合肥二模';
+    if (/青岛.*二模/.test(k)) return '青岛二模';
+    if (/烟台.*二模/.test(k)) return '烟台二模';
+    if (/泰安.*三模/.test(k)) return '泰安三模';
+    const m = k.match(/([\u4e00-\u9fa5]{2,5})(二模|三模|四调)/);
+    if (m) return m[1] + m[2];
+    return null;
+}
+
+function matchSpecialTopic(kw) {
+    const k = compactKeyword(kw);
+    for (const topic of HOT_KEYWORD_SPECIAL_TOPICS) {
+        if (k === topic || k.includes(topic)) return topic;
+    }
+    return null;
+}
+
+function matchLiankaoLabel(kw) {
+    const k = compactKeyword(kw);
+    for (const rule of HOT_KEYWORD_LIANAO) {
+        if (rule.test.test(k)) return rule.label || kw.trim();
+    }
+    return null;
+}
+
+function getSortedKeywordsForWeek(week, sortKey) {
+    const data = allData.keywords[week];
+    if (!data || !data.length) return [];
+    return [...data].sort((a, b) => (parseInt(b[sortKey]) || 0) - (parseInt(a[sortKey]) || 0));
+}
+
+function classifyHotKeywords(topList) {
+    const buckets = {
+        qizhong: { items: [], seen: new Set(), hasBase: false },
+        ermo: { items: [], seen: new Set(), hasBase: false },
+        yimo: { has: false },
+        gaokao: { has: false },
+        zhuanxiang: { items: [], seen: new Set() },
+        zhongkao: { has: false },
+        liankao: { items: [], seen: new Set() },
+        mianfei: { has: false },
+        jinyi: { has: false },
+        qimo: { has: false },
+        chachengji: { has: false },
+    };
+
+    const pushUnique = (bucket, label) => {
+        if (!label || bucket.seen.has(label)) return;
+        bucket.seen.add(label);
+        bucket.items.push(label);
+    };
+
+    for (const row of topList) {
+        const kw = String(row.keywords || '').trim();
+        if (!kw) continue;
+        const k = compactKeyword(kw);
+
+        if (/查成绩|成绩查询/.test(k)) {
+            buckets.chachengji.has = true;
+            continue;
+        }
+        if (/学易金卷/.test(k)) {
+            buckets.jinyi.has = true;
+            continue;
+        }
+        if (k === '免费' || /^免费/.test(kw)) {
+            buckets.mianfei.has = true;
+            continue;
+        }
+
+        const liankao = matchLiankaoLabel(kw);
+        if (liankao) {
+            pushUnique(buckets.liankao, liankao);
+            continue;
+        }
+
+        const special = matchSpecialTopic(kw);
+        if (special) {
+            pushUnique(buckets.zhuanxiang, special);
+            continue;
+        }
+
+        if (/高考/.test(k) && !/中考/.test(k)) {
+            buckets.gaokao.has = true;
+            continue;
+        }
+        if (/中考/.test(k)) {
+            buckets.zhongkao.has = true;
+            continue;
+        }
+        if (/一模/.test(k) && !/二模|三模/.test(k)) {
+            buckets.yimo.has = true;
+            continue;
+        }
+        if (/二模|三模|四调|调研/.test(k)) {
+            if (k === '二模') buckets.ermo.hasBase = true;
+            const label = normalizeErMoLabel(kw);
+            if (label) pushUnique(buckets.ermo, label);
+            else if (k !== '二模' && k !== '三模') pushUnique(buckets.ermo, kw.replace(/\s+/g, ''));
+            continue;
+        }
+        if (k === '期中' || k === '期中试卷' || k === '期中考试') {
+            buckets.qizhong.hasBase = true;
+            continue;
+        }
+        if (/期中/.test(k) && k.length <= 12) {
+            pushUnique(buckets.qizhong, kw.replace(/\s+/g, ''));
+            continue;
+        }
+        if (/期末/.test(k)) {
+            buckets.qimo.has = true;
+            continue;
+        }
+    }
+
+    return buckets;
+}
+
+function formatHotKeywordSegment(label, items, hasBase) {
+    if (items && items.length > 0) {
+        return `${label}（${items.join('、')}）`;
+    }
+    if (hasBase) return label;
+    return null;
+}
+
+function buildHotKeywordsCopyText() {
+    const top100 = getSortedKeywordsForWeek(currentWeek, 'uv').slice(0, 100);
+    if (!top100.length) return '';
+
+    const b = classifyHotKeywords(top100);
+    const parts = [];
+
+    if (b.qizhong.hasBase || b.qizhong.items.length) {
+        const seg = formatHotKeywordSegment('期中', b.qizhong.items, b.qizhong.hasBase);
+        if (seg) parts.push(seg);
+    }
+    if (b.ermo.hasBase || b.ermo.items.length) {
+        const seg = formatHotKeywordSegment('二模', b.ermo.items, b.ermo.hasBase);
+        if (seg) parts.push(seg);
+    }
+    if (b.yimo.has) parts.push('一模');
+    if (b.gaokao.has) parts.push('高考');
+    if (b.zhuanxiang.items.length) {
+        parts.push(`专项（${b.zhuanxiang.items.join('、')}）`);
+    }
+    if (b.zhongkao.has) parts.push('中考');
+    if (b.liankao.items.length) {
+        parts.push(`联考（${b.liankao.items.join('、')}）`);
+    }
+    if (b.mianfei.has) parts.push('免费');
+    if (b.jinyi.has) parts.push('学易金卷');
+    if (b.qimo.has) parts.push('期末');
+    if (b.chachengji.has) parts.push('查成绩');
+
+    if (!parts.length) return '';
+    return `热搜词： ${parts.join('；')}`;
+}
+
+async function copyTextToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (e) {
+            console.warn('Clipboard API 不可用，回退 execCommand', e);
+        }
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+}
+
+function setupCopyHotKeywordsButton() {
+    const btn = document.getElementById('copyHotKeywordsBtn');
+    if (!btn) return;
+    const textEl = btn.querySelector('.copy-btn-text');
+    const original = textEl ? textEl.textContent : '复制';
+    let resetTimer = null;
+
+    btn.addEventListener('click', async () => {
+        const text = buildHotKeywordsCopyText();
+        if (!text) {
+            if (textEl) textEl.textContent = '暂无数据';
+            clearTimeout(resetTimer);
+            resetTimer = setTimeout(() => {
+                if (textEl) textEl.textContent = original;
+            }, 1500);
+            return;
+        }
+        const ok = await copyTextToClipboard(text);
+        if (ok) {
+            btn.classList.add('copied');
+            if (textEl) textEl.textContent = '已复制';
+        } else if (textEl) {
+            textEl.textContent = '复制失败';
+        }
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => {
+            btn.classList.remove('copied');
+            if (textEl) textEl.textContent = original;
+        }, 1500);
+    });
 }
 
 // 更新所有图表
 function updateAllCharts() {
     updateOverviewCards();
-    updateKeywordsCharts();
+    try {
+        updateKeywordsCharts();
+    } catch (e) {
+        console.error('热搜词图表更新失败:', e);
+    }
     updateFunnelChart();
     updateConversionChart();
     updateRetentionCharts();
@@ -257,7 +572,7 @@ function updateAllCharts() {
 
 // 更新概览卡片
 function updateOverviewCards() {
-    const weekData = allData.funnel.find(item => item.week_key === `W${String(currentWeek).padStart(2, '0')}`);
+    const weekData = findFunnelRow(currentWeek);
     
     if (weekData) {
         // 本周搜索次数
@@ -266,7 +581,7 @@ function updateOverviewCards() {
         
         // 计算周环比
         if (currentWeek > 1) {
-            const lastWeekData = allData.funnel.find(item => item.week_key === `W${String(currentWeek - 1).padStart(2, '0')}`);
+            const lastWeekData = findFunnelRow(currentWeek - 1);
             if (lastWeekData) {
                 const lastSearchPV = parseInt(lastWeekData.search_pv);
                 const change = ((searchPV - lastSearchPV) / lastSearchPV * 100).toFixed(1);
@@ -328,7 +643,8 @@ function updateKeywordsCharts() {
     const top100 = sortedData.slice(0, 100);
 
     // TOP 100 柱状图
-    const topChart = echarts.init(document.getElementById('topKeywordsChart'));
+    const topChart = getOrInitChart('topKeywordsChart', 'topKeywords');
+    if (!topChart) return;
     const top20 = top100.slice(0, 20);
 
     topChart.setOption({
@@ -389,7 +705,8 @@ function updateKeywordsCharts() {
 
     // 词云图（若词云插件未加载则显示提示，不阻塞其他图表）
     const wordCloudEl = document.getElementById('wordCloudChart');
-    const wordCloudChart = echarts.init(wordCloudEl);
+    const wordCloudChart = getOrInitChart('wordCloudChart', 'wordCloud');
+    if (!wordCloudChart) return;
     const wordCloudData = top100.map(item => ({
         name: item.keywords,
         value: parseInt(item[currentSort])
@@ -448,24 +765,34 @@ function updateKeywordsCharts() {
 
 // 更新漏斗图
 function updateFunnelChart() {
-    const weekKey = `W${String(currentWeek).padStart(2, '0')}`;
-    const weekData = allData.funnel.find(item => item.week_key === weekKey);
-    
+    const funnelSearchEl = document.getElementById('funnelSearch');
+    const funnelClickEl = document.getElementById('funnelClick');
+    const funnelUsageEl = document.getElementById('funnelUsage');
+    const chartEl = document.getElementById('funnelChart');
+    if (!funnelSearchEl || !chartEl) return;
+
+    const weekData = findFunnelRow(currentWeek);
+
     if (!weekData) {
-        console.error('未找到漏斗数据:', weekKey, allData.funnel);
+        console.warn('未找到漏斗数据，当前周:', currentWeek);
+        funnelSearchEl.textContent = '-';
+        funnelClickEl.textContent = '-';
+        funnelUsageEl.textContent = '-';
+        const chart = getOrInitChart('funnelChart', 'funnel');
+        if (chart) chart.clear();
         return;
     }
 
-    const searchPV = parseInt(weekData.search_pv);
-    const clickPV = parseInt(weekData.click_pv);
-    const usagePV = parseInt(weekData.any_usage_pv);
+    const searchPV = parseInt(weekData.search_pv, 10);
+    const clickPV = parseInt(weekData.click_pv, 10);
+    const usagePV = parseInt(weekData.any_usage_pv, 10);
 
-    // 更新统计卡片
-    document.getElementById('funnelSearch').textContent = searchPV.toLocaleString();
-    document.getElementById('funnelClick').textContent = clickPV.toLocaleString();
-    document.getElementById('funnelUsage').textContent = usagePV.toLocaleString();
+    funnelSearchEl.textContent = Number.isFinite(searchPV) ? searchPV.toLocaleString() : '-';
+    funnelClickEl.textContent = Number.isFinite(clickPV) ? clickPV.toLocaleString() : '-';
+    funnelUsageEl.textContent = Number.isFinite(usagePV) ? usagePV.toLocaleString() : '-';
 
-    const chart = echarts.init(document.getElementById('funnelChart'));
+    const chart = getOrInitChart('funnelChart', 'funnel');
+    if (!chart) return;
 
     chart.setOption({
         tooltip: {
@@ -535,7 +862,7 @@ function updateFunnelChart() {
         }]
     });
 
-    window.addEventListener('resize', () => chart.resize());
+    chart.resize();
 }
 
 // 从转化率数据第一行推断“转化率”列名（兼容乱码或不同字段名）

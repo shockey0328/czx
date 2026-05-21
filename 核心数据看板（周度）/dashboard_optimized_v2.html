@@ -710,8 +710,7 @@
             loadHardcodedData();
             setupEventListeners();
             populateWeekSelector();
-            updateB2BMetrics();
-            
+
             // 默认选择最新周度
             if (weeklyData.length > 0) {
                 const latestWeek = weeklyData[weeklyData.length - 1];
@@ -719,7 +718,10 @@
                 document.getElementById('weekSelect').value = JSON.stringify(currentWeek);
                 updateAllMetrics();
                 updateCharts();
+                updateB2BMetrics();
                 generateAIAnalysis();
+            } else {
+                updateB2BMetrics();
             }
         }
 
