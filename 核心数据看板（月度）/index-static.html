@@ -269,6 +269,12 @@
             margin-bottom: 0;
         }
 
+        .month-kpi-header .chart-title {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
         /* 趋势图网格 */
         .charts-grid {
             display: grid;
@@ -906,7 +912,16 @@
         </section>
 
         <section class="chart-section" aria-labelledby="month-sec-b2b">
-            <h2 class="chart-title" id="month-sec-b2b">B端核心数据</h2>
+            <div class="month-kpi-header">
+                <h2 class="chart-title" id="month-sec-b2b">B端核心数据</h2>
+                <button type="button" class="copy-btn" id="copyB2bBtn" aria-label="复制B端核心数据到剪贴板">
+                    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+                        <path d="M3 11V3.5C3 2.94772 3.44772 2.5 4 2.5H10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                    </svg>
+                    <span class="copy-btn-text">复制</span>
+                </button>
+            </div>
             <div class="b2b-grid" id="b2bMetrics">
                 <!-- 动态生成 -->
             </div>
@@ -1092,6 +1107,7 @@
             });
 
             setupCopyMetricsButton();
+            setupCopyB2bButton();
             
             // 初始化显示
             updateDashboard();
@@ -1352,15 +1368,15 @@
             return ok;
         }
 
-        function setupCopyMetricsButton() {
-            const btn = document.getElementById('copyMetricsBtn');
+        function setupCopyButton(btnId, buildText) {
+            const btn = document.getElementById(btnId);
             if (!btn) return;
             const textEl = btn.querySelector('.copy-btn-text');
             const original = textEl ? textEl.textContent : '复制';
             let resetTimer = null;
 
             btn.addEventListener('click', async () => {
-                const text = buildMonthlyCoreMetricsCopyText();
+                const text = buildText();
                 if (!text) {
                     if (textEl) textEl.textContent = '暂无数据';
                     clearTimeout(resetTimer);
@@ -1382,6 +1398,50 @@
                     if (textEl) textEl.textContent = original;
                 }, 1500);
             });
+        }
+
+        function setupCopyMetricsButton() {
+            setupCopyButton('copyMetricsBtn', buildMonthlyCoreMetricsCopyText);
+        }
+
+        /** 当前所选月的 B 端行（与 updateB2BMetrics 同源） */
+        function getCurrentB2BRow() {
+            if (currentMonth == null || !monthlyData.length || !bData.length) return null;
+            const currentData = monthlyData[currentMonth];
+            if (!currentData) return null;
+            return findB2BRow(currentData.年份, currentData.月份);
+        }
+
+        /** 复制文案示例：B端：订单1单（ 续签1单），开票金额为1万 */
+        function formatB2bWanForCopy(val) {
+            const n = parseB2BWanAmount(val);
+            if (n == null) return null;
+            if (Number.isInteger(n) || Math.abs(n - Math.round(n)) < 1e-6) {
+                return String(Math.round(n));
+            }
+            return String(Number(n.toFixed(2))).replace(/\.?0+$/, '');
+        }
+
+        function buildB2bCopyText() {
+            const row = getCurrentB2BRow();
+            if (!row) return '';
+
+            const orders = safeParseIntCell(row.订单数) ?? 0;
+            const xin = safeParseIntCell(row.新签) ?? 0;
+            const xu = safeParseIntCell(row.续签) ?? 0;
+            const detailParts = [];
+            if (xin > 0) detailParts.push(`新签${xin}单`);
+            if (xu > 0) detailParts.push(`续签${xu}单`);
+            const detail = detailParts.length ? `（ ${detailParts.join(' ')}）` : '';
+
+            const wanStr = formatB2bWanForCopy(row.开票金额);
+            const invoicePart = wanStr != null ? `开票金额为${wanStr}万` : '开票金额为-';
+
+            return `B端：订单${orders}单${detail}，${invoicePart}`;
+        }
+
+        function setupCopyB2bButton() {
+            setupCopyButton('copyB2bBtn', buildB2bCopyText);
         }
 
         // 获取过滤后的数据
