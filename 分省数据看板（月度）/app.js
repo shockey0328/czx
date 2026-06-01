@@ -173,6 +173,64 @@ const RANKING_TOP_N = PROVINCE_LIST.length > 10 ? 15 : 7;
 const CORE_METRICS_TOP_N = 10; // 核心指标默认展示活跃用户前10省，其余折叠
 let coreMetricsExpanded = false;
 
+function parseMonthLabel(label) {
+    const m = String(label).match(/^(\d{2})年(\d{1,2})月$/);
+    if (!m) return null;
+    return { year: parseInt(m[1], 10), month: parseInt(m[2], 10) };
+}
+
+function formatMonthLabel(year, month) {
+    const yy = String(year).padStart(2, '0').slice(-2);
+    return `${yy}年${month}月`;
+}
+
+function prevMonthLabel(label) {
+    const p = parseMonthLabel(label);
+    if (!p) return null;
+    if (p.month === 1) return formatMonthLabel(p.year - 1, 12);
+    return formatMonthLabel(p.year, p.month - 1);
+}
+
+function yoyMonthLabel(label) {
+    const p = parseMonthLabel(label);
+    if (!p) return null;
+    return formatMonthLabel(p.year - 1, p.month);
+}
+
+function findTrendMonth(data, label) {
+    if (!label || !data) return null;
+    return data.find((d) => d.月份 === label) || null;
+}
+
+function calcPctChange(cur, prev) {
+    if (prev == null || prev === 0) return null;
+    return (cur - prev) / prev * 100;
+}
+
+function calcPpChange(cur, prev) {
+    if (prev == null) return null;
+    return cur - prev;
+}
+
+function formatChangeTag(val, unit) {
+    if (val == null || val === '') return '-';
+    const n = Number(val);
+    const sign = n > 0 ? '+' : '';
+    return `${sign}${formatDecimal(n)}${unit}`;
+}
+
+function changeTagClass(val) {
+    if (val == null || val === '') return 'neutral';
+    return Number(val) >= 0 ? 'positive' : 'negative';
+}
+
+function renderChangeTags(yo, mo, unit) {
+    const yCls = changeTagClass(yo);
+    const mCls = changeTagClass(mo);
+    return `<span class="metric-change ${mCls}">环比${formatChangeTag(mo, unit)}</span>
+        <span class="metric-change ${yCls}">同比${formatChangeTag(yo, unit)}</span>`;
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     const monthFilter = document.getElementById('monthFilter');
@@ -294,40 +352,30 @@ function updateCoreMetrics(month) {
 function createMetricCard(province, metrics) {
     const card = document.createElement('div');
     card.className = 'metric-card';
-    const n = (v) => (v == null ? 0 : Number(v));
-    const pct = (yo, mo) => {
-        const y = n(yo), m = n(mo);
-        const ys = formatDecimal(y), ms = formatDecimal(m);
-        return `<span class="metric-change ${y >= 0 ? 'positive' : 'negative'}">同比${y > 0 ? '+' : ''}${ys}%</span>
-            <span class="metric-change ${m >= 0 ? 'positive' : 'negative'}">环比${m > 0 ? '+' : ''}${ms}%</span>`;
-    };
-    const pp = (yo, mo) => {
-        const y = n(yo), m = n(mo);
-        const ys = formatDecimal(y), ms = formatDecimal(m);
-        return `<span class="metric-change ${y >= 0 ? 'positive' : 'negative'}">同比${y > 0 ? '+' : ''}${ys}pp</span>
-            <span class="metric-change ${m >= 0 ? 'positive' : 'negative'}">环比${m > 0 ? '+' : ''}${ms}pp</span>`;
-    };
     const useRate = metrics.使用率 != null ? formatDecimal(metrics.使用率) : '0.00';
     const arpuVal = metrics.ARPU != null ? formatDecimal(metrics.ARPU) : '-';
     card.innerHTML = `
         <h3>${province}</h3>
         <div class="metric-value">${formatNumber(metrics.活跃用户)}</div>
         <div class="metric-label-sub">活跃用户</div>
+        <div class="metric-comparison metric-comparison-primary">
+            ${renderChangeTags(metrics.同比活跃, metrics.环比活跃, '%')}
+        </div>
         <div class="metric-details">
             <div class="metric-row">
                 <span class="metric-label">订单营收:</span>
                 <span class="metric-data">${formatNumber(metrics.订单营收)}</span>
-                ${pct(metrics.同比营收, metrics.环比营收)}
+                ${renderChangeTags(metrics.同比营收, metrics.环比营收, '%')}
             </div>
             <div class="metric-row">
                 <span class="metric-label">使用率:</span>
                 <span class="metric-data">${useRate}%</span>
-                ${pp(metrics.同比使用率, metrics.环比使用率)}
+                ${renderChangeTags(metrics.同比使用率, metrics.环比使用率, 'pp')}
             </div>
             <div class="metric-row">
                 <span class="metric-label">ARPU:</span>
                 <span class="metric-data">${arpuVal}</span>
-                ${pct(metrics.同比ARPU, metrics.环比ARPU)}
+                ${renderChangeTags(metrics.同比ARPU, metrics.环比ARPU, '%')}
             </div>
         </div>
     `;
@@ -446,18 +494,17 @@ function updateMonthlyMetrics(province, selectedMonth) {
     }
     
     const latestData = data[currentIndex];
-    const previousData = currentIndex > 0 ? data[currentIndex - 1] : null;
-    const lastYearIndex = currentIndex - 12;
-    const lastYearData = lastYearIndex >= 0 ? data[lastYearIndex] : null;
-    
-    const yoyActive = lastYearData ? (latestData.活跃用户 - lastYearData.活跃用户) / lastYearData.活跃用户 * 100 : 0;
-    const momActive = previousData ? (latestData.活跃用户 - previousData.活跃用户) / previousData.活跃用户 * 100 : 0;
-    const yoyRevenue = lastYearData ? (latestData.营收 - lastYearData.营收) / lastYearData.营收 * 100 : 0;
-    const momRevenue = previousData ? (latestData.营收 - previousData.营收) / previousData.营收 * 100 : 0;
-    const yoyArpu = lastYearData ? (latestData.ARPU - lastYearData.ARPU) / lastYearData.ARPU * 100 : 0;
-    const momArpu = previousData ? (latestData.ARPU - previousData.ARPU) / previousData.ARPU * 100 : 0;
-    const yoyUsage = lastYearData ? (latestData.使用率 - lastYearData.使用率) : 0;
-    const momUsage = previousData ? (latestData.使用率 - previousData.使用率) : 0;
+    const previousData = findTrendMonth(data, prevMonthLabel(selectedMonth));
+    const lastYearData = findTrendMonth(data, yoyMonthLabel(selectedMonth));
+
+    const yoyActive = calcPctChange(latestData.活跃用户, lastYearData ? lastYearData.活跃用户 : null);
+    const momActive = calcPctChange(latestData.活跃用户, previousData ? previousData.活跃用户 : null);
+    const yoyRevenue = calcPctChange(latestData.营收, lastYearData ? lastYearData.营收 : null);
+    const momRevenue = calcPctChange(latestData.营收, previousData ? previousData.营收 : null);
+    const yoyArpu = calcPctChange(latestData.ARPU, lastYearData ? lastYearData.ARPU : null);
+    const momArpu = calcPctChange(latestData.ARPU, previousData ? previousData.ARPU : null);
+    const yoyUsage = calcPpChange(latestData.使用率, lastYearData ? lastYearData.使用率 : null);
+    const momUsage = calcPpChange(latestData.使用率, previousData ? previousData.使用率 : null);
 
     const metrics = [
         { name: '月活用户', value: formatNumber(latestData.活跃用户), yoy: yoyActive, mom: momActive, suffix: '%' },
@@ -469,16 +516,16 @@ function updateMonthlyMetrics(province, selectedMonth) {
     metrics.forEach(m => {
         const card = document.createElement('div');
         card.className = 'monthly-metric-card';
-        const yoyCls = m.yoy >= 0 ? 'positive' : 'negative';
-        const momCls = m.mom >= 0 ? 'positive' : 'negative';
-        const yoyStr = (m.yoy > 0 ? '+' : '') + formatDecimal(m.yoy) + m.suffix;
-        const momStr = (m.mom > 0 ? '+' : '') + formatDecimal(m.mom) + m.suffix;
+        const yoyCls = changeTagClass(m.yoy);
+        const momCls = changeTagClass(m.mom);
+        const yoyStr = formatChangeTag(m.yoy, m.suffix);
+        const momStr = formatChangeTag(m.mom, m.suffix);
         card.innerHTML = `
             <h4>${m.name}</h4>
             <div class="monthly-metric-value">${m.value}</div>
             <div class="monthly-metric-tags">
-                <span class="metric-change ${yoyCls}">同比: ${yoyStr}</span>
                 <span class="metric-change ${momCls}">环比: ${momStr}</span>
+                <span class="metric-change ${yoyCls}">同比: ${yoyStr}</span>
             </div>
         `;
         container.appendChild(card);
@@ -649,7 +696,7 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
         // 准备数据
         const monthData = coreData[selectedMonth];
         const dataText = Object.entries(monthData).map(([province, metrics]) => {
-            return `${province}：活跃用户${formatNumber(metrics.活跃用户)}（同比${metrics.同比活跃}%，环比${metrics.环比活跃}%），新用户${formatNumber(metrics.新用户)}（同比${metrics.同比新用户}%），老用户${formatNumber(metrics.老用户)}（同比${metrics.同比老用户}%），订单营收${formatNumber(metrics.订单营收)}（同比${metrics.同比营收}%），深度访问率${metrics.深度访问率}%（同比${metrics.同比深度}pp），使用率${metrics.使用率}%（同比${metrics.同比使用率}pp），ARPU${metrics.ARPU}（同比${metrics.同比ARPU}%）`;
+            return `${province}：活跃用户${formatNumber(metrics.活跃用户)}（环比${metrics.环比活跃}%，同比${metrics.同比活跃}%），新用户${formatNumber(metrics.新用户)}（同比${metrics.同比新用户}%），老用户${formatNumber(metrics.老用户)}（同比${metrics.同比老用户}%），订单营收${formatNumber(metrics.订单营收)}（环比${metrics.环比营收}%，同比${metrics.同比营收}%），深度访问率${metrics.深度访问率}%（同比${metrics.同比深度}pp），使用率${metrics.使用率}%（环比${metrics.环比使用率}pp，同比${metrics.同比使用率}pp），ARPU${metrics.ARPU}（环比${metrics.环比ARPU}%，同比${metrics.同比ARPU}%）`;
         }).join('\n');
         
         // 调用DeepSeek API

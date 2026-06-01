@@ -22,11 +22,43 @@ if (-not (Test-Path $FolderPath)) {
     exit 1
 }
 
+# 共享读取：Excel / 编辑器打开 CSV 时仍可读取（避免 ReadAllBytes 独占锁失败）
+function Read-FileBytesShared {
+    param([string]$Path)
+    try {
+        $fs = [System.IO.File]::Open(
+            $Path,
+            [System.IO.FileMode]::Open,
+            [System.IO.FileAccess]::Read,
+            [System.IO.FileShare]::ReadWrite
+        )
+        try {
+            $ms = New-Object System.IO.MemoryStream
+            $fs.CopyTo($ms)
+            return $ms.ToArray()
+        } finally {
+            $fs.Dispose()
+        }
+    } catch [System.IO.IOException] {
+        $name = Split-Path -Leaf $Path
+        throw "Cannot read '$name': file is in use. Close Excel or the editor, save, then retry."
+    }
+}
+
+function Read-FileTextShared {
+    param(
+        [string]$Path,
+        [System.Text.Encoding]$Encoding
+    )
+    $bytes = Read-FileBytesShared -Path $Path
+    return $Encoding.GetString($bytes)
+}
+
 # Function to detect encoding
 function Get-FileEncoding {
     param([string]$Path)
     
-    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    $bytes = Read-FileBytesShared -Path $Path
     
     # Check for BOM
     if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
@@ -54,7 +86,7 @@ function Get-FileEncoding {
     
     # Try UTF-8
     try {
-        $content = [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
+        $content = [System.Text.Encoding]::UTF8.GetString($bytes)
         # Check if it contains valid Chinese characters
         if ($content -match '[\u4e00-\u9fa5]' -and $content -notmatch '[\uFFFD]') {
             return [System.Text.Encoding]::UTF8
@@ -77,8 +109,8 @@ function ConvertCSV-ToJSON {
         $encoding = Get-FileEncoding -Path $CsvPath
         Write-Host "  Encoding: $($encoding.EncodingName)" -ForegroundColor Gray
         
-        # Read CSV with detected encoding
-        $csvContent = [System.IO.File]::ReadAllText($CsvPath, $encoding)
+        # Read CSV with detected encoding（共享读，避免 Excel 占用导致失败）
+        $csvContent = Read-FileTextShared -Path $CsvPath -Encoding $encoding
         
         # Remove BOM if present
         if ($csvContent[0] -eq [char]0xFEFF) {
@@ -123,6 +155,7 @@ function ConvertCSV-ToJSON {
 
 # Collect all data
 $allData = @()
+$failCount = 0
 
 # Search for CSV files
 $csvFiles = Get-ChildItem -Path $FolderPath -Filter "*.csv" -File
@@ -145,6 +178,8 @@ foreach ($csvFile in $csvFiles) {
     
     if ($jsData) {
         $allData += $jsData
+    } else {
+        $failCount++
     }
 }
 
@@ -166,6 +201,11 @@ if ($allData.Count -gt 0) {
     Write-Host "✓ Generated: $outputPath" -ForegroundColor Green
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
+    if ($failCount -gt 0) {
+        Write-Host "Conversion finished with $failCount file(s) failed - data.js may be incomplete." -ForegroundColor Yellow
+        Write-Host "========================================" -ForegroundColor Cyan
+        exit 1
+    }
     Write-Host "Conversion completed successfully!" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Cyan
 }

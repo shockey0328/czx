@@ -36,7 +36,22 @@ function Invoke-RepoCsvToDataJs {
 Write-Step "月度核心数据看板"
 $ok = $false
 try {
+    $corePublic = Join-Path $CORE_MONTHLY_DIR "public"
+    $csvNames = @("月度核心数据.csv", "B端核心数据.csv")
+    foreach ($name in $csvNames) {
+        $rootCsv = Join-Path $CORE_MONTHLY_DIR $name
+        $publicCsv = Join-Path $corePublic $name
+        if ((Test-Path $publicCsv) -and -not (Test-Path $rootCsv)) {
+            Copy-Item -LiteralPath $publicCsv -Destination $rootCsv -Force
+            Write-Host "    根目录无 $name，已从 public/ 复制" -ForegroundColor DarkGray
+        }
+    }
+
     Invoke-RepoCsvToDataJs -FolderPath $CORE_MONTHLY_DIR
+    $srcJs = Join-Path $CORE_MONTHLY_DIR "data.js"
+    if (Test-Path $srcJs) {
+        Copy-Item -LiteralPath $srcJs -Destination (Join-Path $corePublic "data.js") -Force -ErrorAction SilentlyContinue
+    }
     Write-OK "月度核心数据看板 完成（convert_csv_to_js_v2）"
     $ok = $true
 } catch {
@@ -62,6 +77,17 @@ $results += [PSCustomObject]@{ Board = "各模块渗透率看板"; Status = if (
 Write-Step "分省数据看板"
 $ok = $false
 try {
+    $pkgJson = Join-Path $PROVINCE_DIR "package.json"
+    $nodeModules = Join-Path $PROVINCE_DIR "node_modules"
+    if ((Test-Path $pkgJson) -and -not (Test-Path $nodeModules)) {
+        Write-Host "    首次运行：安装分省看板依赖 (npm install)..." -ForegroundColor DarkGray
+        Push-Location $PROVINCE_DIR
+        $npmOut = & npm install 2>&1
+        $npmOut | ForEach-Object { Write-Host "    $_" }
+        Pop-Location
+        if ($LASTEXITCODE -ne 0) { throw "npm install 失败，请在 分省数据看板（月度） 目录手动执行 npm install" }
+    }
+
     $yearCh  = [char]0x5E74   # nian
     $monthCh = [char]0x6708   # yue
     $namePat = '^\d{2}' + [regex]::Escape([string]$yearCh) + '\d{1,2}' + [regex]::Escape([string]$monthCh) + '\.xlsx$'
@@ -119,7 +145,7 @@ try {
         if ($LASTEXITCODE -eq 0) {
             Write-OK "已推送：$commitMsg"
         } else {
-            Write-Fail "git push 失败（exit $LASTEXITCODE）"
+            Write-Host "    [WARN] git push 失败（网络或认证问题），本地 data.js 已更新，可稍后手动 git push" -ForegroundColor Yellow
         }
     }
 } catch {
@@ -130,6 +156,9 @@ try {
 
 Write-Host "`n========================================" -ForegroundColor White
 Write-Host " 本次共更新 3 个看板，成功 $success 个，失败 $fail 个" -ForegroundColor $(if ($fail -eq 0) { "Green" } else { "Yellow" })
+if ($fail -eq 0) {
+    Write-Host " 本地 data.js 已就绪；若需上线请确认 git push 成功" -ForegroundColor DarkGray
+}
 Write-Host "========================================" -ForegroundColor White
 $results | Format-Table -AutoSize
 

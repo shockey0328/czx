@@ -69,6 +69,30 @@ function parseNumber(val, opts = {}) {
   return isNaN(n) ? 0 : n;
 }
 
+function parseMonthLabel(label) {
+  const m = String(label).match(/^(\d{2})年(\d{1,2})月$/);
+  if (!m) return null;
+  return { year: parseInt(m[1], 10), month: parseInt(m[2], 10) };
+}
+
+function formatMonthLabel(year, month) {
+  const yy = String(year).padStart(2, '0').slice(-2);
+  return `${yy}年${month}月`;
+}
+
+function prevMonthLabel(label) {
+  const p = parseMonthLabel(label);
+  if (!p) return null;
+  if (p.month === 1) return formatMonthLabel(p.year - 1, 12);
+  return formatMonthLabel(p.year, p.month - 1);
+}
+
+function yoyMonthLabel(label) {
+  const p = parseMonthLabel(label);
+  if (!p) return null;
+  return formatMonthLabel(p.year - 1, p.month);
+}
+
 function readMonthSheet(filePath) {
   const wb = XLSX.readFile(filePath, { cellDates: false, raw: false });
   const sheetName = wb.SheetNames[0];
@@ -166,14 +190,14 @@ function main() {
         深度访问率: 0,
         新用户: 0,
         老用户: 0,
-        同比活跃: 0,
-        环比活跃: 0,
-        同比营收: 0,
-        环比营收: 0,
-        同比使用率: 0,
-        环比使用率: 0,
-        同比ARPU: 0,
-        环比ARPU: 0,
+        同比活跃: null,
+        环比活跃: null,
+        同比营收: null,
+        环比营收: null,
+        同比使用率: null,
+        环比使用率: null,
+        同比ARPU: null,
+        环比ARPU: null,
       };
     }
   }
@@ -187,25 +211,33 @@ function main() {
     );
   }
 
-  // 根据趋势序列计算同比、环比，写回 coreData
-  const pctChange = (cur, prev) => (prev && prev !== 0 ? Math.round((cur - prev) / prev * 100) : 0);
-  const ppChange = (cur, prev) => (prev != null ? Math.round((cur - prev) * 10) / 10 : 0);
+  // 根据趋势序列计算同比、环比（按月份标签匹配，非数组下标）
+  const pctChange = (cur, prev) => {
+    if (prev == null || prev === 0) return null;
+    return Math.round((cur - prev) / prev * 100);
+  };
+  const ppChange = (cur, prev) => {
+    if (prev == null) return null;
+    return Math.round((cur - prev) * 10) / 10;
+  };
   for (const prov of Object.keys(provinceTrend)) {
     const arr = provinceTrend[prov];
+    const byMonth = {};
+    arr.forEach((item) => { byMonth[item.月份] = item; });
     for (let i = 0; i < arr.length; i++) {
       const m = arr[i].月份;
       if (!coreData[m] || !coreData[m][prov]) continue;
       const cur = arr[i];
-      const prevMonth = i > 0 ? arr[i - 1] : null;
-      const lastYear = i >= 12 ? arr[i - 12] : null;
-      coreData[m][prov].同比活跃 = lastYear ? pctChange(cur.活跃用户, lastYear.活跃用户) : 0;
-      coreData[m][prov].环比活跃 = prevMonth ? pctChange(cur.活跃用户, prevMonth.活跃用户) : 0;
-      coreData[m][prov].同比营收 = lastYear ? pctChange(cur.营收, lastYear.营收) : 0;
-      coreData[m][prov].环比营收 = prevMonth ? pctChange(cur.营收, prevMonth.营收) : 0;
-      coreData[m][prov].同比使用率 = lastYear ? ppChange(cur.使用率, lastYear.使用率) : 0;
-      coreData[m][prov].环比使用率 = prevMonth ? ppChange(cur.使用率, prevMonth.使用率) : 0;
-      coreData[m][prov].同比ARPU = lastYear ? pctChange(cur.ARPU, lastYear.ARPU) : 0;
-      coreData[m][prov].环比ARPU = prevMonth ? pctChange(cur.ARPU, prevMonth.ARPU) : 0;
+      const prevMonth = byMonth[prevMonthLabel(m)] || null;
+      const lastYear = byMonth[yoyMonthLabel(m)] || null;
+      coreData[m][prov].同比活跃 = lastYear ? pctChange(cur.活跃用户, lastYear.活跃用户) : null;
+      coreData[m][prov].环比活跃 = prevMonth ? pctChange(cur.活跃用户, prevMonth.活跃用户) : null;
+      coreData[m][prov].同比营收 = lastYear ? pctChange(cur.营收, lastYear.营收) : null;
+      coreData[m][prov].环比营收 = prevMonth ? pctChange(cur.营收, prevMonth.营收) : null;
+      coreData[m][prov].同比使用率 = lastYear ? ppChange(cur.使用率, lastYear.使用率) : null;
+      coreData[m][prov].环比使用率 = prevMonth ? ppChange(cur.使用率, prevMonth.使用率) : null;
+      coreData[m][prov].同比ARPU = lastYear ? pctChange(cur.ARPU, lastYear.ARPU) : null;
+      coreData[m][prov].环比ARPU = prevMonth ? ppChange(cur.ARPU, prevMonth.ARPU) : null;
     }
   }
 
