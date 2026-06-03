@@ -18,9 +18,10 @@ const SCRIPT_DIR = __dirname;
 // 输出到看板根目录，与 index.html 同目录，避免 file:// 下路径问题
 const OUTPUT_JS = path.join(SCRIPT_DIR, '..', 'trend-data.js');
 
-// 表头对应：省份名称、活跃用户、营收、使用用户、ARPU、使用率（使用用户不参与计算，仅用使用率）
+// 表头对应：省份名称、活跃用户、新用户、营收、使用用户、ARPU、使用率
 const PROVINCE_KEYS = ['省份名称', '地区', '省份', '省', '区域', 'province'];
 const ACTIVE_KEYS = ['活跃用户'];
+const NEW_USER_KEYS = ['新用户'];
 const REVENUE_KEYS = ['营收', '订单营收', '收入', 'revenue'];
 const RATE_KEYS = ['使用率', '使用率%', '渗透率'];
 const ARPU_KEYS = ['ARPU', 'arpu'];
@@ -104,6 +105,7 @@ function readMonthSheet(filePath) {
   let provIdx = findColumnIndex(header, PROVINCE_KEYS);
   if (provIdx < 0) provIdx = 0;
   const activeIdx = findColumnIndex(header, ACTIVE_KEYS);
+  const newUserIdx = findColumnIndex(header, NEW_USER_KEYS);
   const revIdx = findColumnIndex(header, REVENUE_KEYS);
   const rateIdx = findColumnIndex(header, RATE_KEYS);
   const arpuIdx = findColumnIndex(header, ARPU_KEYS);
@@ -120,10 +122,17 @@ function readMonthSheet(filePath) {
       if (idx < 0 || idx >= row.length) return 0;
       return parseNumber(row[idx], opts);
     };
+    const numOptional = (idx) => {
+      if (idx < 0 || idx >= row.length) return null;
+      const val = row[idx];
+      if (val == null || String(val).trim() === '') return null;
+      return parseNumber(val);
+    };
 
     rows.push({
       prov,
       active: num(activeIdx),
+      newUser: numOptional(newUserIdx),
       rev: num(revIdx),
       rate: num(rateIdx, { asRate: true }),
       arpu: num(arpuIdx),
@@ -158,7 +167,7 @@ function main() {
     console.log('【调试】文件:', files[0]);
     console.log('表头(第1行):', header);
     console.log('前3行数据:', data.slice(1, 4));
-    console.log('识别到的列索引 - 省份:', findColumnIndex(header, PROVINCE_KEYS), '活跃:', findColumnIndex(header, ACTIVE_KEYS), '营收:', findColumnIndex(header, REVENUE_KEYS), '使用率:', findColumnIndex(header, RATE_KEYS), 'ARPU:', findColumnIndex(header, ARPU_KEYS));
+    console.log('识别到的列索引 - 省份:', findColumnIndex(header, PROVINCE_KEYS), '活跃:', findColumnIndex(header, ACTIVE_KEYS), '新用户:', findColumnIndex(header, NEW_USER_KEYS), '营收:', findColumnIndex(header, REVENUE_KEYS), '使用率:', findColumnIndex(header, RATE_KEYS), 'ARPU:', findColumnIndex(header, ARPU_KEYS));
     return;
   }
 
@@ -173,25 +182,29 @@ function main() {
   for (const [filePath, monthLabel] of monthFiles) {
     coreData[monthLabel] = {};
     const rows = readMonthSheet(filePath);
-    for (const { prov, active, rev, rate, arpu } of rows) {
+    for (const { prov, active, newUser, rev, rate, arpu } of rows) {
       if (!provinceTrend[prov]) provinceTrend[prov] = [];
+      const fmtInt = (v) => (v == null ? null : (Number.isInteger(v) ? v : Math.round(v * 100) / 100));
       provinceTrend[prov].push({
         月份: monthLabel,
-        活跃用户: Number.isInteger(active) ? active : Math.round(active * 100) / 100,
+        活跃用户: fmtInt(active) ?? 0,
+        新用户: fmtInt(newUser),
         营收: Math.round(rev * 100) / 100,
         使用率: Math.round(rate * 10) / 10,
         ARPU: Math.round(arpu * 100) / 100,
       });
       coreData[monthLabel][prov] = {
-        活跃用户: Number.isInteger(active) ? active : Math.round(active * 100) / 100,
+        活跃用户: fmtInt(active) ?? 0,
+        新用户: fmtInt(newUser),
         订单营收: Math.round(rev * 100) / 100,
         使用率: Math.round(rate * 10) / 10,
         ARPU: Math.round(arpu * 100) / 100,
         深度访问率: 0,
-        新用户: 0,
         老用户: 0,
         同比活跃: null,
         环比活跃: null,
+        同比新用户: null,
+        环比新用户: null,
         同比营收: null,
         环比营收: null,
         同比使用率: null,
@@ -207,7 +220,7 @@ function main() {
     const byMonth = {};
     provinceTrend[prov].forEach((item) => { byMonth[item.月份] = item; });
     provinceTrend[prov] = allMonths.map((m) =>
-      byMonth[m] || { 月份: m, 活跃用户: 0, 营收: 0, 使用率: 0, ARPU: 0 }
+      byMonth[m] || { 月份: m, 活跃用户: 0, 新用户: null, 营收: 0, 使用率: 0, ARPU: 0 }
     );
   }
 
@@ -232,6 +245,10 @@ function main() {
       const lastYear = byMonth[yoyMonthLabel(m)] || null;
       coreData[m][prov].同比活跃 = lastYear ? pctChange(cur.活跃用户, lastYear.活跃用户) : null;
       coreData[m][prov].环比活跃 = prevMonth ? pctChange(cur.活跃用户, prevMonth.活跃用户) : null;
+      coreData[m][prov].同比新用户 = (lastYear && cur.新用户 != null && lastYear.新用户 != null)
+        ? pctChange(cur.新用户, lastYear.新用户) : null;
+      coreData[m][prov].环比新用户 = (prevMonth && cur.新用户 != null && prevMonth.新用户 != null)
+        ? pctChange(cur.新用户, prevMonth.新用户) : null;
       coreData[m][prov].同比营收 = lastYear ? pctChange(cur.营收, lastYear.营收) : null;
       coreData[m][prov].环比营收 = prevMonth ? pctChange(cur.营收, prevMonth.营收) : null;
       coreData[m][prov].同比使用率 = lastYear ? ppChange(cur.使用率, lastYear.使用率) : null;

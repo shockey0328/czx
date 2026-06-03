@@ -170,7 +170,7 @@ let currentPeriod = 'recent12';
 let rankingCharts = {};
 let currentRankingType = 'activeUsers'; // 默认活跃用户排名，可切换：revenue / arpu / usage
 const RANKING_TOP_N = PROVINCE_LIST.length > 10 ? 15 : 7;
-const CORE_METRICS_TOP_N = 10; // 核心指标默认展示活跃用户前10省，其余折叠
+const CORE_METRICS_TOP_N = 20; // 核心指标默认展示活跃用户前20省，其余折叠
 let coreMetricsExpanded = false;
 
 function parseMonthLabel(label) {
@@ -354,14 +354,20 @@ function createMetricCard(province, metrics) {
     card.className = 'metric-card';
     const useRate = metrics.使用率 != null ? formatDecimal(metrics.使用率) : '0.00';
     const arpuVal = metrics.ARPU != null ? formatDecimal(metrics.ARPU) : '-';
+    const newUserVal = metrics.新用户 != null ? formatNumber(metrics.新用户) : '-';
     card.innerHTML = `
         <h3>${province}</h3>
-        <div class="metric-value">${formatNumber(metrics.活跃用户)}</div>
-        <div class="metric-label-sub">活跃用户</div>
-        <div class="metric-comparison metric-comparison-primary">
-            ${renderChangeTags(metrics.同比活跃, metrics.环比活跃, '%')}
-        </div>
         <div class="metric-details">
+            <div class="metric-row metric-row-primary">
+                <span class="metric-label">活跃用户:</span>
+                <span class="metric-data">${formatNumber(metrics.活跃用户)}</span>
+                ${renderChangeTags(metrics.同比活跃, metrics.环比活跃, '%')}
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">新用户:</span>
+                <span class="metric-data">${newUserVal}</span>
+                ${renderChangeTags(metrics.同比新用户, metrics.环比新用户, '%')}
+            </div>
             <div class="metric-row">
                 <span class="metric-label">订单营收:</span>
                 <span class="metric-data">${formatNumber(metrics.订单营收)}</span>
