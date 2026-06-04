@@ -1,7 +1,7 @@
 /**
- * CSV 转 data.js（Node 版，与 convert_csv_to_js.py 效果一致）
+ * CSV 转 data.js（Node 版）
  * 用法：在「搜索数据看板（周度）」目录下执行 node convert_csv_to_js.js
- * 支持 UTF-8 与 GBK 编码的 CSV，自动检测。
+ * 支持 UTF-8 / GBK，正确处理引号内逗号（避免长搜索词被拆列错位）。
  */
 const fs = require('fs');
 const path = require('path');
@@ -24,19 +24,72 @@ function decodeContent(buf) {
   return utf8;
 }
 
+/** RFC4180 风格：支持引号字段内逗号、双引号转义 */
 function parseCSV(content) {
   content = content.replace(/^\uFEFF/, '');
-  const lines = content.trim().split(/\r?\n/).filter(l => l.trim());
-  if (lines.length === 0) return [];
-  const headers = lines[0].split(',').map(h => h.trim());
-  const data = [];
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',');
-    const obj = {};
-    headers.forEach((h, j) => { obj[h] = values[j] != null ? values[j].trim() : ''; });
-    data.push(obj);
+  const rows = [];
+  let i = 0;
+  let field = '';
+  let row = [];
+  let inQ = false;
+
+  const pushField = () => {
+    row.push(field);
+    field = '';
+  };
+
+  while (i < content.length) {
+    const c = content[i];
+    if (inQ) {
+      if (c === '"') {
+        if (content[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQ = false;
+        i++;
+        continue;
+      }
+      field += c;
+      i++;
+      continue;
+    }
+    if (c === '"') {
+      inQ = true;
+      i++;
+      continue;
+    }
+    if (c === ',') {
+      pushField();
+      i++;
+      continue;
+    }
+    if (c === '\n' || c === '\r') {
+      pushField();
+      if (row.some((x) => String(x).trim())) rows.push(row);
+      row = [];
+      if (c === '\r' && content[i + 1] === '\n') i++;
+      i++;
+      continue;
+    }
+    field += c;
+    i++;
   }
-  return data;
+  if (field || row.length) {
+    pushField();
+    rows.push(row);
+  }
+  if (!rows.length) return [];
+
+  const headers = rows[0].map((h) => String(h).trim());
+  return rows.slice(1).map((cells) => {
+    const obj = {};
+    headers.forEach((h, j) => {
+      obj[h] = cells[j] != null ? String(cells[j]).trim() : '';
+    });
+    return obj;
+  });
 }
 
 const dashboardData = {};

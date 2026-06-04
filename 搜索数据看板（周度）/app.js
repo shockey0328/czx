@@ -13,6 +13,30 @@ let currentConversionRange = 21;
 let currentConversionType = 'user'; // 'user' | 'count'，默认展示搜索用户转化率
 let currentRetentionWeeks = 5;
 const chartInstances = { funnel: null, topKeywords: null, wordCloud: null };
+let keywordsResizeBound = false;
+
+function parseKeywordMetric(val) {
+    const s = String(val ?? '').trim();
+    if (!/^\d+$/.test(s)) return 0;
+    return parseInt(s, 10);
+}
+
+/** 清洗搜索词行：过滤 CSV 拆列错误导致的脏数据（如英文听力题整段误入 keywords） */
+function normalizeKeywordRows(rows) {
+    if (!Array.isArray(rows)) return [];
+    return rows
+        .map((row) => ({
+            keywords: String(row.keywords || row['搜索词'] || '').trim().replace(/^["']+|["']+$/g, ''),
+            pv: parseKeywordMetric(row.pv),
+            uv: parseKeywordMetric(row.uv),
+        }))
+        .filter((row) => row.keywords && (row.uv > 0 || row.pv > 0));
+}
+
+function truncateKeywordLabel(text, maxLen = 18) {
+    const s = String(text || '');
+    return s.length > maxLen ? `${s.slice(0, maxLen)}…` : s;
+}
 
 function weekKeyFor(weekNum) {
     return `W${String(parseInt(weekNum, 10)).padStart(2, '0')}`;
@@ -134,7 +158,7 @@ async function loadAllData() {
 
         for (const i of weekNums) {
             const key = `第${i}周搜索词`;
-            allData.keywords[i] = dashboardData[key];
+            allData.keywords[i] = normalizeKeywordRows(dashboardData[key]);
             console.log(`第${i}周数据加载成功，共 ${allData.keywords[i].length} 条`);
         }
 
@@ -642,7 +666,7 @@ function updateKeywordsCharts() {
 
     const top100 = sortedData.slice(0, 100);
 
-    // TOP 100 柱状图
+    // TOP 100 柱状图（展示前 20，长词截断 + 留足左侧标签区）
     const topChart = getOrInitChart('topKeywordsChart', 'topKeywords');
     if (!topChart) return;
     const top20 = top100.slice(0, 20);
@@ -654,36 +678,47 @@ function updateKeywordsCharts() {
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
             borderColor: '#FF6B35',
             borderWidth: 1,
-            textStyle: { color: '#333' }
+            textStyle: { color: '#333' },
+            formatter(params) {
+                const p = Array.isArray(params) ? params[0] : params;
+                if (!p) return '';
+                const fullName = top20[top20.length - 1 - p.dataIndex]?.keywords || p.name;
+                return `${fullName}<br/>${currentSort.toUpperCase()}: ${p.value}`;
+            }
         },
         grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '3%',
-            containLabel: true
+            left: '28%',
+            right: '10%',
+            top: '2%',
+            bottom: '2%',
+            containLabel: false
         },
         xAxis: {
             type: 'value',
             axisLabel: { color: '#666' },
-            splitLine: { 
-                lineStyle: { 
+            splitLine: {
+                lineStyle: {
                     color: '#f0f0f0',
                     type: 'dashed'
-                } 
+                }
             }
         },
         yAxis: {
             type: 'category',
             data: top20.map(item => item.keywords).reverse(),
-            axisLabel: { 
+            axisLabel: {
                 color: '#666',
-                fontSize: 12
+                fontSize: 11,
+                width: 110,
+                overflow: 'truncate',
+                formatter: (value) => truncateKeywordLabel(value, 16)
             },
             axisLine: { lineStyle: { color: '#e0e0e0' } }
         },
         series: [{
             type: 'bar',
-            data: top20.map(item => parseInt(item[currentSort])).reverse(),
+            data: top20.map(item => parseInt(item[currentSort], 10) || 0).reverse(),
+            barMaxWidth: 16,
             itemStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
                     { offset: 0, color: '#FF6B35' },
@@ -701,6 +736,10 @@ function updateKeywordsCharts() {
             animationDuration: 1000,
             animationEasing: 'cubicOut'
         }]
+    }, true);
+
+    requestAnimationFrame(() => {
+        try { topChart.resize(); } catch (_) { /* ignore */ }
     });
 
     // 词云图（若词云插件未加载则显示提示，不阻塞其他图表）
@@ -756,11 +795,19 @@ function updateKeywordsCharts() {
         wordCloudEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;padding:20px;text-align:center;">词云插件加载失败，请刷新页面重试</div>';
     }
 
-    // 响应式
-    window.addEventListener('resize', () => {
-        topChart.resize();
-        if (wordCloudChart && !wordCloudEl.querySelector('div')) wordCloudChart.resize();
-    });
+    if (!keywordsResizeBound) {
+        keywordsResizeBound = true;
+        window.addEventListener('resize', () => {
+            try {
+                if (chartInstances.topKeywords && !chartInstances.topKeywords.isDisposed()) {
+                    chartInstances.topKeywords.resize();
+                }
+                if (chartInstances.wordCloud && !chartInstances.wordCloud.isDisposed()) {
+                    chartInstances.wordCloud.resize();
+                }
+            } catch (_) { /* ignore */ }
+        });
+    }
 }
 
 // 更新漏斗图
