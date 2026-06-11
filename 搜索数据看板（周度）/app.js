@@ -88,7 +88,7 @@ function parseFunnelWeekDateRange(weekNum) {
     if (!m) return null;
     const start = new Date(CONVERSION_YEAR, parseInt(m[1], 10) - 1, parseInt(m[2], 10));
     const end = new Date(CONVERSION_YEAR, parseInt(m[3], 10) - 1, parseInt(m[4], 10));
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
     return { start, end, label: row.date_range };
 }
 
@@ -110,22 +110,63 @@ function addDays(d, days) {
     return next;
 }
 
-/** 以所选周的最后一天为终点，向前取 dayCount 天的日度转化率行 */
+/** 所选周在漏斗中的统计区间；最新周允许日度数据超出漏斗 date_range.end */
+function getLatestKeywordWeek() {
+    const weeks = Object.keys(allData.keywords)
+        .map((k) => parseInt(k, 10))
+        .filter((n) => Number.isFinite(n));
+    return weeks.length ? Math.max(...weeks) : null;
+}
+
+function getConversionPeriodBounds(weekNum, dated) {
+    const weekRange = parseFunnelWeekDateRange(weekNum);
+    if (!weekRange) {
+        const last = dated[dated.length - 1]?.date;
+        return last ? { start: dated[0].date, end: last } : null;
+    }
+
+    const periodStart = startOfDay(weekRange.start);
+    const weekEnd = startOfDay(weekRange.end);
+    const latestData = startOfDay(dated[dated.length - 1].date);
+    const latestKeywordWeek = getLatestKeywordWeek();
+    const funnelWeeks = getFunnelWeekNumbers();
+    const latestFunnelWeek = funnelWeeks.length ? funnelWeeks[funnelWeeks.length - 1] : null;
+
+    let capEnd = latestData;
+    const nextWeek = parseFunnelWeekDateRange(weekNum + 1);
+    if (nextWeek && startOfDay(nextWeek.start) > weekEnd) {
+        capEnd = addDays(startOfDay(nextWeek.start), -1);
+    }
+
+    // 最新周 / 次最新周：日度转化率常比漏斗周报多几天，展示到日度表最新日
+    const isLatestWeek = weekNum === latestKeywordWeek || weekNum === latestFunnelWeek;
+    const isSecondLatestWeek = latestKeywordWeek != null && weekNum === latestKeywordWeek - 1;
+    const hasDailyTail = dated.some((x) => x.date > weekEnd && x.date <= latestData);
+    if (isLatestWeek || (isSecondLatestWeek && hasDailyTail)) {
+        capEnd = latestData;
+    }
+
+    const inPeriod = dated.filter((x) => x.date >= periodStart && x.date <= capEnd);
+    if (!inPeriod.length) {
+        return { start: periodStart, end: weekEnd };
+    }
+    return { start: periodStart, end: inPeriod[inPeriod.length - 1].date };
+}
+
+/** 以所选周统计区间最后有数据的日期为终点，向前取 dayCount 天的日度转化率行 */
 function sliceConversionRowsByWeek(raw, weekNum, dayCount) {
     if (!raw || !raw.length || !dayCount) return [];
     const dateKey = getConversionDateKey(raw);
     if (!dateKey) return raw.slice(-dayCount);
 
-    const weekRange = parseFunnelWeekDateRange(weekNum);
     const dated = raw
         .map((item) => ({ item, date: parseConversionDate(item[dateKey]) }))
         .filter((x) => x.date)
         .sort((a, b) => a.date - b.date);
     if (!dated.length) return [];
 
-    const anchorEnd = weekRange
-        ? startOfDay(weekRange.end)
-        : startOfDay(dated[dated.length - 1].date);
+    const bounds = getConversionPeriodBounds(weekNum, dated);
+    const anchorEnd = bounds ? bounds.end : startOfDay(dated[dated.length - 1].date);
     const windowStart = addDays(anchorEnd, -(dayCount - 1));
 
     return dated
