@@ -77,6 +77,62 @@ function findFunnelRow(weekNum) {
     return allData.funnel.find((item) => item.week_key === weekKeyFor(fallback)) || null;
 }
 
+const CONVERSION_YEAR = 2026;
+
+function parseFunnelWeekDateRange(weekNum) {
+    const n = parseInt(weekNum, 10);
+    if (!Number.isFinite(n) || !allData.funnel.length) return null;
+    const row = allData.funnel.find((item) => item.week_key === weekKeyFor(n));
+    if (!row || !row.date_range) return null;
+    const m = String(row.date_range).trim().match(/(\d{1,2})-(\d{1,2})\s*~\s*(\d{1,2})-(\d{1,2})/);
+    if (!m) return null;
+    const start = new Date(CONVERSION_YEAR, parseInt(m[1], 10) - 1, parseInt(m[2], 10));
+    const end = new Date(CONVERSION_YEAR, parseInt(m[3], 10) - 1, parseInt(m[4], 10));
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+    return { start, end, label: row.date_range };
+}
+
+function parseConversionDate(val) {
+    const s = String(val ?? '').trim();
+    const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (!m) return null;
+    const d = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function startOfDay(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function addDays(d, days) {
+    const next = new Date(d.getTime());
+    next.setDate(next.getDate() + days);
+    return next;
+}
+
+/** 以所选周的最后一天为终点，向前取 dayCount 天的日度转化率行 */
+function sliceConversionRowsByWeek(raw, weekNum, dayCount) {
+    if (!raw || !raw.length || !dayCount) return [];
+    const dateKey = getConversionDateKey(raw);
+    if (!dateKey) return raw.slice(-dayCount);
+
+    const weekRange = parseFunnelWeekDateRange(weekNum);
+    const dated = raw
+        .map((item) => ({ item, date: parseConversionDate(item[dateKey]) }))
+        .filter((x) => x.date)
+        .sort((a, b) => a.date - b.date);
+    if (!dated.length) return [];
+
+    const anchorEnd = weekRange
+        ? startOfDay(weekRange.end)
+        : startOfDay(dated[dated.length - 1].date);
+    const windowStart = addDays(anchorEnd, -(dayCount - 1));
+
+    return dated
+        .filter((x) => x.date >= windowStart && x.date <= anchorEnd)
+        .map((x) => x.item);
+}
+
 function getOrInitChart(domId, cacheKey) {
     const el = document.getElementById(domId);
     if (!el) return null;
@@ -628,19 +684,24 @@ function updateOverviewCards() {
         document.getElementById('userChange').textContent = '暂无数据';
     }
 
-    // 平均转化率（最近7天，按当前选中的转化率指标）
+    // 平均转化率（所选周向前 7 天，与转化趋势图对齐）
     const conversionData = currentConversionType === 'user' ? allData.conversionUser : allData.conversionCount;
     const rateKey = getConversionRateKey(conversionData);
     if (conversionData && conversionData.length > 0 && rateKey) {
-        const recentData = conversionData.slice(-7);
-        const avgRate = recentData.reduce((sum, item) => sum + parseFloat(item[rateKey] || 0), 0) / recentData.length;
-        const firstRate = parseFloat(recentData[0][rateKey]);
-        const lastRate = parseFloat(recentData[recentData.length - 1][rateKey]);
-        const trend = (typeof lastRate === 'number' && !isNaN(lastRate) && typeof firstRate === 'number' && !isNaN(firstRate))
-            ? lastRate - firstRate : 0;
-        document.getElementById('conversionRate').textContent = (isNaN(avgRate) ? 0 : avgRate).toFixed(2) + '%';
-        const arrow = trend >= 0 ? '↑' : '↓';
-        document.getElementById('conversionChange').textContent = `7日趋势 ${arrow} ${Math.abs(trend).toFixed(2)}%`;
+        const recentData = sliceConversionRowsByWeek(conversionData, currentWeek, 7);
+        if (recentData.length > 0) {
+            const avgRate = recentData.reduce((sum, item) => sum + parseFloat(item[rateKey] || 0), 0) / recentData.length;
+            const firstRate = parseFloat(recentData[0][rateKey]);
+            const lastRate = parseFloat(recentData[recentData.length - 1][rateKey]);
+            const trend = (typeof lastRate === 'number' && !isNaN(lastRate) && typeof firstRate === 'number' && !isNaN(firstRate))
+                ? lastRate - firstRate : 0;
+            document.getElementById('conversionRate').textContent = (isNaN(avgRate) ? 0 : avgRate).toFixed(2) + '%';
+            const arrow = trend >= 0 ? '↑' : '↓';
+            document.getElementById('conversionChange').textContent = `第${currentWeek}周 · 7日 ${arrow} ${Math.abs(trend).toFixed(2)}%`;
+        } else {
+            document.getElementById('conversionRate').textContent = '-';
+            document.getElementById('conversionChange').textContent = `第${currentWeek}周暂无转化数据`;
+        }
     } else {
         document.getElementById('conversionRate').textContent = '-';
         document.getElementById('conversionChange').textContent = '暂无数据';
@@ -961,7 +1022,7 @@ function getCurrentConversionData() {
     const rateKey = getConversionRateKey(raw);
     const vol = getConversionVolumeKeys(raw);
     if (!dateKey || !rateKey) return [];
-    const sliceData = raw.slice(-currentConversionRange);
+    const sliceData = sliceConversionRowsByWeek(raw, currentWeek, currentConversionRange);
     return sliceData.map(item => ({
         date: item[dateKey],
         rate: parseFloat(item[rateKey]) || 0,
