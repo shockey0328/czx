@@ -433,7 +433,7 @@ function initEventListeners() {
     setupCopyHotKeywordsButton();
 }
 
-// ── 热搜词复制：按本周 TOP100（UV）分类汇总 ──
+// ── 热搜词复制：按当前所选周 TOP100（与图表排序一致）分类汇总，按热度排序输出 ──
 
 const HOT_KEYWORD_SPECIAL_TOPICS = [
     '导数', '日语', '立体几何', '作文', '听力', '文言文', '完形填空', '阅读理解',
@@ -488,6 +488,15 @@ function matchLiankaoLabel(kw) {
     return null;
 }
 
+function getSelectedWeekNumber() {
+    const sel = document.getElementById('weekSelector');
+    if (sel && sel.value) {
+        const week = parseInt(sel.value, 10);
+        if (Number.isFinite(week)) return week;
+    }
+    return currentWeek;
+}
+
 function getSortedKeywordsForWeek(week, sortKey) {
     const data = allData.keywords[week];
     if (!data || !data.length) return [];
@@ -495,88 +504,105 @@ function getSortedKeywordsForWeek(week, sortKey) {
 }
 
 function classifyHotKeywords(topList) {
+    const NO_RANK = Number.POSITIVE_INFINITY;
     const buckets = {
-        qizhong: { items: [], seen: new Set(), hasBase: false },
-        ermo: { items: [], seen: new Set(), hasBase: false },
-        yimo: { has: false },
-        gaokao: { has: false },
-        zhuanxiang: { items: [], seen: new Set() },
-        zhongkao: { has: false },
-        liankao: { items: [], seen: new Set() },
-        mianfei: { has: false },
-        jinyi: { has: false },
-        qimo: { has: false },
-        chachengji: { has: false },
+        qizhong: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        ermo: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        yimo: { has: false, minRank: NO_RANK },
+        gaokao: { has: false, minRank: NO_RANK },
+        zhuanxiang: { items: [], seen: new Set(), minRank: NO_RANK },
+        zhongkao: { has: false, minRank: NO_RANK },
+        liankao: { items: [], seen: new Set(), minRank: NO_RANK },
+        mianfei: { has: false, minRank: NO_RANK },
+        jinyi: { has: false, minRank: NO_RANK },
+        qimo: { has: false, minRank: NO_RANK },
+        chachengji: { has: false, minRank: NO_RANK },
     };
 
-    const pushUnique = (bucket, label) => {
+    const bumpRank = (bucket, rank) => {
+        bucket.minRank = Math.min(bucket.minRank, rank);
+    };
+
+    const pushUnique = (bucket, label, rank) => {
         if (!label || bucket.seen.has(label)) return;
         bucket.seen.add(label);
         bucket.items.push(label);
+        bumpRank(bucket, rank);
     };
 
-    for (const row of topList) {
+    topList.forEach((row, index) => {
+        const rank = index + 1;
         const kw = String(row.keywords || '').trim();
-        if (!kw) continue;
+        if (!kw) return;
         const k = compactKeyword(kw);
 
         if (/查成绩|成绩查询/.test(k)) {
             buckets.chachengji.has = true;
-            continue;
+            bumpRank(buckets.chachengji, rank);
+            return;
         }
         if (/学易金卷/.test(k)) {
             buckets.jinyi.has = true;
-            continue;
+            bumpRank(buckets.jinyi, rank);
+            return;
         }
         if (k === '免费' || /^免费/.test(kw)) {
             buckets.mianfei.has = true;
-            continue;
+            bumpRank(buckets.mianfei, rank);
+            return;
         }
 
         const liankao = matchLiankaoLabel(kw);
         if (liankao) {
-            pushUnique(buckets.liankao, liankao);
-            continue;
+            pushUnique(buckets.liankao, liankao, rank);
+            return;
         }
 
         const special = matchSpecialTopic(kw);
         if (special) {
-            pushUnique(buckets.zhuanxiang, special);
-            continue;
+            pushUnique(buckets.zhuanxiang, special, rank);
+            return;
         }
 
         if (/高考/.test(k) && !/中考/.test(k)) {
             buckets.gaokao.has = true;
-            continue;
+            bumpRank(buckets.gaokao, rank);
+            return;
         }
         if (/中考/.test(k)) {
             buckets.zhongkao.has = true;
-            continue;
+            bumpRank(buckets.zhongkao, rank);
+            return;
         }
         if (/一模/.test(k) && !/二模|三模/.test(k)) {
             buckets.yimo.has = true;
-            continue;
+            bumpRank(buckets.yimo, rank);
+            return;
         }
         if (/二模|三模|四调|调研/.test(k)) {
-            if (k === '二模') buckets.ermo.hasBase = true;
+            if (k === '二模') {
+                buckets.ermo.hasBase = true;
+                bumpRank(buckets.ermo, rank);
+            }
             const label = normalizeErMoLabel(kw);
-            if (label) pushUnique(buckets.ermo, label);
-            else if (k !== '二模' && k !== '三模') pushUnique(buckets.ermo, kw.replace(/\s+/g, ''));
-            continue;
+            if (label) pushUnique(buckets.ermo, label, rank);
+            else if (k !== '二模' && k !== '三模') pushUnique(buckets.ermo, kw.replace(/\s+/g, ''), rank);
+            return;
         }
         if (k === '期中' || k === '期中试卷' || k === '期中考试') {
             buckets.qizhong.hasBase = true;
-            continue;
+            bumpRank(buckets.qizhong, rank);
+            return;
         }
         if (/期中/.test(k) && k.length <= 12) {
-            pushUnique(buckets.qizhong, kw.replace(/\s+/g, ''));
-            continue;
+            pushUnique(buckets.qizhong, kw.replace(/\s+/g, ''), rank);
+            return;
         }
         if (/期末/.test(k)) {
             buckets.qimo.has = true;
-            continue;
+            bumpRank(buckets.qimo, rank);
         }
-    }
+    });
 
     return buckets;
 }
@@ -590,36 +616,42 @@ function formatHotKeywordSegment(label, items, hasBase) {
 }
 
 function buildHotKeywordsCopyText() {
-    const top100 = getSortedKeywordsForWeek(currentWeek, 'uv').slice(0, 100);
-    if (!top100.length) return '';
+    const week = getSelectedWeekNumber();
+    const sorted = getSortedKeywordsForWeek(week, currentSort);
+    const topList = sorted.slice(0, 100);
+    if (!topList.length) return '';
 
-    const b = classifyHotKeywords(top100);
-    const parts = [];
+    const b = classifyHotKeywords(topList);
+    const segments = [];
+
+    const addSegment = (text, minRank) => {
+        if (text) segments.push({ text, minRank });
+    };
 
     if (b.qizhong.hasBase || b.qizhong.items.length) {
-        const seg = formatHotKeywordSegment('期中', b.qizhong.items, b.qizhong.hasBase);
-        if (seg) parts.push(seg);
+        addSegment(formatHotKeywordSegment('期中', b.qizhong.items, b.qizhong.hasBase), b.qizhong.minRank);
     }
     if (b.ermo.hasBase || b.ermo.items.length) {
-        const seg = formatHotKeywordSegment('二模', b.ermo.items, b.ermo.hasBase);
-        if (seg) parts.push(seg);
+        addSegment(formatHotKeywordSegment('二模', b.ermo.items, b.ermo.hasBase), b.ermo.minRank);
     }
-    if (b.yimo.has) parts.push('一模');
-    if (b.gaokao.has) parts.push('高考');
+    if (b.yimo.has) addSegment('一模', b.yimo.minRank);
+    if (b.gaokao.has) addSegment('高考', b.gaokao.minRank);
     if (b.zhuanxiang.items.length) {
-        parts.push(`专项（${b.zhuanxiang.items.join('、')}）`);
+        addSegment(`专项（${b.zhuanxiang.items.join('、')}）`, b.zhuanxiang.minRank);
     }
-    if (b.zhongkao.has) parts.push('中考');
+    if (b.zhongkao.has) addSegment('中考', b.zhongkao.minRank);
     if (b.liankao.items.length) {
-        parts.push(`联考（${b.liankao.items.join('、')}）`);
+        addSegment(`联考（${b.liankao.items.join('、')}）`, b.liankao.minRank);
     }
-    if (b.mianfei.has) parts.push('免费');
-    if (b.jinyi.has) parts.push('学易金卷');
-    if (b.qimo.has) parts.push('期末');
-    if (b.chachengji.has) parts.push('查成绩');
+    if (b.mianfei.has) addSegment('免费', b.mianfei.minRank);
+    if (b.jinyi.has) addSegment('学易金卷', b.jinyi.minRank);
+    if (b.qimo.has) addSegment('期末', b.qimo.minRank);
+    if (b.chachengji.has) addSegment('查成绩', b.chachengji.minRank);
 
-    if (!parts.length) return '';
-    return `热搜词： ${parts.join('；')}`;
+    if (!segments.length) return '';
+
+    segments.sort((a, b) => a.minRank - b.minRank);
+    return `热搜词： ${segments.map((seg) => seg.text).join('；')}`;
 }
 
 async function copyTextToClipboard(text) {
