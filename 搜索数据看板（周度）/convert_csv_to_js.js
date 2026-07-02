@@ -24,6 +24,14 @@ function decodeContent(buf) {
   return utf8;
 }
 
+/** 修复导出工具偶发在关键词末尾写入的 \",pv,uv 脏格式 */
+function repairCsvContent(content) {
+  return content.replace(/^(?!\\")(.+?)\\",(\d+),(\d+)\s*$/gm, (full, kw, pv, uv) => {
+    if (/["'\u201c\u201d\u2018\u2019「」]/.test(kw)) return full;
+    return `${kw},${pv},${uv}`;
+  });
+}
+
 /** RFC4180 风格：支持引号字段内逗号、双引号转义 */
 function parseCSV(content) {
   content = content.replace(/^\uFEFF/, '');
@@ -97,7 +105,7 @@ for (const file of csvFiles) {
   const name = path.basename(file, '.csv');
   try {
     const buf = fs.readFileSync(path.join(dir, file));
-    const content = decodeContent(buf);
+    const content = repairCsvContent(decodeContent(buf));
     const data = parseCSV(content);
     dashboardData[name] = data;
     console.log('  ✓ ' + name + ': ' + data.length + ' 条');
