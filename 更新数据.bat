@@ -11,8 +11,16 @@ echo.
 echo ========================================
 echo.
 
-echo [1/4] 转换搜索数据看板的CSV文件...
-powershell -ExecutionPolicy Bypass -File "convert_csv_to_js_v2.ps1" -FolderPath "搜索数据看板（周度）"
+echo [1/4] 转换搜索数据看板的CSV文件（分片 data/*.json）...
+pushd "搜索数据看板（周度）"
+node convert_csv_to_js.js
+if errorlevel 1 (
+    popd
+    echo 搜索看板转换失败
+    pause
+    exit /b 1
+)
+popd
 if %errorlevel% equ 0 (
     echo ✓ 搜索数据转换完成
 ) else (

@@ -50,10 +50,29 @@ function showError(container, path) {
 }
 
 // 加载看板（iframe）
+function prefetchSearchDashboardAssets() {
+  const base = '/搜索数据看板（周度）/data/';
+  fetch(base + 'manifest.json')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((m) => {
+      if (!m || !m.latestWeek) return;
+      const v = m.dataVersion || '';
+      ['dashboard-core.json', `keywords-${m.latestWeek}.json`].forEach((file) => {
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = `${base}${file}?v=${v}`;
+        document.head.appendChild(link);
+      });
+    })
+    .catch(() => { /* 忽略预取失败 */ });
+}
+
 function loadDashboard(period, id) {
   const config = DASHBOARDS[period].find(d => d.id === id);
   const container = document.getElementById('dashboardContainer');
   if (!config) { showError(container, '#'); return; }
+
+  if (id === 'search-weekly') prefetchSearchDashboardAssets();
 
   showLoading(container);
 

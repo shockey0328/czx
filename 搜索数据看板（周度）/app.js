@@ -14,6 +14,11 @@ let currentConversionType = 'user'; // 'user' | 'count'，默认展示搜索用�
 let currentRetentionWeeks = 5;
 const chartInstances = { funnel: null, topKeywords: null, wordCloud: null };
 let keywordsResizeBound = false;
+/** 分片数据版本（与 convert_csv_to_js.js 生成 manifest 一致，部署后更新） */
+let dataVersion = '20260703';
+let keywordWeekNums = [];
+const keywordLoadPromises = {};
+let aiAnalysisTimer = null;
 
 function parseKeywordMetric(val) {
     const s = String(val ?? '').trim();
@@ -112,10 +117,47 @@ function addDays(d, days) {
 
 /** 所选周在漏斗中的统计区间；最新周允许日度数据超出漏斗 date_range.end */
 function getLatestKeywordWeek() {
+    if (keywordWeekNums.length) return keywordWeekNums[keywordWeekNums.length - 1];
     const weeks = Object.keys(allData.keywords)
         .map((k) => parseInt(k, 10))
         .filter((n) => Number.isFinite(n));
     return weeks.length ? Math.max(...weeks) : null;
+}
+
+function dataAssetUrl(filename) {
+    return `data/${filename}?v=${dataVersion}`;
+}
+
+/** 按周懒加载热搜词 JSON（仅加载当前周，切换周时再拉取） */
+async function ensureKeywordsWeek(weekNum) {
+    const week = parseInt(weekNum, 10);
+    if (!Number.isFinite(week)) return [];
+    if (allData.keywords[week]?.length) return allData.keywords[week];
+    if (keywordLoadPromises[week]) return keywordLoadPromises[week];
+
+    keywordLoadPromises[week] = (async () => {
+        const res = await fetch(dataAssetUrl(`keywords-${week}.json`));
+        if (!res.ok) {
+            throw new Error(`第${week}周搜索词加载失败 (${res.status})`);
+        }
+        const raw = await res.json();
+        allData.keywords[week] = normalizeKeywordRows(raw);
+        console.log(`第${week}周搜索词加载成功，共 ${allData.keywords[week].length} 条`);
+        return allData.keywords[week];
+    })();
+
+    try {
+        return await keywordLoadPromises[week];
+    } catch (e) {
+        delete keywordLoadPromises[week];
+        throw e;
+    }
+}
+
+function prefetchKeywordsWeek(weekNum) {
+    const week = parseInt(weekNum, 10);
+    if (!Number.isFinite(week) || allData.keywords[week]?.length) return;
+    ensureKeywordsWeek(week).catch(() => { /* 预取失败忽略 */ });
 }
 
 function getConversionPeriodBounds(weekNum, dated) {
@@ -235,68 +277,81 @@ if (document.readyState === 'loading') {
     initApp();
 }
 
-// 加载所有数据
+// 加载所有数据（核心指标即时加载，热搜词按周懒加载）
 async function loadAllData() {
     try {
-        console.log('=== 使用嵌入的数据 ===');
-        
-        // 检查dashboardData是否存在
-        if (typeof dashboardData === 'undefined') {
-            throw new Error('数据文件未加载，请确保data.js文件存在');
-        }
-        
-        console.log('可用的数据集:', Object.keys(dashboardData));
-        
-        // 自动检测 dashboardData 中所有「第N周搜索词」，无需硬编码最大周数
-        const weekNums = Object.keys(dashboardData)
-            .map(k => { const m = k.match(/^第(\d+)周搜索词$/); return m ? parseInt(m[1]) : null; })
-            .filter(n => n !== null)
-            .sort((a, b) => a - b);
+        console.log('=== 加载搜索看板数据 ===');
 
-        for (const i of weekNums) {
-            const key = `第${i}周搜索词`;
-            allData.keywords[i] = normalizeKeywordRows(dashboardData[key]);
-            console.log(`第${i}周数据加载成功，共 ${allData.keywords[i].length} 条`);
+        let core = null;
+
+        if (typeof dashboardData !== 'undefined') {
+            // 兼容旧版单体 data.js（本地未重新转换时）
+            console.warn('[搜索看板] 检测到 legacy data.js，建议运行 node convert_csv_to_js.js 生成分片数据');
+            core = dashboardData;
+        } else {
+            const res = await fetch(dataAssetUrl('dashboard-core.json'));
+            if (!res.ok) {
+                throw new Error(`核心数据加载失败 (${res.status})，请确认已运行 convert_csv_to_js.js`);
+            }
+            core = await res.json();
         }
 
-        // 默认选中最新周（须与漏斗数据周次对齐，避免仅有搜索词无漏斗）
-        if (weekNums.length > 0) {
-            currentWeek = resolveDefaultWeek(weekNums);
-            const selector = document.getElementById('weekSelector');
-            if (selector) {
-                selector.innerHTML = weekNums.slice().reverse().map(n =>
-                    `<option value="${n}"${n === currentWeek ? ' selected' : ''}>2026年第${n}周</option>`
-                ).join('');
+        if (core._dataVersion) dataVersion = core._dataVersion;
+
+        keywordWeekNums = Array.isArray(core._keywordWeeks)
+            ? core._keywordWeeks.slice().sort((a, b) => a - b)
+            : Object.keys(core)
+                .map((k) => { const m = k.match(/^第(\d+)周搜索词$/); return m ? parseInt(m[1], 10) : null; })
+                .filter((n) => n !== null)
+                .sort((a, b) => a - b);
+
+        // legacy：单体 data.js 内仍带全量关键词时一次性灌入
+        if (typeof dashboardData !== 'undefined') {
+            for (const i of keywordWeekNums) {
+                const key = `第${i}周搜索词`;
+                if (core[key]) {
+                    allData.keywords[i] = normalizeKeywordRows(core[key]);
+                }
             }
         }
 
-        // 加载漏斗数据
-        if (dashboardData['搜索行为漏斗']) {
-            allData.funnel = dashboardData['搜索行为漏斗'];
+        if (core['搜索行为漏斗']) {
+            allData.funnel = core['搜索行为漏斗'];
             console.log('漏斗数据加载成功，共', allData.funnel.length, '条');
         }
 
-        // 加载转化率数据：搜索用户转化率、搜索次数转化率（兼容旧版单一「搜索转化率」）
-        if (dashboardData['搜索用户转化率']) {
-            allData.conversionUser = dashboardData['搜索用户转化率'];
+        if (core['搜索用户转化率']) {
+            allData.conversionUser = core['搜索用户转化率'];
             console.log('搜索用户转化率数据加载成功，共', allData.conversionUser.length, '条');
-        } else if (dashboardData['搜索转化率']) {
-            allData.conversionUser = dashboardData['搜索转化率'];
+        } else if (core['搜索转化率']) {
+            allData.conversionUser = core['搜索转化率'];
             console.log('转化率数据(兼容)加载为搜索用户转化率，共', allData.conversionUser.length, '条');
         }
-        if (dashboardData['搜索次数转化率']) {
-            allData.conversionCount = dashboardData['搜索次数转化率'];
+        if (core['搜索次数转化率']) {
+            allData.conversionCount = core['搜索次数转化率'];
             console.log('搜索次数转化率数据加载成功，共', allData.conversionCount.length, '条');
         }
 
-        // 加载留存数据
-        if (dashboardData['搜索功能留存看板']) {
-            allData.retention = dashboardData['搜索功能留存看板'];
+        if (core['搜索功能留存看板']) {
+            allData.retention = core['搜索功能留存看板'];
             console.log('留存数据加载成功，共', allData.retention.length, '条');
         }
 
-        console.log('所有数据加载成功:', allData);
+        if (keywordWeekNums.length > 0) {
+            currentWeek = resolveDefaultWeek(keywordWeekNums);
+            const selector = document.getElementById('weekSelector');
+            if (selector) {
+                selector.innerHTML = keywordWeekNums.slice().reverse().map(n =>
+                    `<option value="${n}"${n === currentWeek ? ' selected' : ''}>2026年第${n}周</option>`
+                ).join('');
+            }
+            if (!allData.keywords[currentWeek]?.length) {
+                await ensureKeywordsWeek(currentWeek);
+            }
+            prefetchKeywordsWeek(currentWeek - 1);
+        }
 
+        console.log('核心数据加载成功');
     } catch (error) {
         console.error('=== 数据加载失败 ===');
         console.error('错误类型:', error.name);
@@ -310,8 +365,8 @@ async function loadAllData() {
 错误信息: ${error.message}
 
 可能的原因:
-1. data.js文件不存在
-2. data.js文件格式错误
+1. data/dashboard-core.json 不存在（请运行 node convert_csv_to_js.js）
+2. 分片数据未部署到服务器
 3. CSV数据未转换
 
 解决方法:
@@ -385,9 +440,16 @@ function parseCSV(text) {
 // 事件监听
 function initEventListeners() {
     // 周度选择器
-    document.getElementById('weekSelector').addEventListener('change', (e) => {
-        currentWeek = parseInt(e.target.value);
-        updateAllCharts();
+    document.getElementById('weekSelector').addEventListener('change', async (e) => {
+        currentWeek = parseInt(e.target.value, 10);
+        try {
+            await ensureKeywordsWeek(currentWeek);
+            prefetchKeywordsWeek(currentWeek - 1);
+            prefetchKeywordsWeek(currentWeek + 1);
+            updateAllCharts();
+        } catch (err) {
+            console.error('切换周度失败:', err);
+        }
     });
 
     // 排序切换
@@ -720,7 +782,18 @@ function updateAllCharts() {
     updateFunnelChart();
     updateConversionChart();
     updateRetentionCharts();
-    updateAIAnalysis();
+    scheduleAIAnalysis();
+}
+
+/** AI 分析耗时且非首屏必需，延迟到空闲时再请求 */
+function scheduleAIAnalysis() {
+    clearTimeout(aiAnalysisTimer);
+    const run = () => { updateAIAnalysis().catch((e) => console.warn('AI分析跳过:', e)); };
+    if (typeof requestIdleCallback === 'function') {
+        aiAnalysisTimer = setTimeout(() => requestIdleCallback(run, { timeout: 4000 }), 800);
+    } else {
+        aiAnalysisTimer = setTimeout(run, 2000);
+    }
 }
 
 // 更新概览卡片

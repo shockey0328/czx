@@ -634,14 +634,11 @@
         </div>
     </div>
 
-    <script src="data.js?v=20260612c"></script>
+    <!-- 热搜词已改为按周懒加载（data/keywords-N.json），不再阻塞加载 90MB 的 data.js -->
     <script>
         (function(){
-            if (typeof dashboardData === 'undefined') {
-                console.error('[搜索看板] data.js 未加载，dashboardData 不存在');
-                document.body.insertAdjacentHTML('afterbegin', '<div id="data-load-error" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#c00;color:#fff;padding:12px 24px;text-align:center;font-size:14px;">数据文件(data.js)未加载，请检查网络或刷新页面。若持续出现，请确认 data.js 与 index.html 在同一目录。</div>');
-            } else {
-                console.log('[搜索看板] data.js 已加载，键:', Object.keys(dashboardData));
+            if (typeof dashboardData !== 'undefined') {
+                console.warn('[搜索看板] 检测到 legacy data.js，建议运行 node convert_csv_to_js.js 并移除 data.js');
             }
         })();
     </script>
@@ -664,7 +661,7 @@
             appJsLoaded = true;
             var script = document.createElement('script');
             // 使用相对路径，由页面顶部的 <base> 统一解析（含 fetch+srcdoc 注入场景）
-            script.src = 'app.js?v=20260612b';
+            script.src = 'app.js?v=20260612d';
             script.onload = function() { console.log('✅ app.js加载完成'); };
             script.onerror = function() {
                 console.error('❌ app.js加载失败，请检查路径:', script.src);

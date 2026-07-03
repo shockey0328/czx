@@ -8,10 +8,10 @@
         "start-stdio"
       ],
       "env": {
-        "ALTIMATE_EXTENSION_RPC": "\\\\.\\pipe\\altimate-mcp-7720",
+        "ALTIMATE_EXTENSION_RPC": "\\\\.\\pipe\\altimate-mcp-21360",
         "ELECTRON_RUN_AS_NODE": "1"
       },
-      "updatedAt": "2026-07-02T02:18:32.438Z"
+      "updatedAt": "2026-07-03T07:20:03.715Z"
     }
   }
 }
