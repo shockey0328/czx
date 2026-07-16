@@ -3,8 +3,10 @@
  * 用法：在「搜索数据看板（周度）」目录下执行 node convert_csv_to_js.js
  *
  * 输出：
- *   data/dashboard-core.json  — 漏斗/转化率/留存等小数据
- *   data/keywords-{N}.json    — 每周热搜词（按需加载，避免 90MB 单体 data.js）
+ *   data/dashboard-core.json  — 漏斗/转化率/留存等小数据（HTTP fetch）
+ *   data/data-core.js         — 同上，script 同步加载（兼容 file:// 本地打开）
+ *   data/keywords-{N}.json    — 每周热搜词（HTTP fetch）
+ *   data/keywords-{N}.js      — 每周热搜词（file:// 回退）
  *   data/manifest.json        — 版本与最新周次（门户可 prefetch）
  */
 const fs = require('fs');
@@ -124,6 +126,12 @@ for (const file of csvFiles) {
       keywordWeeks.push(week);
       const outPath = path.join(dataDir, `keywords-${week}.json`);
       fs.writeFileSync(outPath, JSON.stringify(data), 'utf8');
+      const jsPath = path.join(dataDir, `keywords-${week}.js`);
+      fs.writeFileSync(
+        jsPath,
+        `// 第${week}周搜索词（file:// 与 fetch 回退）\nwindow.__searchKw${week}=${JSON.stringify(data)};\n`,
+        'utf8'
+      );
       const mb = (fs.statSync(outPath).size / 1024 / 1024).toFixed(2);
       console.log(`  ✓ 第${week}周搜索词 → data/keywords-${week}.json (${data.length} 条, ${mb} MB)`);
     } else {
@@ -142,6 +150,14 @@ coreData._dataVersion = DATA_VERSION;
 const corePath = path.join(dataDir, 'dashboard-core.json');
 fs.writeFileSync(corePath, JSON.stringify(coreData), 'utf8');
 console.log(`  ✓ dashboard-core.json (${(fs.statSync(corePath).size / 1024).toFixed(1)} KB)`);
+
+const coreJsPath = path.join(dataDir, 'data-core.js');
+fs.writeFileSync(
+  coreJsPath,
+  `// 由 convert_csv_to_js.js 自动生成\nwindow.searchDashboardCore=${JSON.stringify(coreData)};\n`,
+  'utf8'
+);
+console.log(`  ✓ data-core.js (${(fs.statSync(coreJsPath).size / 1024).toFixed(1)} KB)`);
 
 const manifest = {
   dataVersion: DATA_VERSION,

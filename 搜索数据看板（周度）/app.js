@@ -15,7 +15,7 @@ let currentRetentionWeeks = 5;
 const chartInstances = { funnel: null, topKeywords: null, wordCloud: null };
 let keywordsResizeBound = false;
 /** 分片数据版本（与 convert_csv_to_js.js 生成 manifest 一致，部署后更新） */
-let dataVersion = '20260703';
+let dataVersion = '20260716';
 let keywordWeekNums = [];
 const keywordLoadPromises = {};
 let aiAnalysisTimer = null;
@@ -128,7 +128,35 @@ function dataAssetUrl(filename) {
     return `data/${filename}?v=${dataVersion}`;
 }
 
-/** 按周懒加载热搜词 JSON（仅加载当前周，切换周时再拉取） */
+function isFileProtocol() {
+    return window.location.protocol === 'file:';
+}
+
+function loadKeywordsViaScript(week) {
+    const globalKey = `__searchKw${week}`;
+    if (window[globalKey]) {
+        allData.keywords[week] = normalizeKeywordRows(window[globalKey]);
+        delete window[globalKey];
+        return Promise.resolve(allData.keywords[week]);
+    }
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = dataAssetUrl(`keywords-${week}.js`);
+        script.onload = () => {
+            if (!window[globalKey]) {
+                reject(new Error(`第${week}周搜索词脚本无数据`));
+                return;
+            }
+            allData.keywords[week] = normalizeKeywordRows(window[globalKey]);
+            delete window[globalKey];
+            resolve(allData.keywords[week]);
+        };
+        script.onerror = () => reject(new Error(`第${week}周搜索词脚本加载失败`));
+        document.head.appendChild(script);
+    });
+}
+
+/** 按周懒加载热搜词（HTTP 用 JSON fetch；file:// 或 fetch 失败时用 .js） */
 async function ensureKeywordsWeek(weekNum) {
     const week = parseInt(weekNum, 10);
     if (!Number.isFinite(week)) return [];
@@ -136,13 +164,21 @@ async function ensureKeywordsWeek(weekNum) {
     if (keywordLoadPromises[week]) return keywordLoadPromises[week];
 
     keywordLoadPromises[week] = (async () => {
-        const res = await fetch(dataAssetUrl(`keywords-${week}.json`));
-        if (!res.ok) {
-            throw new Error(`第${week}周搜索词加载失败 (${res.status})`);
+        if (!isFileProtocol()) {
+            try {
+                const res = await fetch(dataAssetUrl(`keywords-${week}.json`));
+                if (res.ok) {
+                    const raw = await res.json();
+                    allData.keywords[week] = normalizeKeywordRows(raw);
+                    console.log(`第${week}周搜索词加载成功（json），共 ${allData.keywords[week].length} 条`);
+                    return allData.keywords[week];
+                }
+            } catch (e) {
+                console.warn(`第${week}周 JSON 拉取失败，回退 .js：`, e.message);
+            }
         }
-        const raw = await res.json();
-        allData.keywords[week] = normalizeKeywordRows(raw);
-        console.log(`第${week}周搜索词加载成功，共 ${allData.keywords[week].length} 条`);
+        await loadKeywordsViaScript(week);
+        console.log(`第${week}周搜索词加载成功（js），共 ${allData.keywords[week].length} 条`);
         return allData.keywords[week];
     })();
 
@@ -284,14 +320,15 @@ async function loadAllData() {
 
         let core = null;
 
-        if (typeof dashboardData !== 'undefined') {
-            // 兼容旧版单体 data.js（本地未重新转换时）
-            console.warn('[搜索看板] 检测到 legacy data.js，建议运行 node convert_csv_to_js.js 生成分片数据');
+        if (typeof searchDashboardCore !== 'undefined') {
+            core = searchDashboardCore;
+        } else if (typeof dashboardData !== 'undefined') {
+            console.warn('[搜索看板] 检测到 legacy data.js，建议运行 node convert_csv_to_js.js');
             core = dashboardData;
         } else {
             const res = await fetch(dataAssetUrl('dashboard-core.json'));
             if (!res.ok) {
-                throw new Error(`核心数据加载失败 (${res.status})，请确认已运行 convert_csv_to_js.js`);
+                throw new Error(`核心数据加载失败 (${res.status})，请运行 node convert_csv_to_js.js`);
             }
             core = await res.json();
         }
@@ -365,14 +402,14 @@ async function loadAllData() {
 错误信息: ${error.message}
 
 可能的原因:
-1. data/dashboard-core.json 不存在（请运行 node convert_csv_to_js.js）
-2. 分片数据未部署到服务器
-3. CSV数据未转换
+1. 未运行 node convert_csv_to_js.js，缺少 data/data-core.js
+2. 使用 file:// 直接打开 HTML（请改用本地 HTTP 服务，如 python -m http.server）
+3. 分片数据未部署到线上服务器
 
 解决方法:
-1. 运行"更新数据.bat"转换CSV数据
-2. 确保data.js文件存在于当前目录
-3. 刷新浏览器页面
+1. 在「搜索数据看板（周度）」目录运行: node convert_csv_to_js.js
+2. 通过 http:// 访问（门户或 python -m http.server 8000），不要双击 index.html
+3. 确认 data/ 目录下有 data-core.js 与 keywords-N.js
 
 当前访问地址: ${window.location.href}
         `.trim();
@@ -393,9 +430,10 @@ async function loadAllData() {
                 <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <h3 style="color: #FF6B35;">解决方法：</h3>
                     <ol style="line-height: 2;">
-                        <li>运行"更新数据.bat"或"更新数据.ps1"</li>
-                        <li>确保生成了data.js文件</li>
-                        <li>刷新浏览器页面（Ctrl+F5）</li>
+                        <li>在「搜索数据看板（周度）」目录运行 <code>node convert_csv_to_js.js</code></li>
+                        <li>使用 HTTP 访问（如 <code>python -m http.server 8000</code> 后打开门户），勿用 file:// 双击打开</li>
+                        <li>确认 <code>data/data-core.js</code> 与 <code>data/keywords-N.js</code> 已生成</li>
+                        <li>刷新浏览器（Ctrl+F5）</li>
                     </ol>
                     
                     <div style="margin-top: 20px; text-align: center;">

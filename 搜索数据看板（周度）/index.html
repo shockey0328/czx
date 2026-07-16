@@ -634,11 +634,12 @@
         </div>
     </div>
 
-    <!-- 热搜词已改为按周懒加载（data/keywords-N.json），不再阻塞加载 90MB 的 data.js -->
+    <!-- 核心数据：script 同步加载，兼容 file:// 与 iframe -->
+    <script src="data/data-core.js"></script>
     <script>
         (function(){
-            if (typeof dashboardData !== 'undefined') {
-                console.warn('[搜索看板] 检测到 legacy data.js，建议运行 node convert_csv_to_js.js 并移除 data.js');
+            if (typeof searchDashboardCore === 'undefined' && typeof dashboardData !== 'undefined') {
+                console.warn('[搜索看板] 使用 legacy data.js，建议运行 node convert_csv_to_js.js');
             }
         })();
     </script>
@@ -661,7 +662,7 @@
             appJsLoaded = true;
             var script = document.createElement('script');
             // 使用相对路径，由页面顶部的 <base> 统一解析（含 fetch+srcdoc 注入场景）
-            script.src = 'app.js?v=20260612d';
+            script.src = 'app.js?v=20260716';
             script.onload = function() { console.log('✅ app.js加载完成'); };
             script.onerror = function() {
                 console.error('❌ app.js加载失败，请检查路径:', script.src);
