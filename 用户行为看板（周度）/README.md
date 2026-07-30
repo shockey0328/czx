@@ -4,30 +4,29 @@
 
 ## 功能特点
 
-- **数仓 MCP 实时取数**（可选）：`DATA_SOURCE=warehouse` 时通过 Hologres/MaxCompute MCP 查询 `dwd_pub_io_log_xyiolog_di`（含橙子学 `czx` + 学伴 `xueban`）
-- 自动加载本地数据到高性能数据库（支持数据缓存，快速加载）
-- 时间段筛选（起始日期和结束日期）
-- 多用户ID查询（逗号分隔）
-- DeepSeek AI智能分析用户行为
-- 对话式交互界面
-- 支持两种分析模式：
-  - 标准四模块分析报告
-  - 针对性问题深度分析
-- 橙色主题设计（#FF6B35）
-- 响应式布局，支持移动端
+- **数仓导出后发布**（推荐线上方案）：用脚本从数仓按日导出 JSON → 上传 GitHub Releases → Vercel 读取
+- **数仓 MCP 实时取数**（可选，仅本机/内网）：`DATA_SOURCE=warehouse` 时通过 MCP 查询（线上测试 MCP 可能 403）
 
-### 数仓 MCP 配置（推荐）
+### 从数仓导出（每周更新）
 
-1. 复制 `.env.example` 为 `.env`
-2. 填写 `MCP_KEY`（与 Cursor `mcp.json` 里 `X-MCP-Key` 相同）
-3. 设置 `DATA_SOURCE=warehouse`
-4. `npm start` 后按用户 ID + 日期查询即可（无需再导入 Excel）
-
-验证脚本：
+1. 配置本地 `用户行为看板（周度）/.env` 中的 `MCP_KEY`
+2. 先单日试跑：
 
 ```bash
-node scripts/test-warehouse-fetch.js 88560289 2026-07-16 2026-07-17
+cd 用户行为看板（周度）
+node scripts/export-from-warehouse.js 2026-07-16 2026-07-16
 ```
+
+3. 确认无截断警告后，再导出区间（7 月全量约需较长时间，单日分片默认 256 次请求）：
+
+```bash
+node scripts/export-from-warehouse.js 2026-07-01 2026-07-29
+```
+
+4. 将 `data/YYYY-MM-DD.json` 上传到 GitHub Release（勿直接把超大 JSON 提交进 Git）
+5. 更新仓库内 `api/behavior-dates.json` 与 `cloud-upload/stats.json` 后 push，Vercel 即可识别新日期
+
+注意：7 月橙子学+学伴埋点约每天 70 万～190 万行，合计约三千万行；不要用实时 MCP 在 Vercel 上查全量。
 
 ## 数据库架构
 

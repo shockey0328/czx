@@ -1,19 +1,17 @@
 // Vercel Serverless - 用户行为数据
-// 配置 MCP_KEY 或 DATA_SOURCE=warehouse 时走数仓；否则回退 GitHub Releases
+// DATA_SOURCE=warehouse 时实时数仓；默认从 GitHub Releases 读取已导出的按日 JSON
 
 import {
   fetchUserBehaviorFromWarehouse,
   isWarehouseDataSource
 } from '../lib/warehouseData.js';
+import behaviorDates from './behavior-dates.json' with { type: 'json' };
 
 const GITHUB_RELEASE_BASE =
   process.env.GITHUB_RELEASE_BASE_URL ||
   'https://github.com/shockey0328/czx/releases/download/data-v1.0';
 
-const AVAILABLE_DATES = [
-  '2026-02-26', '2026-02-27', '2026-02-28', '2026-03-01', '2026-03-02', '2026-03-03', '2026-03-04', '2026-03-05',
-  '2026-03-06', '2026-03-07', '2026-03-08'
-];
+const AVAILABLE_DATES = Array.isArray(behaviorDates) ? behaviorDates : [];
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -23,10 +21,8 @@ function cors(res) {
 }
 
 function useWarehouse() {
-  return (
-    isWarehouseDataSource() ||
-    !!(process.env.MCP_KEY || process.env.X_MCP_KEY)
-  );
+  // 仅显式 DATA_SOURCE=warehouse 时走实时数仓
+  return isWarehouseDataSource();
 }
 
 function dayCount(startDate, endDate) {
@@ -39,13 +35,17 @@ async function fetchFromRelease(userIds, startDate, endDate) {
   const datesToLoad = AVAILABLE_DATES.filter((d) => d >= startDate && d <= endDate);
   if (datesToLoad.length > 1) {
     const err = new Error(
-      '历史 Release 数据为避免超时请只选 1 天；或配置 MCP_KEY 使用数仓实时查询。'
+      '为避免 Vercel 超时，请将起始/结束日期设为同一天后再试。'
     );
     err.status = 400;
     throw err;
   }
   if (datesToLoad.length === 0) {
-    return { data: [], loadedDates: [], message: '所选日期范围内无数据' };
+    return {
+      data: [],
+      loadedDates: [],
+      message: `所选日期无已发布数据。当前可用: ${AVAILABLE_DATES.join(', ') || '无'}`
+    };
   }
 
   const userIdSet = new Set(userIds.map(String));
@@ -131,7 +131,8 @@ export default async function handler(req, res) {
       totalRecords: data.length,
       loadedDates,
       message,
-      dataSource: 'release'
+      dataSource: 'release',
+      availableDates: AVAILABLE_DATES
     });
   } catch (error) {
     console.error('getData 错误:', error);

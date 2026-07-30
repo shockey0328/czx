@@ -1,0 +1,4 @@
+{
+  "url": "http://172.16.32.24:3001/dashboard-db.html",
+  "comment": "内网用户行为看板地址。公网 https://d1.fuxue.work/user-behavior.html 会跳转到此地址（需公司网络/VPN，且该机器上服务保持运行）。"
+}

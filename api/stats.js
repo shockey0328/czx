@@ -11,10 +11,8 @@ function cors(res) {
 }
 
 function useWarehouse() {
-  return (
-    isWarehouseDataSource() ||
-    !!(process.env.MCP_KEY || process.env.X_MCP_KEY)
-  );
+  // 仅显式 DATA_SOURCE=warehouse 时走实时数仓；默认读已导出文件 / Release
+  return isWarehouseDataSource();
 }
 
 export default async function handler(req, res) {
