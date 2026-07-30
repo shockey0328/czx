@@ -1,8 +1,14 @@
-// Vercel Serverless - 从云存储读取用户行为数据
-// 环境变量 DATA_BASE_URL：数据根地址，如 https://your-bucket.s3.amazonaws.com/data/
-// 按日期文件格式：{ date, recordCount, userGroups: { [userId]: [records] } }
+// Vercel Serverless - 用户行为数据
+// DATA_SOURCE=warehouse 时走数仓 MCP；否则走云存储 DATA_BASE_URL
 
 import { fetchUserBehavior } from './cloudData.js';
+import { loadEnv } from '../../lib/loadEnv.js';
+import {
+  fetchUserBehaviorFromWarehouse,
+  isWarehouseDataSource
+} from '../../lib/warehouseData.js';
+
+loadEnv();
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -30,14 +36,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: '请提供 startDate 和 endDate' });
     }
 
-    const results = await fetchUserBehavior(userIds, startDate, endDate);
+    const useWarehouse = isWarehouseDataSource();
+    const results = useWarehouse
+      ? await fetchUserBehaviorFromWarehouse(userIds, startDate, endDate)
+      : await fetchUserBehavior(userIds, startDate, endDate);
 
     return res.status(200).json({
       success: true,
       data: results,
       totalRecords: results.length,
       userIds,
-      dateRange: { startDate, endDate }
+      dateRange: { startDate, endDate },
+      dataSource: useWarehouse ? 'warehouse' : 'cloud'
     });
   } catch (error) {
     console.error('getData API 错误:', error);

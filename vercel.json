@@ -18,6 +18,11 @@
       ]
     }
   ],
+  "functions": {
+    "api/getData.js": { "maxDuration": 60, "memory": 1024 },
+    "api/analyze.js": { "maxDuration": 60, "memory": 1024 },
+    "api/stats.js": { "maxDuration": 10 }
+  },
   "installCommand": "echo 'Skipping install'",
   "buildCommand": "echo 'No build needed'",
   "outputDirectory": "."

@@ -856,11 +856,14 @@
         const result = JSON.parse(text);
         
         if (result.success) {
-          dbStats = result.stats;
+          dbStats = result.stats || {};
+          const totalUsers = Number(dbStats.totalUsers || 0);
+          const totalRecords = Number(dbStats.totalRecords || 0);
+          const availableDates = Array.isArray(dbStats.availableDates) ? dbStats.availableDates : [];
           
-          document.getElementById('totalUsers').textContent = dbStats.totalUsers.toLocaleString();
-          document.getElementById('totalRecords').textContent = dbStats.totalRecords.toLocaleString();
-          document.getElementById('availableDays').textContent = dbStats.availableDates.length;
+          document.getElementById('totalUsers').textContent = totalUsers.toLocaleString();
+          document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
+          document.getElementById('availableDays').textContent = String(availableDates.length);
           
           // 用 API 返回的日期范围更新日期选择器，使新增日期（如 2026-03-10）可选并默认展示最新
           if (dbStats.dateRange && dbStats.dateRange.start && dbStats.dateRange.end) {
@@ -877,13 +880,19 @@
             }
           }
           
-          let statusMsg = `数据库就绪！`;
+          let statusMsg = dbStats.dataSource === 'warehouse'
+            ? '数仓 MCP 已就绪（按用户ID+日期实时查询，含橙子学/学伴）'
+            : '数据库就绪！';
           if (dbStats.dateRange) {
             statusMsg += ` 数据范围: ${dbStats.dateRange.start} 到 ${dbStats.dateRange.end}`;
           }
           updateStatus(statusMsg, 'success');
           
-          addMessage(`数据库统计信息已更新！共有 ${dbStats.totalUsers} 个用户，${dbStats.totalRecords.toLocaleString()} 条记录，覆盖 ${dbStats.availableDates.length} 天。`);
+          if (dbStats.dataSource === 'warehouse') {
+            addMessage('已切换为数仓实时取数：输入用户ID与日期后发送问题即可分析（无需本地导入 Excel）。');
+          } else {
+            addMessage(`数据库统计信息已更新！共有 ${totalUsers} 个用户，${totalRecords.toLocaleString()} 条记录，覆盖 ${availableDates.length} 天。`);
+          }
         } else {
           throw new Error(result.error);
         }

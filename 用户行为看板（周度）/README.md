@@ -4,6 +4,7 @@
 
 ## 功能特点
 
+- **数仓 MCP 实时取数**（可选）：`DATA_SOURCE=warehouse` 时通过 Hologres/MaxCompute MCP 查询 `dwd_pub_io_log_xyiolog_di`（含橙子学 `czx` + 学伴 `xueban`）
 - 自动加载本地数据到高性能数据库（支持数据缓存，快速加载）
 - 时间段筛选（起始日期和结束日期）
 - 多用户ID查询（逗号分隔）
@@ -14,6 +15,19 @@
   - 针对性问题深度分析
 - 橙色主题设计（#FF6B35）
 - 响应式布局，支持移动端
+
+### 数仓 MCP 配置（推荐）
+
+1. 复制 `.env.example` 为 `.env`
+2. 填写 `MCP_KEY`（与 Cursor `mcp.json` 里 `X-MCP-Key` 相同）
+3. 设置 `DATA_SOURCE=warehouse`
+4. `npm start` 后按用户 ID + 日期查询即可（无需再导入 Excel）
+
+验证脚本：
+
+```bash
+node scripts/test-warehouse-fetch.js 88560289 2026-07-16 2026-07-17
+```
 
 ## 数据库架构
 

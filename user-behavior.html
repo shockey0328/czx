@@ -48,8 +48,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>用户行为看板 - Vercel版</h1>
-            <p>数据来自 GitHub Releases，AI 分析由 DeepSeek 提供</p>
+            <h1>用户行为看板</h1>
+            <p>数据来自数仓全埋点（橙子学 + 学伴），AI 分析由 DeepSeek 提供</p>
         </div>
         <div class="card">
             <div class="stats">
@@ -58,21 +58,39 @@
                 <div class="stat-item"><div class="stat-number" id="availableDays">—</div><div class="stat-label">可用天数</div></div>
             </div>
             <div class="form-row">
-                <div class="form-item"><label>起始日期：</label><input type="date" id="startDate" value="2026-02-26" min="2026-02-26" max="2026-03-11"></div>
-                <div class="form-item"><label>结束日期：</label><input type="date" id="endDate" value="2026-03-11" min="2026-02-26" max="2026-03-11"></div>
+                <div class="form-item"><label>起始日期：</label><input type="date" id="startDate"></div>
+                <div class="form-item"><label>结束日期：</label><input type="date" id="endDate"></div>
                 <div class="form-item"><label>用户ID：</label><input type="text" id="userIds" placeholder="多个用户ID用逗号隔开"></div>
             </div>
             <div class="form-row">
                 <div class="form-item" style="grid-column:1/-1;"><label>分析描述（可选）：</label><textarea id="description" rows="3" placeholder="描述你想了解的问题，例如：分析用户完整使用路径、为什么在支付页流失…"></textarea></div>
             </div>
-            <div id="dataStatus" class="status success">数据范围 2026-02-26 至 2026-03-11。为减少超时，建议起始与结束日期选同一天。</div>
+            <div id="dataStatus" class="status success">数仓按需查询：填写用户ID与日期后点击分析（建议跨度 ≤ 7 天，查询可能需要十几秒）</div>
             <button class="btn" id="analyzeBtn" onclick="runAnalysis()">分析</button>
         </div>
         <div id="resultsWrap" style="display:none;" class="results-card"><h3>AI 分析报告</h3><div id="results"></div></div>
         <div id="errorWrap" style="display:none;" class="alert-error"></div>
     </div>
     <script>
+        function fmtDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+        function initDefaultDates() {
+            const end = new Date();
+            end.setDate(end.getDate() - 1);
+            const start = new Date(end);
+            start.setDate(start.getDate() - 1);
+            const elStart = document.getElementById('startDate');
+            const elEnd = document.getElementById('endDate');
+            if (elStart && !elStart.value) elStart.value = fmtDate(start);
+            if (elEnd && !elEnd.value) elEnd.value = fmtDate(end);
+        }
+
         async function loadStats() {
+            initDefaultDates();
             let s = null;
             try {
                 const res = await fetch('/api/stats');
@@ -80,12 +98,12 @@
                     const json = await res.json();
                     if (json.success && json.stats) s = json.stats;
                 }
-            } catch (e) { /* 尝试回退到本地 stats.json */ }
+            } catch (e) { /* ignore */ }
             if (!s) {
                 try {
                     const fallback = await fetch('用户行为看板（周度）/cloud-upload/stats.json');
                     if (fallback.ok) s = await fallback.json();
-                } catch (e2) { /* 使用页面默认 — */ }
+                } catch (e2) { /* ignore */ }
             }
             if (!s) return;
             const elUsers = document.getElementById('totalUsers');
@@ -96,11 +114,21 @@
             const elStatus = document.getElementById('dataStatus');
             if (elUsers && s.totalUsers != null) elUsers.textContent = Number(s.totalUsers).toLocaleString();
             if (elRecords && s.totalRecords != null) elRecords.textContent = Number(s.totalRecords).toLocaleString();
-            if (elDays && s.availableDates && s.availableDates.length) elDays.textContent = s.availableDates.length;
+            if (elDays) {
+                if (s.dataSource === 'warehouse') elDays.textContent = '按需';
+                else if (s.availableDates && s.availableDates.length) elDays.textContent = s.availableDates.length;
+            }
             if (s.dateRange && s.dateRange.start && s.dateRange.end) {
-                if (elStart) { elStart.min = s.dateRange.start; elStart.max = s.dateRange.end; elStart.value = s.dateRange.start; }
-                if (elEnd) { elEnd.min = s.dateRange.start; elEnd.max = s.dateRange.end; elEnd.value = s.dateRange.end; }
-                if (elStatus) elStatus.textContent = '数据范围 ' + s.dateRange.start + ' 至 ' + s.dateRange.end + '。为减少超时，建议起始与结束日期选同一天。';
+                if (elStart) { elStart.min = s.dateRange.start; elStart.max = s.dateRange.end; }
+                if (elEnd) { elEnd.min = s.dateRange.start; elEnd.max = s.dateRange.end; }
+            }
+            if (elStatus) {
+                if (s.dataSource === 'warehouse') {
+                    elStatus.textContent = '数仓按需查询（橙子学 + 学伴）。填写用户ID与日期后分析，建议跨度 ≤ 7 天。';
+                    elStatus.className = 'status success';
+                } else if (s.dateRange) {
+                    elStatus.textContent = '数据范围 ' + s.dateRange.start + ' 至 ' + s.dateRange.end + '。为减少超时，建议起始与结束日期选同一天。';
+                }
             }
         }
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadStats); else loadStats();
@@ -118,7 +146,7 @@
             const userIds = userIdsInput.split(',').map(id => id.trim()).filter(id => id);
             errorWrap.style.display = 'none';
             resultsWrap.style.display = 'block';
-            results.innerHTML = '<div class="loading"><div class="spinner"></div><p>正在拉取数据并生成分析…</p></div>';
+            results.innerHTML = '<div class="loading"><div class="spinner"></div><p>正在从数仓拉取行为日志并生成分析（可能需要十几秒）…</p></div>';
             btn.disabled = true;
             try {
                 const getRes = await fetch('/api/getData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userIds, startDate, endDate }) });
@@ -143,7 +171,7 @@
                 }
                 if (typeof analysis === 'string') results.innerHTML = '<div class="analysis-section"><div class="analysis-content report-body">' + simpleMarkdown(analysis) + '</div></div>';
                 else if (analysis.trajectory && !analysis.habits && !analysis.issues && !analysis.suggestions) results.innerHTML = '<div class="analysis-section"><div class="analysis-content report-body">' + simpleMarkdown(analysis.trajectory) + '</div></div>';
-                else results.innerHTML = '<p style="margin-bottom:20px;color:#666;font-size:14px;">基于 ' + dataCount + ' 条行为记录</p><div class="analysis-section"><h4>一、用户完整行为轨迹（时间线简述）</h4><div class="analysis-content">' + (analysis.trajectory || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>二、用户使用习惯与特征</h4><div class="analysis-content">' + (analysis.habits || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>三、产品问题与体验卡点（重点）</h4><div class="analysis-content">' + (analysis.issues || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>四、产品&运营优化建议</h4><div class="analysis-content">' + (analysis.suggestions || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+                else results.innerHTML = '<p style="margin-bottom:20px;color:#666;font-size:14px;">基于 ' + dataCount + ' 条行为记录' + (getResult.dataSource ? '（' + getResult.dataSource + '）' : '') + '</p><div class="analysis-section"><h4>一、用户完整行为轨迹（时间线简述）</h4><div class="analysis-content">' + (analysis.trajectory || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>二、用户使用习惯与特征</h4><div class="analysis-content">' + (analysis.habits || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>三、产品问题与体验卡点（重点）</h4><div class="analysis-content">' + (analysis.issues || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div><div class="analysis-section"><h4>四、产品&运营优化建议</h4><div class="analysis-content">' + (analysis.suggestions || '暂无').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
             } catch (err) {
                 errorWrap.style.display = 'block';
                 errorWrap.textContent = err.message || '请求失败';

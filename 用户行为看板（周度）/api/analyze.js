@@ -1,7 +1,15 @@
-// Vercel Serverless - AI 分析（从云存储拉取数据后调用 DeepSeek）
-// 环境变量：DATA_BASE_URL（云存储根）、DEEPSEEK_API_KEY
+// Vercel Serverless - AI 分析
+// DATA_SOURCE=warehouse 时从数仓 MCP 拉日志；否则从云存储拉取后调用 DeepSeek
+// 环境变量：DATA_BASE_URL / MCP_KEY、DEEPSEEK_API_KEY
 
 import { fetchUserBehavior } from './cloudData.js';
+import { loadEnv } from '../../lib/loadEnv.js';
+import {
+  fetchUserBehaviorFromWarehouse,
+  isWarehouseDataSource
+} from '../../lib/warehouseData.js';
+
+loadEnv();
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -147,12 +155,14 @@ export default async function handler(req, res) {
     let userDescription = body.description || body.userDescription || '';
     const analysisMode = body.analysisMode || 'auto';
 
-    // 方式一：前端传 userIds + startDate + endDate，从云存储拉取数据
+    // 方式一：前端传 userIds + startDate + endDate，从数仓 MCP 或云存储拉取数据
     const userIds = body.userIds;
     const startDate = body.startDate;
     const endDate = body.endDate;
     if (userIds && Array.isArray(userIds) && userIds.length > 0 && startDate && endDate) {
-      userData = await fetchUserBehavior(userIds, startDate, endDate);
+      userData = isWarehouseDataSource()
+        ? await fetchUserBehaviorFromWarehouse(userIds, startDate, endDate)
+        : await fetchUserBehavior(userIds, startDate, endDate);
       if (userData.length === 0) {
         return res.status(200).json({
           success: true,

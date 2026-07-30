@@ -1,13 +1,20 @@
-// Vercel Serverless - 返回用户行为看板统计（总用户数、总记录数、可用天数等）
-// 优先读仓库内 stats.json；未配置 DATA_BASE_URL 时也可用
+// Vercel Serverless - 用户行为看板统计
 
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import { isWarehouseDataSource } from '../lib/warehouseData.js';
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function useWarehouse() {
+  return (
+    isWarehouseDataSource() ||
+    !!(process.env.MCP_KEY || process.env.X_MCP_KEY)
+  );
 }
 
 export default async function handler(req, res) {
@@ -21,14 +28,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 优先从仓库内用户行为看板的 cloud-upload/stats.json 读取
-    const localPath = join(process.cwd(), '用户行为看板（周度）', 'cloud-upload', 'stats.json');
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+
+    if (useWarehouse()) {
+      return res.status(200).json({
+        success: true,
+        stats: {
+          dataSource: 'warehouse',
+          totalUsers: 0,
+          totalRecords: 0,
+          availableDates: [],
+          dateRange: null,
+          note: '数仓 MCP 按需查询（橙子学 czx + 学伴 xueban）',
+          products: ['czx', 'xueban'],
+          applicationId: 'mzhan'
+        }
+      });
+    }
+
+    const localPath = join(
+      process.cwd(),
+      '用户行为看板（周度）',
+      'cloud-upload',
+      'stats.json'
+    );
     const raw = await readFile(localPath, 'utf8');
     const stats = JSON.parse(raw);
-    res.setHeader('Cache-Control', 'no-store, max-age=0');
     return res.status(200).json({ success: true, stats });
   } catch (err) {
-    // 可选：若配置了 DATA_BASE_URL，可在此从云拉取 stats.json（此处保持简单，仅用本地文件）
     console.error('stats API:', err.message);
     return res.status(500).json({
       success: false,

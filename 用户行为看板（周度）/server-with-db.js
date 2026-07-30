@@ -3,13 +3,28 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import UserBehaviorDB from './database.js';
+import { loadEnv } from './lib/loadEnv.js';
+import {
+  fetchUserBehaviorFromWarehouse,
+  isWarehouseDataSource
+} from './lib/warehouseData.js';
+
+loadEnv();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const db = new UserBehaviorDB();
+const useWarehouse = isWarehouseDataSource();
+const db = useWarehouse ? null : new UserBehaviorDB();
+
+async function queryUserBehavior(userIds, startDate, endDate) {
+  if (useWarehouse) {
+    return fetchUserBehaviorFromWarehouse(userIds, startDate, endDate);
+  }
+  return db.queryUserBehavior(userIds, startDate, endDate);
+}
 
 app.use(cors());
 app.use(express.json());
@@ -19,6 +34,7 @@ app.use(express.json());
 app.post('/api/getData', async (req, res) => {
   console.log('\n=== 收到数据请求 ===');
   console.log('请求体:', req.body);
+  console.log(`数据源: ${useWarehouse ? 'warehouse(MCP)' : 'local'}`);
   
   try {
     const { startDate, endDate, userIds } = req.body;
@@ -33,7 +49,7 @@ app.post('/api/getData', async (req, res) => {
     console.log(`查询用户: ${userIds.join(', ')}`);
     console.log(`日期范围: ${startDate} 到 ${endDate}`);
     
-    const results = await db.queryUserBehavior(userIds, startDate, endDate);
+    const results = await queryUserBehavior(userIds, startDate, endDate);
     
     console.log(`查询结果: ${results.length} 条记录`);
     
@@ -42,7 +58,8 @@ app.post('/api/getData', async (req, res) => {
       data: results,
       totalRecords: results.length,
       userIds: userIds,
-      dateRange: { startDate, endDate }
+      dateRange: { startDate, endDate },
+      dataSource: useWarehouse ? 'warehouse' : 'local'
     });
   } catch (error) {
     console.error('API错误:', error);
@@ -56,6 +73,21 @@ app.post('/api/getData', async (req, res) => {
 // 获取数据库统计信息
 app.get('/api/stats', async (req, res) => {
   try {
+    if (useWarehouse) {
+      return res.json({
+        success: true,
+        stats: {
+          dataSource: 'warehouse',
+          totalUsers: 0,
+          totalRecords: 0,
+          availableDates: [],
+          dateRange: null,
+          note: '数仓 MCP 按需查询（czx + xueban），输入用户ID与日期后即可分析',
+          products: ['czx', 'xueban'],
+          applicationId: 'mzhan'
+        }
+      });
+    }
     const stats = await db.getStats();
     res.json({
       success: true,
@@ -83,7 +115,7 @@ app.post('/api/analyze', async (req, res) => {
     }
     
     // 获取用户数据
-    const userData = await db.queryUserBehavior(userIds, startDate, endDate);
+    const userData = await queryUserBehavior(userIds, startDate, endDate);
     
     if (userData.length === 0) {
       return res.json({
@@ -352,7 +384,17 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`\n========================================`);
   console.log(`用户行为分析服务器运行在 http://localhost:${PORT}`);
   console.log(`请访问: http://localhost:${PORT}/dashboard-db.html`);
+  console.log(`数据源: ${useWarehouse ? 'warehouse (MCP 数仓，含 czx+xueban)' : 'local (本地 JSON)'}`);
   console.log(`========================================\n`);
+
+  if (useWarehouse) {
+    if (!process.env.MCP_KEY && !process.env.X_MCP_KEY) {
+      console.warn('警告: DATA_SOURCE=warehouse 但未配置 MCP_KEY，查询将失败。请参考 .env.example\n');
+    } else {
+      console.log('数仓 MCP 已配置，按需查询 dmp_cdm.dwd_pub_io_log_xyiolog_di\n');
+    }
+    return;
+  }
   
   console.log('正在初始化数据库...');
   try {
