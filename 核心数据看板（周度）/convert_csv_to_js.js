@@ -1,6 +1,6 @@
 /**
- * 兼容入口：转发到 convert_csv_to_js.cjs
- * （仓库根 package.json 为 "type":"module" 时，勿在 .js 里使用 require）
+ * 兼容入口：仓库根 package.json 为 "type":"module" 后，
+ * 请优先使用 convert_csv_to_js.cjs；本文件转发到 .cjs，避免周度更新.bat 失败。
  */
 import { spawnSync } from 'child_process';
 import path from 'path';

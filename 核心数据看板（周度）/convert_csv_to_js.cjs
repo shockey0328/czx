@@ -1,6 +1,7 @@
 /**
  * CSV 转 data.js（核心数据看板周度）
- * 用法：在本目录执行 node convert_csv_to_js.js
+ * 用法：在本目录执行 node convert_csv_to_js.cjs
+ * （也可执行 node convert_csv_to_js.js，会自动转发到本文件）
  * 支持 UTF-8 与 GBK，自动检测。
  */
 const fs = require('fs');
