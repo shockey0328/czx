@@ -1,0 +1,20 @@
+﻿[1/4] Grant SYSTEM access to project and Node...
+[2/4] Remove logon-only autostart / old task...
+[3/4] Register boot scheduled task (SYSTEM, no login required)...
+[4/4] Ensure firewall allows port 3001...
+Starting task now...
+
+========================================
+  Installed: starts at boot (no login)
+========================================
+Task:   ChengziUserBehavior
+App:    E:\橙子学数据看板\橙子学数据看板\用户行为看板（周度）
+Node:   D:\Program Files\nodejs\node.exe
+Local:  http://127.0.0.1:3001/dashboard-db.html
+LAN:    http://172.16.32.24:3001/dashboard-db.html
+LAN:    http://172.16.69.147:3001/dashboard-db.html
+Log:    E:\橙子学数据看板\橙子学数据看板\logs\user-behavior-service.log
+Remove: right-click uninstall_boot_service_user_behavior.bat -> Run as administrator
+Status: running, HTTP 200 OK
+
+EXIT=0

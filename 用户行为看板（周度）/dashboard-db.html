@@ -690,11 +690,11 @@
     <div class="form-row">
       <div class="form-item">
         <label>起始日期：</label>
-        <input type="date" id="startDate" value="2026-02-26">
+        <input type="date" id="startDate">
       </div>
       <div class="form-item">
         <label>结束日期：</label>
-        <input type="date" id="endDate" value="2026-03-04">
+        <input type="date" id="endDate">
       </div>
       <div class="form-item">
         <label>用户ID：</label>
@@ -775,6 +775,35 @@
       const statusDiv = document.getElementById('dataStatus');
       statusDiv.textContent = message;
       statusDiv.className = 'status ' + (type || '');
+    }
+
+    /** 格式化为 YYYY-MM-DD（本地时区） */
+    function formatLocalDate(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    }
+
+    /** 默认时间：当月1号 ~ 昨天；若今天为1号则退为上月1号 ~ 昨天 */
+    function getDefaultDateRange() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      let start = new Date(today.getFullYear(), today.getMonth(), 1);
+      if (start > yesterday) {
+        start = new Date(yesterday.getFullYear(), yesterday.getMonth(), 1);
+      }
+      return { start: formatLocalDate(start), end: formatLocalDate(yesterday) };
+    }
+
+    function applyDefaultDateRange() {
+      const range = getDefaultDateRange();
+      const elStart = document.getElementById('startDate');
+      const elEnd = document.getElementById('endDate');
+      if (elStart) elStart.value = range.start;
+      if (elEnd) elEnd.value = range.end;
     }
 
     function addMessage(text, isUser = false, analysis = null) {
@@ -865,10 +894,13 @@
           document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
           document.getElementById('availableDays').textContent = String(availableDates.length);
           
-          // 用 API 返回的日期范围更新日期选择器，使新增日期（如 2026-03-10）可选并默认展示最新
+          // 用 API 返回的日期范围限制可选区间；默认仍为「当月1号 ~ 昨天」
+          var defaults = getDefaultDateRange();
+          var elStart = document.getElementById('startDate');
+          var elEnd = document.getElementById('endDate');
+          var startVal = defaults.start;
+          var endVal = defaults.end;
           if (dbStats.dateRange && dbStats.dateRange.start && dbStats.dateRange.end) {
-            var elStart = document.getElementById('startDate');
-            var elEnd = document.getElementById('endDate');
             if (elStart) {
               elStart.min = dbStats.dateRange.start;
               elStart.max = dbStats.dateRange.end;
@@ -876,9 +908,13 @@
             if (elEnd) {
               elEnd.min = dbStats.dateRange.start;
               elEnd.max = dbStats.dateRange.end;
-              elEnd.value = dbStats.dateRange.end; // 默认结束日期为最新一天，便于查看新增数据
             }
+            if (startVal < dbStats.dateRange.start) startVal = dbStats.dateRange.start;
+            if (endVal > dbStats.dateRange.end) endVal = dbStats.dateRange.end;
+            if (startVal > endVal) startVal = endVal;
           }
+          if (elStart) elStart.value = startVal;
+          if (elEnd) elEnd.value = endVal;
           
           let statusMsg = dbStats.dataSource === 'warehouse'
             ? '数仓 MCP 已就绪（按用户ID+日期实时查询，含橙子学/学伴）'
@@ -988,8 +1024,9 @@
       }
     });
 
-    // 页面加载时自动加载统计信息
+    // 页面加载时先设默认日期（当月1号~昨天），再拉取统计
     document.addEventListener('DOMContentLoaded', function() {
+      applyDefaultDateRange();
       setTimeout(loadStats, 500);
     });
   </script>

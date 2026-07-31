@@ -270,11 +270,11 @@
             <div class="form-row">
                 <div class="form-item">
                     <label>起始日期：</label>
-                    <input type="date" id="startDate" value="2026-02-26" min="2026-02-26" max="2026-03-09">
+                    <input type="date" id="startDate">
                 </div>
                 <div class="form-item">
                     <label>结束日期：</label>
-                    <input type="date" id="endDate" value="2026-03-09" min="2026-02-26" max="2026-03-09">
+                    <input type="date" id="endDate">
                 </div>
                 <div class="form-item">
                     <label>用户ID：</label>
@@ -301,6 +301,34 @@
     </div>
 
     <script>
+        function formatLocalDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+
+        /** 默认时间：当月1号 ~ 昨天；若今天为1号则退为上月1号 ~ 昨天 */
+        function getDefaultDateRange() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            let start = new Date(today.getFullYear(), today.getMonth(), 1);
+            if (start > yesterday) {
+                start = new Date(yesterday.getFullYear(), yesterday.getMonth(), 1);
+            }
+            return { start: formatLocalDate(start), end: formatLocalDate(yesterday) };
+        }
+
+        function applyDefaultDateRange() {
+            const range = getDefaultDateRange();
+            const elStart = document.getElementById('startDate');
+            const elEnd = document.getElementById('endDate');
+            if (elStart) elStart.value = range.start;
+            if (elEnd) elEnd.value = range.end;
+        }
+
         // 页面加载时从后端拉取统计与日期范围，更新展示
         async function loadStats() {
             try {
@@ -318,17 +346,29 @@
                 if (elUsers && s.totalUsers != null) elUsers.textContent = Number(s.totalUsers).toLocaleString();
                 if (elRecords && s.totalRecords != null) elRecords.textContent = Number(s.totalRecords).toLocaleString();
                 if (elDays && s.availableDates && s.availableDates.length) elDays.textContent = s.availableDates.length;
+                const defaults = getDefaultDateRange();
+                let startVal = defaults.start;
+                let endVal = defaults.end;
                 if (s.dateRange && s.dateRange.start && s.dateRange.end) {
-                    if (elStart) { elStart.min = s.dateRange.start; elStart.max = s.dateRange.end; elStart.value = s.dateRange.start; }
-                    if (elEnd) { elEnd.min = s.dateRange.start; elEnd.max = s.dateRange.end; elEnd.value = s.dateRange.end; }
+                    if (elStart) { elStart.min = s.dateRange.start; elStart.max = s.dateRange.end; }
+                    if (elEnd) { elEnd.min = s.dateRange.start; elEnd.max = s.dateRange.end; }
+                    if (startVal < s.dateRange.start) startVal = s.dateRange.start;
+                    if (endVal > s.dateRange.end) endVal = s.dateRange.end;
+                    if (startVal > endVal) startVal = endVal;
                     if (elStatus) elStatus.textContent = '数据来自 GitHub Releases，范围 ' + s.dateRange.start + ' 至 ' + s.dateRange.end + '。为减少超时，建议起始与结束日期选同一天。';
                 }
+                if (elStart) elStart.value = startVal;
+                if (elEnd) elEnd.value = endVal;
             } catch (e) { /* 忽略，使用页面默认值 */ }
         }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadStats);
-        } else {
+        function initDatesAndStats() {
+            applyDefaultDateRange();
             loadStats();
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDatesAndStats);
+        } else {
+            initDatesAndStats();
         }
 
         async function runAnalysis() {

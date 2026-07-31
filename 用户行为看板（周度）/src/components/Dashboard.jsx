@@ -10,7 +10,14 @@ const { Header, Content } = Layout;
 const { RangePicker } = DatePicker;
 
 function Dashboard() {
-  const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'day'), dayjs()]);
+  const [dateRange, setDateRange] = useState(() => {
+    const yesterday = dayjs().subtract(1, 'day').startOf('day');
+    let start = dayjs().startOf('month');
+    if (start.isAfter(yesterday)) {
+      start = yesterday.startOf('month');
+    }
+    return [start, yesterday];
+  });
   const [userIds, setUserIds] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
