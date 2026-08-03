@@ -3,25 +3,79 @@ let rawData = [];
 let filteredData = [];
 let charts = {};
 
-// 月份映射
-const monthMapping = {
-    '2025年3月': '2025-03',
-    '2025年4月': '2025-04',
-    '2025年5月': '2025-05',
-    '2025年6月': '2025-06',
-    '2025年7月': '2025-07',
-    '2025年8月': '2025-08',
-    '2025年9月': '2025-09',
-    '2025年10月': '2025-10',
-    '2025年11月': '2025-11',
-    '2025年12月': '2025-12',
-    '2026年1月': '2026-01',
-    '2026年2月': '2026-02',
-    '2026年3月': '2026-03',
-    '2026年4月': '2026-04'
-};
+// 月份元数据：由数据自动生成，勿再手写截止日期
+let monthMapping = {};      // '2026年6月' -> '2026-06'
+let monthLabels = [];       // ['25年3月', ..., '26年6月']
+let fieldMapping = {};      // '2026年6月' -> '26年6月'
+let valueToLabel = {};      // '2026-06' -> '26年6月'
 
-const monthLabels = ['25年3月', '25年4月', '25年5月', '25年6月', '25年7月', '25年8月', '25年9月', '25年10月', '25年11月', '25年12月', '26年1月', '26年2月', '26年3月', '26年4月'];
+const MONTH_COL_RE = /^(\d{4})年(\d{1,2})月$/;
+const SKIP_COLS = new Set(['一级模块', '二级模块', '平均渗透率']);
+
+function shortMonthLabel(fullLabel) {
+    const m = String(fullLabel).match(MONTH_COL_RE);
+    if (!m) return null;
+    return `${Number(m[1]) % 100}年${Number(m[2])}月`;
+}
+
+function isoMonthValue(fullLabel) {
+    const m = String(fullLabel).match(MONTH_COL_RE);
+    if (!m) return null;
+    return `${m[1]}-${String(Number(m[2])).padStart(2, '0')}`;
+}
+
+function monthSortKey(fullLabel) {
+    const m = String(fullLabel).match(MONTH_COL_RE);
+    if (!m) return 0;
+    return Number(m[1]) * 100 + Number(m[2]);
+}
+
+/** 根据全称月份列表重建映射与筛选器 */
+function rebuildMonthMeta(fullMonthLabels) {
+    const sorted = [...new Set(fullMonthLabels)]
+        .filter((x) => MONTH_COL_RE.test(x))
+        .sort((a, b) => monthSortKey(a) - monthSortKey(b));
+
+    monthMapping = {};
+    fieldMapping = {};
+    valueToLabel = {};
+    monthLabels = [];
+
+    sorted.forEach((full) => {
+        const short = shortMonthLabel(full);
+        const iso = isoMonthValue(full);
+        if (!short || !iso) return;
+        monthMapping[full] = iso;
+        fieldMapping[full] = short;
+        valueToLabel[iso] = short;
+        monthLabels.push(short);
+    });
+
+    populateMonthFilter();
+    console.log('月份已同步至:', monthLabels[monthLabels.length - 1] || '(无)');
+}
+
+function populateMonthFilter() {
+    const sel = document.getElementById('monthFilter');
+    if (!sel) return;
+    const prev = sel.value || 'recent-year';
+    const options = [];
+    // 最新月份在前
+    for (let i = monthLabels.length - 1; i >= 0; i--) {
+        const short = monthLabels[i];
+        const full = Object.keys(fieldMapping).find((k) => fieldMapping[k] === short);
+        const iso = full ? monthMapping[full] : null;
+        if (!iso) continue;
+        options.push(`<option value="${iso}">${short}</option>`);
+    }
+    options.push('<option value="recent-year">近1年</option>');
+    sel.innerHTML = options.join('');
+    if ([...sel.options].some((o) => o.value === prev)) {
+        sel.value = prev;
+    } else {
+        sel.value = 'recent-year';
+    }
+}
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -97,33 +151,22 @@ async function loadData() {
 // 解析嵌入的数据
 function parseEmbeddedData(data) {
     console.log('解析嵌入数据，共', data.length, '条');
-    
-    // CSV字段名到显示标签的映射
-    const fieldMapping = {
-        '2025年3月': '25年3月',
-        '2025年4月': '25年4月',
-        '2025年5月': '25年5月',
-        '2025年6月': '25年6月',
-        '2025年7月': '25年7月',
-        '2025年8月': '25年8月',
-        '2025年9月': '25年9月',
-        '2025年10月': '25年10月',
-        '2025年11月': '25年11月',
-        '2025年12月': '25年12月',
-        '2026年1月': '26年1月',
-        '2026年2月': '26年2月',
-        '2026年3月': '26年3月',
-        '2026年4月': '26年4月'
-    };
-    
-    // 将CSV格式的数据转换为内部数据结构
+
+    const monthCols = new Set();
+    data.forEach((row) => {
+        Object.keys(row || {}).forEach((k) => {
+            if (!SKIP_COLS.has(k) && MONTH_COL_RE.test(k)) monthCols.add(k);
+        });
+    });
+    rebuildMonthMeta([...monthCols]);
+
     const dataByModule = {};
-    
-    data.forEach(row => {
+
+    data.forEach((row) => {
         const module1 = row['一级模块'] || '';
         const module2 = row['二级模块'] || '';
         const key = `${module1}-${module2}`;
-        
+
         if (!dataByModule[key]) {
             dataByModule[key] = {
                 一级模块: module1,
@@ -131,30 +174,62 @@ function parseEmbeddedData(data) {
                 data: {}
             };
         }
-        
-        // 将每个月份的数据添加到data对象中
-        Object.keys(fieldMapping).forEach(csvField => {
+
+        Object.keys(fieldMapping).forEach((csvField) => {
             const displayLabel = fieldMapping[csvField];
             const value = row[csvField];
-            
-            if (value && value !== '' && value !== 'null') {
+
+            if (value !== undefined && value !== null && value !== '' && value !== 'null') {
                 dataByModule[key].data[displayLabel] = parseFloat(value);
             } else {
                 dataByModule[key].data[displayLabel] = null;
             }
         });
     });
-    
+
     rawData = Object.values(dataByModule);
     console.log('解析完成，共', rawData.length, '个模块');
     console.log('示例数据:', rawData[0]);
 }
 
+function syncMonthMetaFromShortLabels(shortLabels) {
+    const fullLabels = [...new Set(shortLabels)]
+        .map((short) => {
+            const m = String(short).match(/^(\d{2})年(\d{1,2})月$/);
+            if (!m) return null;
+            return `20${m[1]}年${Number(m[2])}月`;
+        })
+        .filter(Boolean);
+    rebuildMonthMeta(fullLabels);
+}
+
+function parseCsvTextToRows(csvText) {
+    const text = String(csvText || '').replace(/^\uFEFF/, '').trim();
+    if (!text) return null;
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) return null;
+    const headers = lines[0].split(',').map((h) => h.trim());
+    return lines.slice(1).map((line) => {
+        const cols = line.split(',');
+        const row = {};
+        headers.forEach((h, i) => {
+            row[h] = (cols[i] ?? '').trim();
+        });
+        return row;
+    });
+}
+
 // 解析CSV数据
 function parseCSV(csvText) {
-    // 使用提供的正确数据结构
-    console.log('使用正确的数据结构');
-    
+    const rows = parseCsvTextToRows(csvText);
+    if (rows && rows.length) {
+        console.log('从 CSV 文本解析，共', rows.length, '行');
+        parseEmbeddedData(rows);
+        return;
+    }
+
+    // 回退示例数据（仅在 CSV / data.js 都不可用时）
+    console.log('使用内置示例数据结构');
     rawData = [
         // 功能模块
         {
@@ -287,7 +362,10 @@ function parseCSV(csvText) {
             }
         }
     ];
-    
+
+    const shorts = new Set();
+    rawData.forEach((item) => Object.keys(item.data || {}).forEach((k) => shorts.add(k)));
+    syncMonthMetaFromShortLabels([...shorts]);
     console.log('数据加载完成，共', rawData.length, '个模块');
 }
 
@@ -932,23 +1010,7 @@ function updateDataTable() {
 
 // 辅助函数
 function getMonthLabel(monthValue) {
-    const mapping = {
-        '2025-03': '25年3月',
-        '2025-04': '25年4月',
-        '2025-05': '25年5月',
-        '2025-06': '25年6月',
-        '2025-07': '25年7月',
-        '2025-08': '25年8月',
-        '2025-09': '25年9月',
-        '2025-10': '25年10月',
-        '2025-11': '25年11月',
-        '2025-12': '25年12月',
-        '2026-01': '26年1月',
-        '2026-02': '26年2月',
-        '2026-03': '26年3月',
-        '2026-04': '26年4月'
-    };
-    return mapping[monthValue];
+    return valueToLabel[monthValue] || null;
 }
 
 function getPreviousMonth(monthLabel) {

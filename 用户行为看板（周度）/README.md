@@ -1,15 +1,30 @@
 # 用户行为分析看板
 
-基于React + DeepSeek AI的用户行为分析系统，支持大数据量的高性能查询和智能分析。
+面向橙子学 / 学伴的**用户个案**行为分析看板：按用户 ID 与日期拉取真实埋点，并用 DeepSeek 生成可读的行为解读报告。  
+这不是整体 UV / 留存大盘，而是「已知用户 ID 后还原路径、找卡点」的工具。
 
-## 功能特点
+> **给产品 / 运营 / 教研看的使用与分享文档** → 请打开同目录 [`使用说明.md`](./使用说明.md)  
+> 下文为技术架构、数据导入与运维说明。
 
-- **数仓导出后发布**（推荐线上方案）：用脚本从数仓按日导出 JSON → 上传 GitHub Releases → Vercel 读取
-- **数仓 MCP 实时取数**（可选，仅本机/内网）：`DATA_SOURCE=warehouse` 时通过 MCP 查询（线上测试 MCP 可能 403）
+## 能力概览
 
-### 从数仓导出（每周更新）
+| 能力 | 说明 |
+| --- | --- |
+| **按用户取数** | 输入用户 ID + 日期区间，拉取橙子学（czx）与学伴（xueban）相关埋点 |
+| **AI 解读** | DeepSeek 输出常规四段式报告，或针对具体问题深挖 |
+| **数仓导出发布**（推荐线上） | 脚本按日导出 JSON → 上传 GitHub Releases / 云存储 → Vercel 读取 |
+| **数仓 MCP 实时取数**（本机/内网） | `DATA_SOURCE=warehouse` 时按需查询，勿在 Vercel 上对全量做实时 MCP |
+| **本地 JSON + 索引** | 按日分片、用户/日期双重索引，适合本机调试与历史 Excel 导入 |
 
-1. 配置本地 `用户行为看板（周度）/.env` 中的 `MCP_KEY`
+## 数据源与部署
+
+### 1. 数仓导出后发布（推荐线上方案）
+
+用脚本从数仓按日导出 JSON → 上传到 GitHub Releases（或兼容的云存储）→ Vercel Serverless 按 `DATA_BASE_URL` 读取。
+
+#### 从数仓导出（每周更新）
+
+1. 配置本地 `用户行为看板（周度）/.env` 中的 `MCP_KEY`（可参考 `.env.example`）
 2. 先单日试跑：
 
 ```bash
@@ -17,31 +32,66 @@ cd 用户行为看板（周度）
 node scripts/export-from-warehouse.js 2026-07-16 2026-07-16
 ```
 
-3. 确认无截断警告后，再导出区间（7 月全量约需较长时间，单日分片默认 256 次请求）：
+3. 确认无截断警告后，再导出区间（全量区间耗时较长，单日分片默认 256 次请求）：
 
 ```bash
 node scripts/export-from-warehouse.js 2026-07-01 2026-07-29
 ```
 
-4. 将 `data/YYYY-MM-DD.json` 上传到 GitHub Release（勿直接把超大 JSON 提交进 Git）
+4. 将 `data/YYYY-MM-DD.json` 上传到 GitHub Release / 云存储（勿把超大 JSON 直接提交进 Git）
 5. 更新仓库内 `api/behavior-dates.json` 与 `cloud-upload/stats.json` 后 push，Vercel 即可识别新日期
 
-注意：7 月橙子学+学伴埋点约每天 70 万～190 万行，合计约三千万行；不要用实时 MCP 在 Vercel 上查全量。
+注意：橙子学 + 学伴埋点量级很大（单日可达数十万～近两百万行量级）；不要用实时 MCP 在 Vercel 上查全量。云存储与 Vercel 环境变量细节见 [`CLOUD-STORAGE.md`](./CLOUD-STORAGE.md)。
 
-## 数据库架构
+### 2. 数仓 MCP 实时取数（本机 / 内网）
+
+```bash
+# .env
+DATA_SOURCE=warehouse
+MCP_KEY=你的密钥
+WAREHOUSE_ENGINE=hologres   # 或 maxcompute
+```
+
+```bash
+npm start   # 即 node server-with-db.js
+# 访问 http://localhost:3001/dashboard-db.html
+```
+
+线上若 MCP 返回 403，请改用「导出后发布」方案。
+
+### 3. 本地 JSON / Excel（调试与历史数据）
+
+将 Excel（格式：`2026年3月3日用户行为日志.xlsx`）放在本目录后：
+
+```bash
+npm install
+node db-manager.js init          # 首次全量初始化
+# 或仅导入索引中尚无的日期：
+node db-manager.js import-new
+node server-with-db.js
+```
+
+打开：http://localhost:3001/dashboard-db.html
+
+数据状态与增量导入注意点见 [`数据状态说明.md`](./数据状态说明.md)。
+
+## 本地存储架构（JSON 模式）
 
 ### 存储方案
-- **分片存储**：按日期分片，每天一个JSON文件
-- **双重索引**：用户索引 + 日期索引，内存常驻
-- **按用户分组**：同一用户的数据聚合存储，减少IO
 
-### 性能优化
-- 支持百万级记录查询
-- 索引常驻内存，查询秒级响应
-- 批量处理和增量更新
-- 文件修改时间戳缓存验证
+- **分片存储**：按日期分片，每天一个 JSON 文件（`data/YYYY-MM-DD.json`）
+- **双重索引**：用户索引 + 日期索引，内存常驻
+- **按用户分组**：同一用户的数据聚合存储，减少 IO
+
+### 性能要点
+
+- 按用户 + 日期区间查询（非全表扫描大盘）
+- 索引常驻内存，本机查询一般为秒级或更快
+- 支持批量处理与增量更新；文件修改时间戳用于缓存校验
+- 活跃用户日志量大，建议单次分析日期范围 **≤ 7 天**
 
 ### 数据字段
+
 ```
 xyio_client_time      - 客户端时间
 user_id               - 用户ID
@@ -59,27 +109,6 @@ xyio_backend_time     - 后端时间
 dt                    - 日期
 ```
 
-## 快速开始
-
-### 1. 安装依赖
-```bash
-npm install
-```
-
-### 2. 初始化数据库
-将Excel文件（格式：`2026年3月3日用户行为日志.xlsx`）放在项目根目录，然后运行：
-```bash
-node db-manager.js init
-```
-
-### 3. 启动服务器
-```bash
-node server-with-db.js
-```
-
-### 4. 访问看板
-打开浏览器访问：http://localhost:3001/dashboard-db.html
-
 ## 数据库管理命令
 
 ```bash
@@ -90,270 +119,147 @@ node db-manager.js stats
 node db-manager.js query <用户ID> [开始日期] [结束日期]
 # 示例：node db-manager.js query 77821274 2026-02-26 2026-03-04
 
-# 重建索引
+# 重建索引（扫描 data/ 下已有 JSON）
 node db-manager.js rebuild
+
+# 仅导入 date_index 中尚无的日期（从 Excel）
+node db-manager.js import-new
 ```
 
-## AI分析配置
+大文件导入可用：`node --max-old-space-size=16384 db-manager.js import-new`
 
-### AI Prompt 配置
+## AI 分析配置
 
-系统使用DeepSeek AI进行用户行为分析，支持两种分析模式：
+系统使用 DeepSeek API。前端可显式选择 **常规性分析** / **针对性分析**；未指定时服务端也可按关键词自动判断。
 
-#### 1. 标准分析模式（无具体问题指向）
+密钥请走环境变量 `DEEPSEEK_API_KEY`（Vercel / Railway / 本地 `.env`），**不要**把密钥写进代码或提交进 Git。
 
-**触发条件**：用户输入不包含问题关键词
+### 1. 常规性分析（四段式）
 
-**System Prompt**：
-```
-你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。你能够根据用户的具体问题进行针对性分析，也能提供全面的行为分析报告。
-```
+面向「不知道具体问题、想看完整路径」的场景。输出模块：
 
-**User Prompt 模板**：
-```
-你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。
+1. 用户完整行为轨迹（时间线简述）
+2. 用户使用习惯与特征
+3. 产品问题与体验卡点（重点）
+4. 产品&运营优化建议
 
-产品背景：
-czx（橙子学）是一款主要面向学生及家长的H5产品，提供优质的试卷资源。用户可以通过平板、手机、扫描二维码等多种渠道进入该产品，进行浏览、全预览、收藏、在线练习、下载、购买会员、使用AI学伴、查看试卷报告等各种行为。
+要求：只写有日志依据的内容，不编造；不输出原始埋点表；语言面向产品 / 运营。
 
-分析要求：
-输出简洁、专业、可直接放在用户日志看板上的分析内容，面向产品、运营，用于定位问题、发现使用习惯、优化产品。
+### 2. 针对性问题分析
 
-[如果有用户描述]
-用户特别关注：{userDescription}
+用户在前端选择「针对性分析」，或描述中含问题导向关键词（如：为什么、问题、卡点、流失、转化、异常、错误、定位，以及短问句中的「分析」）时，按「问题定位 → 原因分析 → 数据支撑 → 解决建议」输出。
 
-请严格按照以下格式输出，每个模块必须以指定的标题开头：
+### 修改 AI Prompt
 
-一、用户完整行为轨迹（时间线简述）
-[在这里按时间顺序描述用户行为]
-- 用户从哪里进入，访问了多少次
-- 浏览了哪些页面，按什么顺序
-- 点击了哪些关键按钮，触发了什么事件
-- 最后在哪里退出
+- 本机 Express：`server-with-db.js` 中的 `analyzeWithDeepSeek`
+- Vercel Serverless：`api/analyze.js`
 
-二、用户使用习惯与特征
-[在这里描述用户的使用习惯]
-- 高频访问的页面有哪些
-- 高频点击的操作是什么
-- 操作节奏如何（快速/反复/犹豫/重试）
-- 典型偏好（如爱搜索、爱筛选、爱返回、爱查看详情）
-
-三、产品问题与体验卡点（重点）
-[在这里指出发现的问题]
-- 流程中断、多次返回的情况
-- 反复点击同一区域（疑似无响应/找不到）
-- 长时间停留无操作（疑似困惑/加载慢）
-- 关键步骤未完成（如加购不支付、填写不提交）
-注意：只写有日志依据的内容，不编造
-
-四、产品&运营优化建议
-[在这里给出具体建议]
-- 流程简化的方向
-- 引导加强的位置
-- 页面结构/按钮位置的调整
-- 信息透明度的提升
-- 流失召回、转化提升的方向
-
-输出要求：
-1. 必须包含上述四个模块，每个模块标题必须完整
-2. 不要使用表格
-3. 不要输出原始埋点数据
-4. 语言精炼、客观、业务导向
-5. 适合产品/运营快速决策
-
-示例格式：
-一、用户完整行为轨迹（时间线简述）
-用户于2月26日通过搜索引擎进入产品首页，当天访问3次。首次访问浏览了首页、搜索页、试卷详情页，点击了"全预览"按钮。第二次访问直接进入搜索结果页，查看了5份试卷。第三次访问在试卷详情页停留较长时间后退出。
-
-二、用户使用习惯与特征
-高频访问页面为搜索页和试卷详情页。高频操作包括搜索、查看试卷详情、全预览。操作节奏较快，平均每个页面停留30秒。典型偏好为爱搜索、爱查看详情，较少使用筛选功能。
-
-三、产品问题与体验卡点（重点）
-发现用户在试卷详情页多次返回搜索页，疑似未找到想要的内容。用户在"下载"按钮区域反复点击，可能存在响应问题。用户在会员购买页面停留后直接退出，未完成支付流程。
-
-四、产品&运营优化建议
-建议优化搜索结果的相关性，减少用户返回次数。检查下载功能的响应速度，确保按钮可点击状态明确。在会员购买页面增加引导说明，提升转化率。考虑增加试卷推荐功能，减少用户搜索成本。
-
-用户行为日志数据：
-{logsText}
-```
-
-#### 2. 针对性问题分析模式
-
-**触发条件**：用户输入包含以下关键词之一
-- 为什么、问题、卡点、流失、转化
-- 异常、错误、定位
-- 短问句（长度<20且包含"分析"）
-
-**User Prompt 模板**：
-```
-你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。
-
-产品背景：
-czx（橙子学）是一款主要面向学生及家长的H5产品，提供优质的试卷资源。用户可以通过平板、手机、扫描二维码等多种渠道进入该产品，进行浏览、全预览、收藏、在线练习、下载、购买会员、使用AI学伴、查看试卷报告等各种行为。
-
-分析要求：
-输出简洁、专业、可直接放在用户日志看板上的分析内容，面向产品、运营，用于定位问题、发现使用习惯、优化产品。
-
-用户关注的具体问题：{userDescription}
-
-请针对用户提出的问题，从用户行为日志中进行深度分析：
-
-1. 问题定位：
-   - 从日志中找出与问题相关的关键行为
-   - 识别异常模式或流程中断点
-   - 定位问题发生的具体环节
-
-2. 原因分析：
-   - 分析导致问题的可能原因
-   - 从用户行为路径中找出线索
-   - 结合产品流程推断问题根源
-
-3. 数据支撑：
-   - 列举具体的日志证据
-   - 统计相关行为的频次和模式
-   - 量化问题的影响范围
-
-4. 解决建议：
-   - 提供针对性的优化方案
-   - 给出可落地的改进措施
-   - 建议需要进一步验证的假设
-
-注意：
-- 紧扣用户提出的问题进行分析
-- 只写有日志依据的内容，不编造
-- 语言精炼、客观、业务导向
-
-用户行为日志数据：
-{logsText}
-```
-
-### 修改AI Prompt
-
-AI Prompt配置在 `server-with-db.js` 文件的 `analyzeWithDeepSeek` 函数中。
-
-**修改步骤**：
-1. 打开 `server-with-db.js`
-2. 找到 `analyzeWithDeepSeek` 函数
-3. 修改 `prompt` 变量的内容
-4. 重启服务器：`node server-with-db.js`
+修改后重启本机服务，或重新部署 Vercel。
 
 **关键参数**：
+
 ```javascript
 {
   model: 'deepseek-chat',
-  temperature: 0.7,      // 控制输出随机性，0-1之间
+  temperature: 0.7,      // 控制输出随机性，0-1
   max_tokens: 2000       // 最大输出长度
 }
 ```
 
-### 触发关键词配置
+自动模式关键词判断（`analysisMode === 'auto'` 时）位于 `server-with-db.js` / `api/analyze.js` 的对应逻辑中，可按需增删。
 
-在 `server-with-db.js` 中的 `hasSpecificQuestion` 判断逻辑：
+## 使用流程（技术侧速览）
 
-```javascript
-const hasSpecificQuestion = userDescription && (
-  userDescription.includes('为什么') || 
-  userDescription.includes('问题') ||
-  userDescription.includes('卡点') ||
-  userDescription.includes('流失') ||
-  userDescription.includes('转化') ||
-  userDescription.includes('异常') ||
-  userDescription.includes('错误') ||
-  userDescription.includes('定位') ||
-  userDescription.includes('分析') && userDescription.length < 20
-);
-```
+业务侧完整说明见 [`使用说明.md`](./使用说明.md)。
 
-可以根据需要添加或删除关键词。
-
-## 使用说明
-
-### 标准分析
-1. 选择时间段（默认最近7天）
-2. 输入用户ID（多个用户ID用逗号隔开）
-3. 在对话框输入：`分析用户行为` 或 `查看用户轨迹`
-4. 获取标准四模块分析报告
-
-### 针对性分析
-1. 选择时间段
-2. 输入用户ID
-3. 在对话框输入具体问题，如：
-   - `为什么用户在搜索后就流失了`
-   - `定位用户转化问题`
-   - `分析用户在哪个环节卡住了`
-4. 获取针对性问题分析
+1. 确认数据源已就绪（本地索引 / 云端 `stats.json` / 数仓 MCP）
+2. 选择日期（建议 ≤ 7 天）、填写用户 ID（多个用英文逗号分隔）
+3. 选择分析模式，在对话框描述需求并发送
+4. 阅读 AI 报告；结论为辅助解读，关键决策需结合业务复核
 
 ## 技术栈
 
-- 前端：原生HTML + CSS + JavaScript
-- 后端：Node.js + Express
-- 数据库：JSON文件 + 内存索引（高性能方案）
-- AI：DeepSeek API
-- 数据处理：XLSX (Excel文件解析)
+| 层级 | 技术 |
+| --- | --- |
+| 主前端 | 原生 HTML + CSS + JS（`dashboard-db.html` / `dashboard-vercel.html`） |
+| 可选前端 | Vite 5 + React 18 + Ant Design（`src/`，非当前主入口） |
+| 本机服务 | Node.js（ESM）+ Express（`server-with-db.js`） |
+| 线上 API | Vercel Serverless（`api/stats`、`getData`、`analyze` 等） |
+| 本地存储 | 按日 JSON + 内存索引（另有 better-sqlite3 依赖，按实际使用为准） |
+| 数仓 | MCP（Hologres / MaxCompute） |
+| 云数据 | GitHub Releases 或其他公网可读对象存储（`DATA_BASE_URL`） |
+| AI | DeepSeek API |
+| 离线导入 | xlsx 解析 Excel |
 
-## 项目结构
+## 项目结构（摘要）
 
 ```
-├── server-with-db.js          # 主服务器（带数据库）
-├── database.js                # 数据库核心逻辑
-├── db-manager.js              # 数据库管理工具
-├── dashboard-db.html          # 看板前端页面
-├── data/                      # 数据存储目录
-│   ├── 2026-02-26.json       # 按日期分片的数据
-│   ├── 2026-02-27.json
-│   └── indexes/              # 索引文件
-│       ├── user_index.json   # 用户索引
-│       └── date_index.json   # 日期索引
-└── README.md                  # 本文件
+用户行为看板（周度）/
+├── dashboard-db.html          # 本机 / Railway 主看板
+├── dashboard-vercel.html      # 云端读取版页面
+├── server-with-db.js          # Express 主服务（local / warehouse）
+├── database.js / db-manager.js
+├── api/                       # Vercel Serverless
+├── lib/                       # 数仓 MCP、环境变量、SQL 等
+├── scripts/
+│   ├── export-from-warehouse.js
+│   ├── generate-stats-for-cloud.js
+│   └── test-warehouse-fetch.js
+├── data/                      # 按日 JSON + indexes/
+├── cloud-upload/              # 上传用 stats 等产物
+├── src/                       # 可选 React 前端
+├── .env.example
+├── CLOUD-STORAGE.md
+├── 使用说明.md
+└── README.md
 ```
-
-## 性能指标
-
-- 数据加载：3,189,702条记录，初始化约30秒
-- 查询速度：单用户查询 < 100ms
-- 内存占用：索引约50MB
-- 支持并发：多用户同时查询
 
 ## 注意事项
 
-1. Excel文件命名格式必须为：`2026年3月3日用户行为日志.xlsx`
-2. 首次使用需要运行 `node db-manager.js init` 初始化数据库
-3. 数据更新后需要重新初始化或使用 `rebuild` 命令
-4. DeepSeek API密钥配置在 `server-with-db.js` 中
-5. 大数据量查询建议限制日期范围在7天以内
+1. Excel 命名格式：`YYYY年M月D日用户行为日志.xlsx`（与 `db-manager` 约定一致）
+2. 本地数据更新后需 `init` / `import-new` / `rebuild`，保持索引与 `data/` 一致
+3. `DEEPSEEK_API_KEY`、`MCP_KEY`、`DATA_BASE_URL` 等走环境变量；勿提交真实 `.env`
+4. 单次查询建议限制在 7 天以内；特别活跃用户日志量很大
+5. 本看板必须先有数字用户 ID，不支持按姓名 / 手机号检索
+6. 发现乱码或明显异常数据时，排查源头，不要在前端掩盖
 
 ## 故障排查
 
-### 数据库初始化失败
-```bash
-# 检查Excel文件是否存在
-ls *用户行为日志.xlsx
+### 本地初始化 / 索引异常
 
-# 重建索引
-node db-manager.js rebuild
-```
-
-### 查询返回空数据
 ```bash
-# 检查用户ID是否存在
 node db-manager.js stats
-
-# 测试查询
+node db-manager.js rebuild
+# 单用户试查
 node db-manager.js query <用户ID> 2026-02-26 2026-03-04
 ```
 
-### AI分析失败
-- 检查网络连接
-- 确认DeepSeek API密钥有效
-- 查看服务器日志中的错误信息
+详见 [`数据状态说明.md`](./数据状态说明.md)。
 
-## 后续优化方向
+### 查询返回空数据
 
-1. 支持更多数据源（CSV、数据库等）
-2. 添加数据可视化图表
-3. 支持批量用户分析
-4. 增加用户行为对比功能
-5. 优化AI Prompt，提升分析质量
-6. 添加分析结果导出功能
+- 核对用户 ID 与日期是否在已有数据范围内
+- warehouse 模式：确认 `MCP_KEY`、网络 / VPN、引擎配置
+- 云端模式：确认 `DATA_BASE_URL` 下对应日期文件与 `stats.json` 可公网访问
 
+### AI 分析失败
+
+- 确认 `DEEPSEEK_API_KEY` 已配置且有效
+- 检查网络与服务端 / Serverless 日志
+- 缩短日期范围或减少用户数后重试
+
+## 相关文档
+
+| 文档 | 用途 |
+| --- | --- |
+| [`使用说明.md`](./使用说明.md) | 业务同学上手与分享 |
+| [`CLOUD-STORAGE.md`](./CLOUD-STORAGE.md) | Vercel + 云存储部署 |
+| [`数据状态说明.md`](./数据状态说明.md) | 本地导入与索引维护 |
+| 仓库根目录 `README.md` / `DEPLOY.md` | 门户与整体发布 |
+
+## 后续可改进方向
+
+1. 分析结果一键导出 / 分享
+2. 多用户对比视图（当前多 ID 为合并视角）
+3. 与汇总类周度看板的人群下钻联动
+4. 持续优化 AI Prompt 与产品背景描述（含学伴场景）

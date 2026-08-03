@@ -19,7 +19,7 @@ const SCRIPT_DIR = __dirname;
 const OUTPUT_JS = path.join(SCRIPT_DIR, '..', 'trend-data.js');
 
 // 表头对应：省份名称、活跃用户、新用户、营收、使用用户、ARPU、使用率
-const PROVINCE_KEYS = ['省份名称', '地区', '省份', '省', '区域', 'province'];
+const PROVINCE_KEYS = ['名称', '省份名称', '地区', '省份', '省', '区域', 'province'];
 const ACTIVE_KEYS = ['活跃用户'];
 const NEW_USER_KEYS = ['新用户'];
 const REVENUE_KEYS = ['营收', '订单营收', '收入', 'revenue'];
@@ -263,7 +263,7 @@ function main() {
   console.log('省份:', provinces.slice(0, 10).join('、'), provinces.length > 10 ? '...' : '');
 
   const jsContent = `// 由 趋势分析/build_trend_data.js 自动生成，请勿直接编辑
-// 全国各省份趋势数据与核心指标（25年1月～26年2月）
+// 全国各省份趋势数据与核心指标（由 趋势分析/*.xlsx 聚合）
 // 使用 window 挂载，保证在 file:// 下被 app.js 正确读取
 
 window.TREND_PROVINCES = ${JSON.stringify(provinces, null, 2)};
