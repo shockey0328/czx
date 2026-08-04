@@ -47,6 +47,7 @@ const MONTH_COL_RE = /^(\d{4})年(\d{1,2})月$/;
 function parseArgs(argv) {
   return {
     dryRun: argv.includes('--dry-run'),
+    skipConvert: argv.includes('--skip-convert'),
     ym: argv.find((a) => /^\d{4}-\d{1,2}$/.test(a))
   };
 }
@@ -508,7 +509,7 @@ function convertCsvToJs() {
 }
 
 async function main() {
-  const { dryRun, ym } = parseArgs(process.argv.slice(2));
+  const { dryRun, skipConvert, ym } = parseArgs(process.argv.slice(2));
   const target = ym ? parseYearMonth(ym) : prevCalendarMonth();
   const { year, month } = target;
 
@@ -571,7 +572,7 @@ async function main() {
 
     writeCsvFile(CSV_PATH, out, encoding);
     console.log(`\n>> 已写入: ${CSV_PATH}（编码 ${encoding}）`);
-    convertCsvToJs();
+    if (!skipConvert) convertCsvToJs();
     console.log('\n完成。前端月份会自动识别新列；全量月度更新可再跑「月度更新.bat」。');
   } finally {
     await client.close();

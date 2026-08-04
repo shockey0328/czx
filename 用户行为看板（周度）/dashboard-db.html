@@ -745,7 +745,9 @@
     let dbStats = null;
     let analysisMode = 'standard'; // 默认为常规分析
     // 本地打开(file:// 或 localhost)时请求本地后端；部署在 Railway 等时用同源相对路径
-    const API_BASE = (location.protocol === 'file:' || location.hostname === 'localhost') ? 'http://localhost:3001' : '';
+    const API_BASE = (location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:3001'
+      : '';
     if (API_BASE) {
       document.addEventListener('DOMContentLoaded', function() {
         var h = document.getElementById('localHint');
@@ -975,10 +977,14 @@
       
       document.getElementById('sendBtn').disabled = true;
       
+      const controller = new AbortController();
+      const timeoutMs = 180000;
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const response = await fetch(API_BASE + '/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({
             userIds: userIds.split(',').map(id => id.trim()).filter(id => id),
             startDate,
@@ -1010,8 +1016,12 @@
         if (loadingElement) loadingElement.remove();
         
         console.error('分析失败:', error);
-        addMessage('分析失败：' + error.message);
+        const msg = error?.name === 'AbortError'
+          ? `请求超时（>${timeoutMs / 1000}s）。请确认已重启后端，或缩小日期范围/用户数后重试`
+          : error.message;
+        addMessage('分析失败：' + msg);
       } finally {
+        clearTimeout(timer);
         document.getElementById('sendBtn').disabled = false;
       }
     }

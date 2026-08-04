@@ -146,9 +146,41 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+/** 压缩并抽样日志，避免整包上万条导致 DeepSeek 超时/上下文溢出 */
+function compactLogsForAi(userData, { maxRows = 800, maxChars = 100000 } = {}) {
+  const compact = (log) => ({
+    t: log.xyio_client_time,
+    uid: log.user_id,
+    url: log.url,
+    pid: log.product_id,
+    evt: log.log_event_type,
+    el: [log.element_name, log.element_id, log.element_content]
+      .filter(Boolean)
+      .join('|')
+      .slice(0, 80),
+    src: log.source,
+    os: log.os
+  });
+
+  let rows = userData;
+  let note = '';
+  if (rows.length > maxRows) {
+    const head = Math.floor(maxRows * 0.7);
+    const tail = maxRows - head;
+    rows = [...userData.slice(0, head), ...userData.slice(-tail)];
+    note = `[日志已抽样：共 ${userData.length} 条，送入 AI ${rows.length} 条（前${head}+后${tail}）]\n`;
+  }
+
+  let text = note + rows.map((r) => JSON.stringify(compact(r))).join('\n');
+  if (text.length > maxChars) {
+    text = `${text.slice(0, maxChars)}\n[已截断至 ${maxChars} 字符]`;
+  }
+  return text;
+}
+
 // DeepSeek AI分析
 async function analyzeWithDeepSeek(userData, userDescription, analysisMode = 'auto') {
-  const logsText = userData.map(log => JSON.stringify(log)).join('\n');
+  const logsText = compactLogsForAi(userData);
   
   // 判断分析模式
   let useSpecificMode = false;
@@ -281,25 +313,50 @@ czx（橙子学）是一款主要面向学生及家长的H5产品，提供优质
 ${logsText}`;
 
   try {
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer sk-22da5c080db84c23b4a5c8c54e922763'
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: '你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。你能够根据用户的具体问题进行针对性分析，也能提供全面的行为分析报告。' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
-      })
-    });
+    const apiKey = process.env.DEEPSEEK_API_KEY || process.env.X_DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      throw new Error('未配置 DEEPSEEK_API_KEY（请在 用户行为看板（周度）/.env 中设置）');
+    }
+
+    const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS || 120000);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      console.log(
+        `[DeepSeek] 开始调用，原始日志 ${userData.length} 条，prompt约 ${prompt.length} 字符，超时 ${timeoutMs}ms`
+      );
+      response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+          messages: [
+            { role: 'system', content: '你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。你能够根据用户的具体问题进行针对性分析，也能提供全面的行为分析报告。' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000
+        })
+      });
+    } catch (err) {
+      if (err?.name === 'AbortError') {
+        throw new Error(`DeepSeek 请求超时（>${timeoutMs}ms），请缩小日期范围或用户数后重试`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!response.ok) {
-      throw new Error('DeepSeek API请求失败');
+      const errText = await response.text().catch(() => '');
+      throw new Error(
+        `DeepSeek API请求失败: HTTP ${response.status}${errText ? ` - ${errText.slice(0, 200)}` : ''}`
+      );
     }
 
     const data = await response.json();
@@ -385,6 +442,11 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`用户行为分析服务器运行在 http://localhost:${PORT}`);
   console.log(`请访问: http://localhost:${PORT}/dashboard-db.html`);
   console.log(`数据源: ${useWarehouse ? 'warehouse (MCP 数仓，含 czx+xueban)' : 'local (本地 JSON)'}`);
+  console.log(
+    `DeepSeek: ${
+      process.env.DEEPSEEK_API_KEY || process.env.X_DEEPSEEK_API_KEY ? '已配置' : '未配置（AI 分析会失败）'
+    }`
+  );
   console.log(`========================================\n`);
 
   if (useWarehouse) {
