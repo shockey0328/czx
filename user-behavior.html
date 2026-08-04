@@ -82,7 +82,7 @@
     <p class="err" id="errBox"></p>
     <p class="muted">
       内网地址配置见仓库根目录 <code>intranet-user-behavior.json</code>。<br>
-      本机调试也可直接打开 <code>http://localhost:3001/dashboard-db.html</code>（需先启动服务）。
+      本机调试也可直接打开 <code>http://localhost:3010/dashboard-db.html</code>（需先启动服务）。
     </p>
   </div>
 
@@ -91,7 +91,7 @@
      * 内网看板地址（优先读 intranet-user-behavior.json）
      * 未配置时不会自动跳转，只显示说明。
      */
-    const FALLBACK_LOCAL = 'http://localhost:3001/dashboard-db.html';
+    const FALLBACK_LOCAL = 'http://localhost:3010/dashboard-db.html';
 
     function go(url) {
       try {

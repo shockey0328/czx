@@ -73,6 +73,9 @@ app.post('/api/getData', async (req, res) => {
 // 获取数据库统计信息
 app.get('/api/stats', async (req, res) => {
   try {
+    const deepseekConfigured = Boolean(
+      process.env.DEEPSEEK_API_KEY || process.env.X_DEEPSEEK_API_KEY
+    );
     if (useWarehouse) {
       return res.json({
         success: true,
@@ -84,14 +87,20 @@ app.get('/api/stats', async (req, res) => {
           dateRange: null,
           note: '数仓 MCP 按需查询（czx + xueban），输入用户ID与日期后即可分析',
           products: ['czx', 'xueban'],
-          applicationId: 'mzhan'
+          applicationId: 'mzhan',
+          deepseekConfigured,
+          serverPort: Number(PORT)
         }
       });
     }
     const stats = await db.getStats();
     res.json({
       success: true,
-      stats
+      stats: {
+        ...stats,
+        deepseekConfigured,
+        serverPort: Number(PORT)
+      }
     });
   } catch (error) {
     console.error('获取统计信息失败:', error);
@@ -319,44 +328,74 @@ ${logsText}`;
     }
 
     const timeoutMs = Number(process.env.DEEPSEEK_TIMEOUT_MS || 120000);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    let response;
-    try {
-      console.log(
-        `[DeepSeek] 开始调用，原始日志 ${userData.length} 条，prompt约 ${prompt.length} 字符，超时 ${timeoutMs}ms`
-      );
-      response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`
+    const maxAttempts = Math.max(1, Number(process.env.DEEPSEEK_RETRIES || 3));
+    const requestBody = {
+      model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content:
+            '你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。你能够根据用户的具体问题进行针对性分析，也能提供全面的行为分析报告。'
         },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
-          messages: [
-            { role: 'system', content: '你是一个专业的用户行为分析专家，擅长从日志数据中洞察用户行为模式和产品问题。你能够根据用户的具体问题进行针对性分析，也能提供全面的行为分析报告。' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
-      });
-    } catch (err) {
-      if (err?.name === 'AbortError') {
-        throw new Error(`DeepSeek 请求超时（>${timeoutMs}ms），请缩小日期范围或用户数后重试`);
-      }
-      throw err;
-    } finally {
-      clearTimeout(timer);
-    }
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    };
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(
-        `DeepSeek API请求失败: HTTP ${response.status}${errText ? ` - ${errText.slice(0, 200)}` : ''}`
+    console.log(
+      `[DeepSeek] 开始调用，原始日志 ${userData.length} 条，prompt约 ${prompt.length} 字符，超时 ${timeoutMs}ms，最多重试 ${maxAttempts} 次`
+    );
+
+    let response;
+    let lastErrText = '';
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`
+          },
+          signal: controller.signal,
+          body: JSON.stringify(requestBody)
+        });
+      } catch (err) {
+        if (err?.name === 'AbortError') {
+          lastErrText = `请求超时（>${timeoutMs}ms）`;
+        } else {
+          lastErrText = err.message || String(err);
+        }
+        console.warn(`[DeepSeek] 第 ${attempt}/${maxAttempts} 次网络失败:`, lastErrText);
+        if (attempt === maxAttempts) {
+          throw new Error(
+            `DeepSeek 请求失败（已重试 ${maxAttempts} 次）: ${lastErrText}。请稍后重试或缩小日期范围`
+          );
+        }
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+        continue;
+      } finally {
+        clearTimeout(timer);
+      }
+
+      if (response.ok) break;
+
+      lastErrText = await response.text().catch(() => '');
+      const retryable = response.status === 429 || response.status === 503 || response.status >= 500;
+      console.warn(
+        `[DeepSeek] 第 ${attempt}/${maxAttempts} 次 HTTP ${response.status}:`,
+        lastErrText.slice(0, 160)
       );
+      if (!retryable || attempt === maxAttempts) {
+        throw new Error(
+          `DeepSeek API请求失败: HTTP ${response.status}${
+            lastErrText ? ` - ${lastErrText.slice(0, 200)}` : ''
+          }`
+        );
+      }
+      await new Promise((r) => setTimeout(r, 2000 * attempt));
     }
 
     const data = await response.json();

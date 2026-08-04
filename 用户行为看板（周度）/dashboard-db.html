@@ -706,7 +706,7 @@
     <div id="localHint" style="display:none; font-size:12px; color:#666; margin-bottom:8px; padding:8px; background:#fff8e6; border-radius:6px;">
       <strong>本地使用步骤：</strong><br>
       1. 终端执行 <code style="background:#f5f5f5;padding:2px 6px;">cd 用户行为看板（周度）</code> 再执行 <code style="background:#f5f5f5;padding:2px 6px;">node server-with-db.js</code><br>
-      2. 用浏览器打开 <a href="http://localhost:3001/dashboard-db.html" target="_blank" style="color:#ff7043;">http://localhost:3001/dashboard-db.html</a>（不要用双击打开 HTML）
+      2. 用浏览器打开 <a href="http://localhost:3010/dashboard-db.html" target="_blank" style="color:#ff7043;">http://localhost:3010/dashboard-db.html</a>（不要用双击打开 HTML）
     </div>
     <button class="btn" onclick="loadStats()">刷新统计</button>
   </div>
@@ -744,16 +744,15 @@
   <script>
     let dbStats = null;
     let analysisMode = 'standard'; // 默认为常规分析
-    // 本地打开(file:// 或 localhost)时请求本地后端；部署在 Railway 等时用同源相对路径
-    const API_BASE = (location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-      ? 'http://localhost:3001'
-      : '';
-    if (API_BASE) {
+    // file:// 才落到固定端口；http(s) 一律同源，避免打开 3002 页面却打到旧的 3001 进程
+    const API_BASE = location.protocol === 'file:' ? 'http://localhost:3010' : '';
+    if (location.protocol === 'file:') {
       document.addEventListener('DOMContentLoaded', function() {
         var h = document.getElementById('localHint');
         if (h) h.style.display = 'block';
       });
     }
+    console.log('[用户行为看板] API:', API_BASE || location.origin);
 
     function selectMode(mode) {
       analysisMode = mode;
@@ -921,10 +920,24 @@
           let statusMsg = dbStats.dataSource === 'warehouse'
             ? '数仓 MCP 已就绪（按用户ID+日期实时查询，含橙子学/学伴）'
             : '数据库就绪！';
+          if (dbStats.serverPort) {
+            statusMsg += ` · 后端端口 ${dbStats.serverPort}`;
+          }
+          if (dbStats.deepseekConfigured === false) {
+            statusMsg += ' · DeepSeek 未配置（AI 分析会失败，请检查 .env 并重启服务）';
+          } else if (dbStats.deepseekConfigured === true) {
+            statusMsg += ' · DeepSeek 已配置';
+          }
           if (dbStats.dateRange) {
             statusMsg += ` 数据范围: ${dbStats.dateRange.start} 到 ${dbStats.dateRange.end}`;
           }
-          updateStatus(statusMsg, 'success');
+          // 若页面跑在旧 3001 且 DeepSeek 字段缺失，提示换到已重启服务
+          if (location.port === '3001' && dbStats.deepseekConfigured == null) {
+            statusMsg = '检测到旧后端进程（3001）。请改用 http://localhost:3010/dashboard-db.html 或双击根目录「启动用户行为看板.bat」';
+            updateStatus(statusMsg, 'error');
+          } else {
+            updateStatus(statusMsg, dbStats.deepseekConfigured === false ? 'error' : 'success');
+          }
           
           if (dbStats.dataSource === 'warehouse') {
             addMessage('已切换为数仓实时取数：输入用户ID与日期后发送问题即可分析（无需本地导入 Excel）。');
@@ -968,7 +981,7 @@
         <img src="小橙子.png" alt="小橙子" class="avatar">
         <div class="message-content">
           <div class="message-bubble">
-            <span class="spinner"></span>正在分析用户行为数据...
+            <span class="spinner"></span>正在分析用户行为数据（数仓取数 + AI，通常 30～90 秒）...
           </div>
         </div>
       `;
@@ -980,8 +993,10 @@
       const controller = new AbortController();
       const timeoutMs = 180000;
       const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const analyzeUrl = (API_BASE || '') + '/api/analyze';
+      console.log('[用户行为看板] 开始分析:', analyzeUrl, { startDate, endDate, userIds });
       try {
-        const response = await fetch(API_BASE + '/api/analyze', {
+        const response = await fetch(analyzeUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,

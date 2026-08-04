@@ -1,4 +1,4 @@
 {
-  "url": "http://172.16.32.24:3001/dashboard-db.html",
-  "comment": "内网用户行为看板地址。公网 https://d1.fuxue.work/user-behavior.html 会跳转到此地址（需公司网络/VPN，且该机器上服务保持运行）。"
+  "url": "http://172.16.32.24:3010/dashboard-db.html",
+  "comment": "内网用户行为看板。本机旧 3001 进程（PID 23108）若仍占用且无法结束，请先用任务管理器结束该 node.exe，再改回 http://172.16.32.24:3001/dashboard-db.html 并用「启动用户行为看板.bat」启动。当前临时使用 3010。"
 }
