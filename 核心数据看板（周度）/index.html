@@ -3078,8 +3078,9 @@ c) 指标间的交叉矛盾，包括但不限于：
                                 content: finalPrompt
                             }
                         ],
-                        temperature: 0.2,  // 进一步降低随机性
-                        max_tokens: 1000,
+                        temperature: 0.2,
+                        max_tokens: 4096,
+                        response_format: { type: 'json_object' },
                         stream: false
                     })
                 });
@@ -3100,7 +3101,13 @@ c) 指标间的交叉矛盾，包括但不限于：
                     console.log('AI分析结果:', analysis);
                     
                     // 格式化AI分析结果
-                    const formattedAnalysis = formatAIAnalysisOptimized(analysis, currentData, metrics);
+                    const formattedAnalysis = formatAIAnalysisOptimized(
+                        analysis,
+                        currentData,
+                        metrics,
+                        lastWeekData,
+                        lastYearData
+                    );
                     analysisElement.innerHTML = formattedAnalysis;
                 } else {
                     throw new Error('API返回数据格式异常');
@@ -3387,7 +3394,7 @@ c) 指标间的交叉矛盾，包括但不限于：
                 if (inStr) {
                     if (escaped) {
                         escaped = false;
-                    } else if (ch === '\\\\') {
+                    } else if (ch === '\\') {
                         escaped = true;
                     } else if (ch === '"') {
                         inStr = false;
@@ -3423,7 +3430,7 @@ c) 指标间的交叉矛盾，包括但不限于：
             return null;
         }
 
-        function formatAIAnalysisOptimized(analysis, currentData, metrics) {
+        function formatAIAnalysisOptimized(analysis, currentData, metrics, lastWeekData, lastYearData) {
             try {
                 const parsed = tryParseJsonFromModel(analysis);
                 if (parsed && typeof parsed === 'object') {
@@ -3434,6 +3441,17 @@ c) 指标间的交叉矛盾，包括但不限于：
                 const trimmed = String(analysis || '').trim();
                 const looksLikeJson = /^\s*\{/.test(trimmed) && (trimmed.includes('"analysis_date"') || trimmed.includes('"core_metrics"'));
                 if (looksLikeJson) {
+                    console.warn('AI JSON 解析失败，回退本地分析。原文前 500 字:', String(analysis || '').slice(0, 500));
+                    try {
+                        return generateOptimizedFallbackAnalysis(
+                            currentData,
+                            lastWeekData,
+                            lastYearData,
+                            metrics
+                        );
+                    } catch (e) {
+                        console.error('本地分析回退失败:', e);
+                    }
                     const rawOut = String(analysis || '').slice(0, 4000);
                     const esc = (s) => String(s ?? '')
                         .replace(/&/g, '&amp;')

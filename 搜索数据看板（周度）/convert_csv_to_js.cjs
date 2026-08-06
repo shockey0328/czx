@@ -148,14 +148,29 @@ coreData._keywordWeeks = keywordWeeks;
 coreData._dataVersion = DATA_VERSION;
 
 const corePath = path.join(dataDir, 'dashboard-core.json');
-fs.writeFileSync(corePath, JSON.stringify(coreData), 'utf8');
+function writeFileRetry(filePath, content, encoding = 'utf8') {
+  let lastErr;
+  for (let i = 0; i < 6; i++) {
+    try {
+      const tmp = `${filePath}.tmp.${process.pid}`;
+      fs.writeFileSync(tmp, content, encoding);
+      fs.renameSync(tmp, filePath);
+      return;
+    } catch (err) {
+      lastErr = err;
+      const end = Date.now() + 400 * (i + 1);
+      while (Date.now() < end) { /* spin */ }
+    }
+  }
+  throw lastErr;
+}
+writeFileRetry(corePath, JSON.stringify(coreData));
 console.log(`  ✓ dashboard-core.json (${(fs.statSync(corePath).size / 1024).toFixed(1)} KB)`);
 
 const coreJsPath = path.join(dataDir, 'data-core.js');
-fs.writeFileSync(
+writeFileRetry(
   coreJsPath,
-  `// 由 convert_csv_to_js.js 自动生成\nwindow.searchDashboardCore=${JSON.stringify(coreData)};\n`,
-  'utf8'
+  `// 由 convert_csv_to_js.js 自动生成\nwindow.searchDashboardCore=${JSON.stringify(coreData)};\n`
 );
 console.log(`  ✓ data-core.js (${(fs.statSync(coreJsPath).size / 1024).toFixed(1)} KB)`);
 
@@ -164,7 +179,7 @@ const manifest = {
   keywordWeeks,
   latestWeek: keywordWeeks.length ? keywordWeeks[keywordWeeks.length - 1] : null,
 };
-fs.writeFileSync(path.join(dataDir, 'manifest.json'), JSON.stringify(manifest), 'utf8');
+writeFileRetry(path.join(dataDir, 'manifest.json'), JSON.stringify(manifest));
 console.log(`  ✓ manifest.json（最新第 ${manifest.latestWeek} 周）`);
 
 console.log('\n已生成分片数据（请部署 data/ 目录；不再生成单体 data.js）');
