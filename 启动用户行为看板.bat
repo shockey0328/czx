@@ -31,8 +31,8 @@ if not exist "node_modules" (
     )
 )
 
-REM 默认 3010，避开本机可能残留的旧 3001 进程
-if not defined PORT set PORT=3010
+REM 统一端口 3001，与开机自启动服务一致
+if not defined PORT set PORT=3001
 
 echo.
 echo [启动] 端口 %PORT%

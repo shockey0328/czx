@@ -54,7 +54,7 @@
 
 | 入口 | 地址 |
 | --- | --- |
-| 本机 / 内网（推荐） | http://localhost:3010/dashboard-db.html 或 http://172.16.32.24:3010/dashboard-db.html |
+| 本机 / 内网（推荐） | http://localhost:3001/dashboard-db.html 或 http://172.16.32.24:3001/dashboard-db.html |
 | 统一门户 | 周度 → **用户行为**（经 `user-behavior.html` 跳转，见 `intranet-user-behavior.json`） |
 
 确认顶部状态含：**数仓就绪**、**DeepSeek 已配置**（或等价成功提示）。若一直转圈 / 失败，先联系服务维护方，勿用编造路径顶替。
@@ -157,11 +157,11 @@
 
 | 现象 | 处理 |
 | --- | --- |
-| 一直转圈 | 确认打开的是 **3010** 新服务；Ctrl+F5；勿用旧 3001 |
+| 一直转圈 | 确认打开的是 **3001** 服务；Ctrl+F5；如刚改配置，重启服务（「重启服务.bat」） |
 | 未找到行为数据 | 核 ID、日期；略扩日期；仍无则反馈维护方 |
 | DeepSeek / API 失败 | 稍后重试；缩小日期或用户数；联系维护方查密钥与日志 |
 | 结论像「编的」 | 对照「基于 N 条」与业务常识复核；不可用则只保留可核对的时间线事实 |
-| 门户跳转失败 | 公司网/VPN；检查 `intranet-user-behavior.json`；本机直开 3010 |
+| 门户跳转失败 | 公司网/VPN；检查 `intranet-user-behavior.json`；本机直开 3001 |
 
 ---
 

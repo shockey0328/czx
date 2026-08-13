@@ -2,7 +2,7 @@
 chcp 65001 >nul
 cd /d "%~dp0用户行为看板（周度）"
 
-if not defined PORT set PORT=3010
+if not defined PORT set PORT=3001
 
 echo ========================================
 echo  用户行为看板（数仓 MCP / 内网模式）

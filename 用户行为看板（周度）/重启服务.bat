@@ -2,7 +2,8 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 
-if not defined PORT set PORT=3010
+REM 统一端口 3001，与开机自启动服务一致
+if not defined PORT set PORT=3001
 
 echo 结束占用 %PORT% 的旧进程（如有）...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%PORT% " ^| findstr LISTENING') do (
