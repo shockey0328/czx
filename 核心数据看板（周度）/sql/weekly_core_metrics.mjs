@@ -78,7 +78,7 @@ temp4 AS (
     FROM temp1
 )
 SELECT t4.active_users, t3.retained_users,
-       t3.retained_users / t4.active_users AS retention_rate
+       t3.retained_users * 1.0 / t4.active_users AS retention_rate
 FROM temp4 t4
 LEFT JOIN temp3 t3 ON t4.a = t3.a
 `.trim()

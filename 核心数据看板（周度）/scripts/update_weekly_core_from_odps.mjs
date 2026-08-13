@@ -17,7 +17,7 @@ import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { spawnSync } from 'child_process';
 import { loadEnv } from '../../lib/loadEnv.js';
-import { McpHttpClient, sleep } from '../../lib/mcpHttpClient.js';
+import { createWarehouseClient } from '../../lib/warehouseClient.js';
 import { METRIC_SQL } from '../sql/weekly_core_metrics.mjs';
 
 const require = createRequire(import.meta.url);
@@ -182,19 +182,6 @@ function buildSqls(vars) {
   return out;
 }
 
-function parseOdpsPayload(text) {
-  const raw = (text || '').trim();
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const a = raw.indexOf('{');
-    const b = raw.lastIndexOf('}');
-    if (a >= 0 && b > a) return JSON.parse(raw.slice(a, b + 1));
-    throw new Error(`无法解析 ODPS 返回: ${raw.slice(0, 200)}`);
-  }
-}
-
 function parseCsvText(csvText) {
   const text = String(csvText || '').replace(/^\uFEFF/, '');
   if (!text.trim()) return [];
@@ -252,73 +239,6 @@ function parseCsvText(csvText) {
   });
 }
 
-function extractRows(body) {
-  if (!body) return [];
-  if (Array.isArray(body.data)) return body.data;
-  const csv = body.results?.AnonymousSQLTask;
-  if (typeof csv === 'string') return parseCsvText(csv);
-  return [];
-}
-
-async function runOdpsSql(client, sql, { maxCU, label, waitMs } = {}) {
-  const cu = maxCU || Number(process.env.ODPS_MAX_CU || 200);
-  const maxWait = waitMs || Number(process.env.ODPS_WAIT_MS || 600000);
-  process.stdout.write(`  [${label}] 提交 (maxCU=${cu}) ... `);
-  const submit = await client.callTool('execute_sql', {
-    project: 'dmp_analyst',
-    sql,
-    async: true,
-    maxCU: cu
-  });
-  const submitBody = parseOdpsPayload(submit.text);
-  if (submitBody?.overLimit) {
-    throw new Error(
-      `CU 超限 estimated=${submitBody.estimatedCU}，请提高 ODPS_MAX_CU（建议 ${submitBody.suggestedMaxCU || cu * 2}）`
-    );
-  }
-  const instanceId = submitBody?.instanceId;
-  if (!instanceId) {
-    const sync = extractRows(submitBody);
-    if (sync.length) {
-      console.log('同步完成');
-      return sync[0];
-    }
-    throw new Error(`未返回 instanceId: ${submit.text.slice(0, 240)}`);
-  }
-
-  const t0 = Date.now();
-  while (Date.now() - t0 < maxWait) {
-    const st = parseOdpsPayload(
-      (
-        await client.callTool('get_instance_status', {
-          project: 'dmp_analyst',
-          instanceId
-        })
-      ).text
-    );
-    if (!st?.isTerminated) {
-      await sleep(3000);
-      continue;
-    }
-    if (st.isSuccessful === false) {
-      throw new Error(`ODPS 失败: ${JSON.stringify(st).slice(0, 300)}`);
-    }
-    const dataBody = parseOdpsPayload(
-      (
-        await client.callTool('get_instance', {
-          project: 'dmp_analyst',
-          instanceId
-        })
-      ).text
-    );
-    const rows = extractRows(dataBody);
-    console.log(`完成 (${Math.round((Date.now() - t0) / 1000)}s)`);
-    if (!rows.length) throw new Error(`[${label}] 无结果行`);
-    return rows[0];
-  }
-  throw new Error(`[${label}] 超时 instanceId=${instanceId}`);
-}
-
 function pctFromRatio(ratio) {
   return `${Math.round(Number(ratio) * 100)}%`;
 }
@@ -350,36 +270,36 @@ async function fetchWeekMetrics(client, year, week, payerInList) {
     `   留存对照: ${csvYearLabel(prev.year)}${csvWeekLabel(prev.week)} → 当周`
   );
 
-  const activeRow = await runOdpsSql(client, sqls.activeUsers.sql, sqls.activeUsers);
+  const activeRow = (await client.runSql(sqls.activeUsers.sql, sqls.activeUsers))[0];
   const activeUsers = Number(activeRow.uv);
   console.log(`    活跃用户 = ${activeUsers}`);
 
-  const newRow = await runOdpsSql(client, sqls.newUsers.sql, sqls.newUsers);
+  const newRow = (await client.runSql(sqls.newUsers.sql, sqls.newUsers))[0];
   const newUsers = Number(newRow.new_user_cnt);
   console.log(`    新用户 = ${newUsers}`);
 
-  const retRow = await runOdpsSql(client, sqls.retention.sql, sqls.retention);
+  const retRow = (await client.runSql(sqls.retention.sql, sqls.retention))[0];
   const retention = pctFromRatio(retRow.retention_rate);
   console.log(
     `    次周留存率 = ${retention}（上期活跃 ${retRow.active_users} / 留存 ${retRow.retained_users}）`
   );
 
-  const revRow = await runOdpsSql(client, sqls.revenue.sql, sqls.revenue);
+  const revRow = (await client.runSql(sqls.revenue.sql, sqls.revenue))[0];
   const revenue = Math.round(Number(revRow.revenue));
   const arpu = fmtArpu(revenue / activeUsers);
   console.log(`    营收=${revenue} ARPU=${arpu}（订单 ${revRow.order_cnt}，不写入 CSV）`);
 
-  const depthRow = await runOdpsSql(client, sqls.depth.sql, sqls.depth);
+  const depthRow = (await client.runSql(sqls.depth.sql, sqls.depth))[0];
   const depthUv = Number(depthRow.uv);
   const depthRate = pctFromRatio(depthUv / activeUsers);
   console.log(`    深度访问率 = ${depthRate}（详情 UV ${depthUv}）`);
 
-  const usageRow = await runOdpsSql(client, sqls.usage.sql, sqls.usage);
+  const usageRow = (await client.runSql(sqls.usage.sql, sqls.usage))[0];
   const usageUsers = Number(usageRow.user_count);
   const usageRate = pctFromRatio(usageUsers / activeUsers);
   console.log(`    使用率 = ${usageRate}（使用用户 ${usageUsers}）`);
 
-  const vipRow = await runOdpsSql(client, sqls.vip.sql, sqls.vip);
+  const vipRow = (await client.runSql(sqls.vip.sql, sqls.vip))[0];
   const vipRate = pctFromPercentNumber(vipRow.active_rate);
   console.log(
     `    大会员活跃率 = ${vipRate}（会员 ${vipRow.member_cnt} / 到访 ${vipRow.visit_cnt}）`
@@ -567,7 +487,7 @@ async function main() {
   const yoy = { year: year - 1, week };
 
   console.log('========================================');
-  console.log('  周度核心数据 · MaxCompute 更新');
+  console.log('  周度核心数据 · 数仓更新');
   console.log(`  SQL 模板: ${path.relative(ROOT, SQL_PATH)}`);
   console.log(
     `  目标周次: ${csvYearLabel(year)}${csvWeekLabel(week)}（${range.begin} ~ ${range.end}）`
@@ -590,12 +510,8 @@ async function main() {
   }
 
   const payerInList = loadExcludedPayers();
-  const client = new McpHttpClient({
-    url: process.env.MAXCOMPUTE_MCP_URL || 'https://test-dmp-mcp.xkw.com/maxcompute-mcp',
-    apiKey: process.env.MCP_KEY || process.env.X_MCP_KEY
-  });
+  const client = await createWarehouseClient();
 
-  await client.initialize();
   try {
     const current = await fetchWeekMetrics(client, year, week, payerInList);
     const rows = [current];

@@ -17,7 +17,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 import { loadEnv } from '../../lib/loadEnv.js';
-import { McpHttpClient, sleep } from '../../lib/mcpHttpClient.js';
+import { createWarehouseClient } from '../../lib/warehouseClient.js';
 import { RETENTION_META, buildRetentionSql } from '../sql/weekly_retention.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -85,142 +85,6 @@ function weekRange(year, week) {
     return `${d.getFullYear()}-${mm}-${dd}`;
   };
   return { begin: iso(beginDate), end: iso(endDate), endNext: iso(nextDate) };
-}
-
-function parseOdpsPayload(text) {
-  const raw = (text || '').trim();
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const a = raw.indexOf('{');
-    const b = raw.lastIndexOf('}');
-    if (a >= 0 && b > a) return JSON.parse(raw.slice(a, b + 1));
-    throw new Error(`无法解析 ODPS 返回: ${raw.slice(0, 200)}`);
-  }
-}
-
-function parseCsvText(csvText) {
-  const text = String(csvText || '').replace(/^\uFEFF/, '');
-  if (!text.trim()) return [];
-  const rows = [];
-  let field = '';
-  let row = [];
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (inQuotes) {
-      if (ch === '"' && next === '"') {
-        field += '"';
-        i++;
-      } else if (ch === '"') inQuotes = false;
-      else field += ch;
-      continue;
-    }
-    if (ch === '"') {
-      inQuotes = true;
-      continue;
-    }
-    if (ch === ',') {
-      row.push(field);
-      field = '';
-      continue;
-    }
-    if (ch === '\n' || (ch === '\r' && next === '\n')) {
-      if (ch === '\r') i++;
-      row.push(field);
-      field = '';
-      if (row.some((c) => c !== '')) rows.push(row);
-      row = [];
-      continue;
-    }
-    if (ch === '\r') {
-      row.push(field);
-      field = '';
-      if (row.some((c) => c !== '')) rows.push(row);
-      row = [];
-      continue;
-    }
-    field += ch;
-  }
-  row.push(field);
-  if (row.some((c) => c !== '')) rows.push(row);
-  if (rows.length < 2) return [];
-  const headers = rows[0].map((h) => String(h).trim());
-  return rows.slice(1).map((cols) => {
-    const obj = {};
-    headers.forEach((h, idx) => {
-      obj[h] = cols[idx] ?? '';
-    });
-    return obj;
-  });
-}
-
-function extractRows(body) {
-  if (!body) return [];
-  if (Array.isArray(body.data)) return body.data;
-  const csv = body.results?.AnonymousSQLTask;
-  if (typeof csv === 'string') return parseCsvText(csv);
-  return [];
-}
-
-async function runOdpsSql(client, sql, { maxCU, label, waitMs } = {}) {
-  const cu = maxCU || Number(process.env.ODPS_MAX_CU || 250);
-  const maxWait = waitMs || Number(process.env.ODPS_WAIT_MS || 1800000);
-  process.stdout.write(`  [${label}] 提交 (maxCU=${cu}) ... `);
-  const submit = await client.callTool('execute_sql', {
-    project: 'dmp_analyst',
-    sql,
-    async: true,
-    maxCU: cu
-  });
-  const submitBody = parseOdpsPayload(submit.text);
-  if (submitBody?.overLimit) {
-    throw new Error(
-      `CU 超限 estimated=${submitBody.estimatedCU}，请提高 ODPS_MAX_CU（建议 ${submitBody.suggestedMaxCU || cu * 2}）`
-    );
-  }
-  const instanceId = submitBody?.instanceId;
-  if (!instanceId) {
-    const sync = extractRows(submitBody);
-    if (sync.length) {
-      console.log('同步完成');
-      return sync;
-    }
-    throw new Error(`未返回 instanceId: ${submit.text.slice(0, 240)}`);
-  }
-
-  const t0 = Date.now();
-  while (Date.now() - t0 < maxWait) {
-    const st = parseOdpsPayload(
-      (
-        await client.callTool('get_instance_status', {
-          project: 'dmp_analyst',
-          instanceId
-        })
-      ).text
-    );
-    if (!st?.isTerminated) {
-      await sleep(5000);
-      continue;
-    }
-    if (st.isSuccessful === false) {
-      throw new Error(`ODPS 失败: ${JSON.stringify(st).slice(0, 300)}`);
-    }
-    const dataBody = parseOdpsPayload(
-      (
-        await client.callTool('get_instance', {
-          project: 'dmp_analyst',
-          instanceId
-        })
-      ).text
-    );
-    const rows = extractRows(dataBody);
-    console.log(`完成 (${Math.round((Date.now() - t0) / 1000)}s, ${rows.length} 行)`);
-    return rows;
-  }
-  throw new Error(`[${label}] 超时 instanceId=${instanceId}`);
 }
 
 function toIsoDate(v) {
@@ -325,7 +189,7 @@ async function main() {
   const sql = buildRetentionSql({ endExclusive: range.endNext });
 
   console.log('========================================');
-  console.log('  搜索看板 · 周留存 MaxCompute 更新');
+  console.log('  搜索看板 · 周留存数仓更新');
   console.log(
     `  目标周: ${target.year}年第${target.week}周（${range.begin} ~ ${range.end}）`
   );
@@ -340,14 +204,10 @@ async function main() {
     process.exit(1);
   }
 
-  const client = new McpHttpClient({
-    url: process.env.MAXCOMPUTE_MCP_URL || 'https://test-dmp-mcp.xkw.com/maxcompute-mcp',
-    apiKey: process.env.MCP_KEY || process.env.X_MCP_KEY
-  });
+  const client = await createWarehouseClient();
 
-  await client.initialize();
   try {
-    const raw = await runOdpsSql(client, sql, RETENTION_META);
+    const raw = await client.runSql(sql, { label: RETENTION_META.label });
     const { rows, weekKeys } = normalizeRows(raw);
     if (!rows.length) throw new Error('未返回留存数据');
 

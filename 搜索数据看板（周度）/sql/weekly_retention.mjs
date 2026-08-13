@@ -33,6 +33,7 @@ export function buildRetentionSql({ endExclusive, maxLag } = {}) {
   const startMs = Date.parse(`${start}T00:00:00`);
   const endExMs = Date.parse(`${endExclusive}T00:00:00`);
   const lastCompleteMs = endExMs - 86400000;
+  const lastCompleteDate = new Date(lastCompleteMs).toISOString().slice(0, 10);
   const completeWeeks = Math.floor((lastCompleteMs - startMs) / (7 * 86400000)) + 1;
   const lag = Number.isFinite(maxLag) ? maxLag : Math.max(0, completeWeeks - 1);
 
@@ -51,19 +52,19 @@ export function buildRetentionSql({ endExclusive, maxLag } = {}) {
       );
       continue;
     }
-    weekSelectCols.push(`
-    CASE WHEN DATE_ADD((SELECT start_date FROM params), (first_week_num + ${i}) * 7 + 6) <= (SELECT last_complete_date FROM params)
-         THEN ROUND(w${i} * 100.0 / NULLIF(cohort_size, 0), 2) END AS week_${i}`.trim());
+    weekSelectCols.push(
+      `CASE WHEN DATE_ADD(TO_DATE('${start}'), (first_week_num + ${i}) * 7 + 6) <= TO_DATE('${lastCompleteDate}')
+            THEN ROUND(w${i} * 100.0 / NULLIF(cohort_size, 0), 2) END AS week_${i}`.trim()
+    );
   }
 
+  // ── Hologres MCP 限制 ──
+  // 1. 不支持子查询之间的 JOIN：FROM (SELECT…) a JOIN (SELECT…) b → 报错
+  //    解决：用 CTE 名称直接 JOIN（FROM cte_a JOIN cte_b）
+  // 2. params CTE 的标量子查询 (SELECT … FROM params) 在 CTE 内部引用会导致
+  //    "Multi-level CTE" 错误，改为直接内联日期字面量
   return `
-WITH params AS (
-    SELECT
-        TO_DATE('${start}') AS start_date,
-        TO_DATE('${endExclusive}') AS end_date_exclusive,
-        DATE_ADD(TO_DATE('${endExclusive}'), -1) AS last_complete_date
-),
-click_base AS (
+WITH click_base AS (
     SELECT
         CAST(user_id AS STRING) AS user_id,
         dt
@@ -107,7 +108,7 @@ user_first_click AS (
         FLOOR(
             DATEDIFF(
                 TO_DATE(MIN(dt)),
-                (SELECT start_date FROM params)
+                TO_DATE('${start}')
             ) / 7
         ) AS first_week_num
     FROM click_base
@@ -119,7 +120,7 @@ user_weekly_click AS (
         FLOOR(
             DATEDIFF(
                 TO_DATE(dt),
-                (SELECT start_date FROM params)
+                TO_DATE('${start}')
             ) / 7
         ) AS week_num
     FROM click_base
@@ -128,7 +129,7 @@ user_weekly_click AS (
         FLOOR(
             DATEDIFF(
                 TO_DATE(dt),
-                (SELECT start_date FROM params)
+                TO_DATE('${start}')
             ) / 7
         )
 ),
@@ -153,16 +154,19 @@ cohort_summary AS (
 )
 SELECT
     CONCAT(
-        DATE_ADD((SELECT start_date FROM params), first_week_num * 7),
+        CAST(DATE_ADD(TO_DATE('${start}'), first_week_num * 7) AS STRING),
         ' ~ ',
-        CASE
-            WHEN DATE_ADD((SELECT start_date FROM params), first_week_num * 7 + 6) <= (SELECT last_complete_date FROM params)
-                THEN DATE_ADD((SELECT start_date FROM params), first_week_num * 7 + 6)
-            ELSE (SELECT last_complete_date FROM params)
-        END
+        CAST(
+            CASE
+                WHEN DATE_ADD(TO_DATE('${start}'), first_week_num * 7 + 6) <= TO_DATE('${lastCompleteDate}')
+                    THEN DATE_ADD(TO_DATE('${start}'), first_week_num * 7 + 6)
+                ELSE TO_DATE('${lastCompleteDate}')
+            END
+            AS STRING
+        )
     ) AS cohort_week,
     CASE
-        WHEN DATE_ADD((SELECT start_date FROM params), first_week_num * 7) < TO_DATE('${switchDt}')
+        WHEN DATE_ADD(TO_DATE('${start}'), first_week_num * 7) < TO_DATE('${switchDt}')
             THEN 'old_metric_period'
         ELSE 'new_metric_period'
     END AS metric_period,

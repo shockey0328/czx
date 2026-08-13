@@ -17,7 +17,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 import { loadEnv } from '../../lib/loadEnv.js';
-import { McpHttpClient, sleep } from '../../lib/mcpHttpClient.js';
+import { createWarehouseClient } from '../../lib/warehouseClient.js';
 import { WEEKLY_USER_CORE_SQL } from '../sql/weekly_user_core.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -118,143 +118,6 @@ function fillSql(template, vars) {
   });
 }
 
-function parseOdpsPayload(text) {
-  const raw = (text || '').trim();
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const a = raw.indexOf('{');
-    const b = raw.lastIndexOf('}');
-    if (a >= 0 && b > a) return JSON.parse(raw.slice(a, b + 1));
-    throw new Error(`无法解析 ODPS 返回: ${raw.slice(0, 200)}`);
-  }
-}
-
-function parseCsvText(csvText) {
-  const text = String(csvText || '').replace(/^\uFEFF/, '');
-  if (!text.trim()) return [];
-  const rows = [];
-  let field = '';
-  let row = [];
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (inQuotes) {
-      if (ch === '"' && next === '"') {
-        field += '"';
-        i++;
-      } else if (ch === '"') inQuotes = false;
-      else field += ch;
-      continue;
-    }
-    if (ch === '"') {
-      inQuotes = true;
-      continue;
-    }
-    if (ch === ',') {
-      row.push(field);
-      field = '';
-      continue;
-    }
-    if (ch === '\n' || (ch === '\r' && next === '\n')) {
-      if (ch === '\r') i++;
-      row.push(field);
-      field = '';
-      if (row.some((c) => c !== '')) rows.push(row);
-      row = [];
-      continue;
-    }
-    if (ch === '\r') {
-      row.push(field);
-      field = '';
-      if (row.some((c) => c !== '')) rows.push(row);
-      row = [];
-      continue;
-    }
-    field += ch;
-  }
-  row.push(field);
-  if (row.some((c) => c !== '')) rows.push(row);
-  if (rows.length < 2) return [];
-  const headers = rows[0].map((h) => String(h).trim());
-  return rows.slice(1).map((cols) => {
-    const obj = {};
-    headers.forEach((h, idx) => {
-      obj[h] = cols[idx] ?? '';
-    });
-    return obj;
-  });
-}
-
-function extractRows(body) {
-  if (!body) return [];
-  if (Array.isArray(body.data)) return body.data;
-  const csv = body.results?.AnonymousSQLTask;
-  if (typeof csv === 'string') return parseCsvText(csv);
-  return [];
-}
-
-async function runOdpsSql(client, sql, { maxCU, label, waitMs } = {}) {
-  const cu = maxCU || Number(process.env.ODPS_MAX_CU || 200);
-  const maxWait = waitMs || Number(process.env.ODPS_WAIT_MS || 600000);
-  process.stdout.write(`  [${label}] 提交 (maxCU=${cu}) ... `);
-  const submit = await client.callTool('execute_sql', {
-    project: 'dmp_analyst',
-    sql,
-    async: true,
-    maxCU: cu
-  });
-  const submitBody = parseOdpsPayload(submit.text);
-  if (submitBody?.overLimit) {
-    throw new Error(
-      `CU 超限 estimated=${submitBody.estimatedCU}，请提高 ODPS_MAX_CU`
-    );
-  }
-  const instanceId = submitBody?.instanceId;
-  if (!instanceId) {
-    const sync = extractRows(submitBody);
-    if (sync.length) {
-      console.log('同步完成');
-      return sync[0];
-    }
-    throw new Error(`未返回 instanceId: ${submit.text.slice(0, 240)}`);
-  }
-
-  const t0 = Date.now();
-  while (Date.now() - t0 < maxWait) {
-    const st = parseOdpsPayload(
-      (
-        await client.callTool('get_instance_status', {
-          project: 'dmp_analyst',
-          instanceId
-        })
-      ).text
-    );
-    if (!st?.isTerminated) {
-      await sleep(3000);
-      continue;
-    }
-    if (st.isSuccessful === false) {
-      throw new Error(`ODPS 失败: ${JSON.stringify(st).slice(0, 300)}`);
-    }
-    const dataBody = parseOdpsPayload(
-      (
-        await client.callTool('get_instance', {
-          project: 'dmp_analyst',
-          instanceId
-        })
-      ).text
-    );
-    const rows = extractRows(dataBody);
-    console.log(`完成 (${Math.round((Date.now() - t0) / 1000)}s)`);
-    if (!rows.length) throw new Error(`[${label}] 无结果`);
-    return rows[0];
-  }
-  throw new Error(`[${label}] 超时 instanceId=${instanceId}`);
-}
-
 function readCoreCsv() {
   if (!fs.existsSync(CSV_PATH)) {
     throw new Error(`找不到 ${CSV_PATH}`);
@@ -350,7 +213,7 @@ async function main() {
   const prevRange = weekRange(prev.year, prev.week);
 
   console.log('========================================');
-  console.log('  用户增长 · 周度核心 MaxCompute 更新');
+  console.log('  用户增长 · 周度核心数仓更新');
   console.log(`  SQL: ${path.relative(ROOT, SQL_PATH)}`);
   console.log(
     `  目标: ${year}年第${week}周（${range.begin} ~ ${range.end}）`
@@ -378,15 +241,12 @@ async function main() {
     prevEnd: prevRange.end
   };
 
-  const client = new McpHttpClient({
-    url: process.env.MAXCOMPUTE_MCP_URL || 'https://test-dmp-mcp.xkw.com/maxcompute-mcp',
-    apiKey: process.env.MCP_KEY || process.env.X_MCP_KEY
-  });
+  const client = await createWarehouseClient();
 
-  await client.initialize();
   try {
     const anMeta = WEEKLY_USER_CORE_SQL.activeNew;
-    const an = await runOdpsSql(client, fillSql(anMeta.sql, vars), anMeta);
+    const anRows = await client.runSql(fillSql(anMeta.sql, vars), { label: anMeta.label });
+    const an = anRows[0];
     const activeUv = Number(an.active_uv);
     const newUv = Number(an.new_uv);
     const oldUv = activeUv - newUv;
@@ -394,7 +254,8 @@ async function main() {
     console.log(`    活跃=${activeUv} 新增=${newUv} 老用户=${oldUv} 占比=${share}`);
 
     const retMeta = WEEKLY_USER_CORE_SQL.newUserRetention;
-    const ret = await runOdpsSql(client, fillSql(retMeta.sql, vars), retMeta);
+    const retRows = await client.runSql(fillSql(retMeta.sql, vars), { label: retMeta.label });
+    const ret = retRows[0];
     const prevNew = Number(ret.prev_week_new_uv);
     const retained = Number(ret.retained_uv);
     const retention = formatRetention(retained, prevNew);
