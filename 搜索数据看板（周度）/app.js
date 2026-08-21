@@ -535,9 +535,9 @@ function initEventListeners() {
 
 // ── 热搜词复制：按当前所选周 TOP100（与图表排序一致）分类汇总，按热度排序输出 ──
 
+// 专项 = 题型（question types），如作文、听力、完形填空、阅读理解、计算题等
 const HOT_KEYWORD_SPECIAL_TOPICS = [
-    '导数', '日语', '立体几何', '作文', '听力', '文言文', '完形填空', '阅读理解',
-    '电磁感应', '有机化学', '三角函数', '概率', '几何', '实验', '计算题'
+    '日语', '作文', '听力', '文言文', '完形填空', '阅读理解', '实验', '计算题'
 ];
 
 const HOT_KEYWORD_LIANAO = [
@@ -547,8 +547,44 @@ const HOT_KEYWORD_LIANAO = [
     { test: /江南十校/, label: '江南十校' },
     { test: /名校联盟/, label: '名校联盟' },
     { test: /苏锡常镇/, label: '苏锡常镇' },
+    { test: /圆创/, label: '圆创' },
     { test: /联考/, label: null },
 ];
+
+// 稳定模式类别（非枚举白名单）：写一次即可覆盖无限变体，避免每出现新考试类型就改代码
+const HOT_KEYWORD_SCHOOL = /中学|附中|一中$|二中$|三中$|七中$|八中$|十中$|学院|大学|长郡|雅礼|深圳|巴蜀/; // 任意学校名（含知名中学简称：长郡/雅礼/深圳/巴蜀）
+const HOT_KEYWORD_MONTHLY = /月考/;                 // 月考 / 第一次月考
+const HOT_KEYWORD_HUIKAO = /(^|[^开入])学考|会考/;  // 会考 / 学考 / 生地会考（排除 开学考/入学考）
+const HOT_KEYWORD_COMP = /竞赛/;                    // 竞赛 / 物理竞赛
+
+// 数学知识点：覆盖函数类、数列、圆、圆锥曲线、导数、几何等数学细分考点；变体自动并入基类（二次函数→函数、圆锥曲线大题→圆锥曲线）。
+// 顺序敏感：更具体的考点前置，避免被更短的词误吞（如 圆锥曲线 须在 圆 之前、空间向量 须在 向量 之前、三角函数 须在 函数 之前、立体几何 须在 几何 之前）。
+const HOT_KEYWORD_MATH_KP = ['圆锥曲线', '解三角形', '三角函数', '立体几何', '基本不等式', '数列', '函数', '几何', '导数', '概率', '空间向量', '圆', '向量'];
+
+function matchMathKp(kw) {
+    const k = compactKeyword(kw);
+    for (const base of HOT_KEYWORD_MATH_KP) {
+        if (k.includes(base)) return base;
+    }
+    return null;
+}
+
+// 物理/化学知识点：覆盖电路、力学、动量、电场、电磁感应、有机化学、化学平衡等理化细分考点（数据驱动，取自历史周实际出现的高频考点）。
+// 不收录裸「化学」「物理」「反应」「场」等过宽词，避免误吞；与数学知识点同理，变体自动并入基类。
+const HOT_KEYWORD_PHYS_CHEM_KP = [
+    '电磁感应', '磁场', '电场', '电路', '力学', '牛顿', '动量', '能量', '光学', '热学',
+    '万有引力', '天体', '振动', '波动', '原子物理',
+    '有机化学', '化学平衡', '离子反应', '氧化还原反应', '化学反应速率', '电化学',
+    '周期律', '元素', '物质结构', '电解质'
+];
+
+function matchPhysChemKp(kw) {
+    const k = compactKeyword(kw);
+    for (const base of HOT_KEYWORD_PHYS_CHEM_KP) {
+        if (k.includes(base)) return base;
+    }
+    return null;
+}
 
 function compactKeyword(kw) {
     return String(kw || '').replace(/\s+/g, '');
@@ -617,6 +653,14 @@ function classifyHotKeywords(topList) {
         jinyi: { has: false, minRank: NO_RANK },
         qimo: { has: false, minRank: NO_RANK },
         chachengji: { has: false, minRank: NO_RANK },
+        kaixue: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        school: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        yuekao: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        huikao: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        comp: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        mathkp: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        physchem: { items: [], seen: new Set(), hasBase: false, minRank: NO_RANK },
+        qita: { items: [], seen: new Set(), minRank: NO_RANK },
     };
 
     const bumpRank = (bucket, rank) => {
@@ -635,6 +679,7 @@ function classifyHotKeywords(topList) {
         const kw = String(row.keywords || '').trim();
         if (!kw) return;
         const k = compactKeyword(kw);
+        let matched = false;
 
         if (/查成绩|成绩查询/.test(k)) {
             buckets.chachengji.has = true;
@@ -701,18 +746,63 @@ function classifyHotKeywords(topList) {
         if (/期末/.test(k)) {
             buckets.qimo.has = true;
             bumpRank(buckets.qimo, rank);
+            matched = true;
+        }
+
+        // 开学季主题：开学考 / 分班考 / 摸底 / 期初（开学季热点，单独成类）
+        if (!matched && /开学|分班|入学|摸底|期初/.test(k)) {
+            const label = /期初/.test(k) ? '期初考试'
+                : (/分班/.test(k) ? '分班考'
+                : (/开学|入学/.test(k) ? '开学考' : '摸底'));
+            pushUnique(buckets.kaixue, label, rank);
+            return;
+        }
+
+        // 稳定模式类别（覆盖无限变体，无需逐条枚举）
+        if (HOT_KEYWORD_SCHOOL.test(k)) { pushUnique(buckets.school, kw.replace(/\s+/g, ''), rank); return; }
+        if (HOT_KEYWORD_MONTHLY.test(k)) { pushUnique(buckets.yuekao, kw.replace(/\s+/g, ''), rank); return; }
+        if (HOT_KEYWORD_HUIKAO.test(k)) { pushUnique(buckets.huikao, kw.replace(/\s+/g, ''), rank); return; }
+        if (HOT_KEYWORD_COMP.test(k)) { pushUnique(buckets.comp, kw.replace(/\s+/g, ''), rank); return; }
+
+        // 数学知识点：函数类 / 数列 / 圆 / 圆锥曲线等细分考点，变体自动并入基类
+        const mathKp = matchMathKp(kw);
+        if (mathKp) { pushUnique(buckets.mathkp, mathKp, rank); return; }
+
+        // 物理/化学知识点：电路 / 力学 / 动量 / 电场 / 电磁感应 / 有机化学 / 化学平衡等，变体自动并入基类
+        const physChemKp = matchPhysChemKp(kw);
+        if (physChemKp) { pushUnique(buckets.physchem, physChemKp, rank); return; }
+
+        // 兜底：未命中任何已知类别的热词，收集起来避免被静默丢弃
+        if (!matched) {
+            const label = kw.replace(/\s+/g, '');
+            if (!buckets.qita.seen.has(label)) {
+                buckets.qita.seen.add(label);
+                buckets.qita.items.push({ label, rank, uv: Number(row.uv) || 0 });
+                bumpRank(buckets.qita, rank);
+            }
         }
     });
 
     return buckets;
 }
 
-function formatHotKeywordSegment(label, items, hasBase) {
+function formatHotKeywordSegment(label, items, hasBase, capUnit) {
     if (items && items.length > 0) {
-        return `${label}（${items.join('、')}）`;
+        const top = items.slice(0, 4);
+        const more = items.length > 4 ? `、等${items.length}${capUnit || '项'}` : '';
+        return `${label}（${top.join('、')}${more}）`;
     }
     if (hasBase) return label;
     return null;
+}
+
+// 命名类分段：括号内词条超过 4 个时只展示前 4 个，并标注「等 N 项」（参考名校段的「前 4 所 + 等 N 所」）。
+// 分类本身不丢（每个热词仍被归类、计数与打印到控制台），仅复制文本做展示截断，保持简洁。
+function formatListSegment(label, items, capUnit) {
+    if (!items || !items.length) return null;
+    const top = items.slice(0, 4);
+    const more = items.length > 4 ? `、等${items.length}${capUnit || '项'}` : '';
+    return `${label}（${top.join('、')}${more}）`;
 }
 
 function buildHotKeywordsCopyText() {
@@ -737,21 +827,56 @@ function buildHotKeywordsCopyText() {
     if (b.yimo.has) addSegment('一模', b.yimo.minRank);
     if (b.gaokao.has) addSegment('高考', b.gaokao.minRank);
     if (b.zhuanxiang.items.length) {
-        addSegment(`专项（${b.zhuanxiang.items.join('、')}）`, b.zhuanxiang.minRank);
+        addSegment(formatListSegment('专项', b.zhuanxiang.items), b.zhuanxiang.minRank);
     }
     if (b.zhongkao.has) addSegment('中考', b.zhongkao.minRank);
     if (b.liankao.items.length) {
-        addSegment(`联考（${b.liankao.items.join('、')}）`, b.liankao.minRank);
+        addSegment(formatListSegment('联考', b.liankao.items), b.liankao.minRank);
+    }
+    if (b.mathkp.items.length) {
+        addSegment(formatListSegment('数学知识点', b.mathkp.items), b.mathkp.minRank);
+    }
+    if (b.physchem.items.length) {
+        addSegment(formatListSegment('物理/化学知识点', b.physchem.items), b.physchem.minRank);
     }
     if (b.mianfei.has) addSegment('免费', b.mianfei.minRank);
     if (b.jinyi.has) addSegment('学易金卷', b.jinyi.minRank);
     if (b.qimo.has) addSegment('期末', b.qimo.minRank);
+    if (b.kaixue.items.length) addSegment(formatHotKeywordSegment('开学季', b.kaixue.items, b.kaixue.hasBase), b.kaixue.minRank);
+    // 名校：仅展示前 4 所，超出部分用“等N所”标注总数，避免复制文本过长
+    if (b.school.items.length) {
+        const top4 = b.school.items.slice(0, 4);
+        const more = b.school.items.length > 4 ? `、等${b.school.items.length}所` : '';
+        addSegment(`名校（${top4.join('、')}${more}）`, b.school.minRank);
+    }
+    if (b.yuekao.items.length) addSegment(formatHotKeywordSegment('月考', b.yuekao.items, b.yuekao.hasBase), b.yuekao.minRank);
+    if (b.huikao.items.length) addSegment(formatHotKeywordSegment('会考/学考', b.huikao.items, b.huikao.hasBase), b.huikao.minRank);
+    if (b.comp.items.length) addSegment(formatHotKeywordSegment('竞赛', b.comp.items, b.comp.hasBase), b.comp.minRank);
     if (b.chachengji.has) addSegment('查成绩', b.chachengji.minRank);
 
-    if (!segments.length) return '';
+    if (!segments.length && !b.qita.items.length) return '';
 
     segments.sort((a, b) => a.minRank - b.minRank);
-    return `热搜词： ${segments.map((seg) => seg.text).join('；')}`;
+    let text = `2026年第${week}周热搜词： ${segments.map((seg) => seg.text).join('；')}`;
+
+    // 未归类热词：按排名展示前 10 个，超出部分用“等N项”标注总数，避免复制文本过长。
+    // 注意：这只是“展示截断”，并非数据丢失——全量未归类热词仍会打印到控制台（见下方 console.warn），
+    // 且命名类别（开学季/高考/联考/名校…）保持完整，真正的事件主题一个不漏。
+    if (b.qita.items.length) {
+        const sorted = b.qita.items.slice().sort((a, x) => a.rank - x.rank);
+        const topN = sorted.slice(0, 10).map((i) => i.label);
+        const more = sorted.length > 10 ? `、等${sorted.length}项` : '';
+        text += `；其他（${topN.join('、')}${more}）`;
+    }
+
+    // 维护提示：高频未归类热词打印到控制台，便于后续补充命名类别
+    if (b.qita.items.length) {
+        const dropped = b.qita.items.slice().sort((a, x) => x.uv - a.uv).slice(0, 10)
+            .map((i) => `${i.label}(uv=${i.uv})`).join('、');
+        console.warn(`[热搜词] 第${week}周存在未归类热词（建议补充命名类别）：`, dropped);
+    }
+
+    return text;
 }
 
 async function copyTextToClipboard(text) {
