@@ -1515,6 +1515,13 @@
         function loadHardcodedData() {
             console.log('加载数据...');
             
+            // 将 '2026/8/18' 这类斜杠日期转为时间戳，用于稳定排序（避免跨浏览器 new Date 解析差异）
+            function parseSlashDateToTime(s) {
+                const m = String(s || '').split('/');
+                if (m.length !== 3) return 0;
+                return new Date(Number(m[0]), Number(m[1]) - 1, Number(m[2])).getTime();
+            }
+
             // 检查是否有嵌入的数据
             if (typeof dashboardData !== 'undefined') {
                 console.log('使用嵌入的data.js数据');
@@ -1573,7 +1580,7 @@
                     window.dailyActiveUsers = dashboardData['活跃用户趋势_utf8'].map(row => ({
                         date: row['dt'],
                         uv: parseInt(row['uv'])
-                    }));
+                    })).sort((a, b) => parseSlashDateToTime(a.date) - parseSlashDateToTime(b.date));
                     console.log('活跃用户趋势加载成功，共', window.dailyActiveUsers.length, '条');
                 }
                 
@@ -1581,8 +1588,8 @@
                     window.dailyPaidUsers = dashboardData['付费用户及营收趋势_utf8'].map(row => ({
                         date: row['dt'],
                         paidUsers: parseInt(row['付费用户']),
-                        revenue: parseFloat(row['营收'])
-                    }));
+                        revenue:  parseFloat(row['营收'])
+                    })).sort((a, b) => parseSlashDateToTime(a.date) - parseSlashDateToTime(b.date));
                     console.log('付费用户及营收趋势加载成功，共', window.dailyPaidUsers.length, '条');
                 }
                 
@@ -1590,7 +1597,7 @@
                     window.dailyUsageRate = dashboardData['使用率趋势_utf8'].map(row => ({
                         date: row['date'],
                         usageRate: parseFloat(row['使用率百分比'])
-                    }));
+                    })).sort((a, b) => parseSlashDateToTime(a.date) - parseSlashDateToTime(b.date));
                     console.log('使用率趋势加载成功，共', window.dailyUsageRate.length, '条');
                 }
                 
