@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { spawnSync } from 'child_process';
 import { loadEnv } from '../../lib/loadEnv.js';
-import { McpHttpClient, sleep } from '../../lib/mcpHttpClient.js';
+import { createWarehouseClient } from '../../lib/warehouseClient.js';
 
 loadEnv();
 {
@@ -318,77 +318,8 @@ ORDER BY level1, rate DESC
 `.trim();
 }
 
-async function callToolWithRetry(client, name, args, retries = 4) {
-  let lastErr;
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await client.callTool(name, args);
-    } catch (err) {
-      lastErr = err;
-      const msg = String(err.message || err);
-      if (!/HTTP 502|HTTP 503|HTTP 504|ECONNRESET|ETIMEDOUT|fetch failed/i.test(msg)) throw err;
-      const wait = 5000 * (i + 1);
-      console.log(`\n    [重试 ${i + 1}/${retries}] ${msg.slice(0, 80)}，${wait / 1000}s 后重试...`);
-      await sleep(wait);
-      try {
-        await client.close();
-      } catch {
-        /* ignore */
-      }
-      client.sessionId = null;
-      await client.initialize();
-    }
-  }
-  throw lastErr;
-}
-
-async function runOdpsSql(client, sql, { maxCU = 120, waitMs = 600000 } = {}) {
-  process.stdout.write(`  提交渗透率查询 (maxCU=${maxCU}) ... `);
-  const submit = await callToolWithRetry(client, 'execute_sql', {
-    project: 'dmp_analyst',
-    sql,
-    async: true,
-    maxCU
-  });
-  const submitBody = parseOdpsPayload(submit.text);
-  if (submitBody?.overLimit) {
-    throw new Error(`CU 超限 estimated=${submitBody.estimatedCU}`);
-  }
-  const instanceId = submitBody?.instanceId;
-  if (!instanceId) {
-    const sync = extractRows(submitBody);
-    if (sync.length) {
-      console.log(`同步完成 ${sync.length} 行`);
-      return sync;
-    }
-    throw new Error(`未返回 instanceId: ${submit.text.slice(0, 240)}`);
-  }
-  const t0 = Date.now();
-  while (Date.now() - t0 < waitMs) {
-    let st;
-    try {
-      st = parseOdpsPayload(
-        (await callToolWithRetry(client, 'get_instance_status', { project: 'dmp_analyst', instanceId })).text
-      );
-    } catch (err) {
-      console.log(`\n    [状态查询失败] ${String(err.message || err).slice(0, 60)}，继续等待...`);
-      await sleep(5000);
-      continue;
-    }
-    if (!st?.isTerminated) {
-      await sleep(5000);
-      continue;
-    }
-    if (st.isSuccessful === false) throw new Error(`ODPS 失败: ${JSON.stringify(st).slice(0, 300)}`);
-    const dataBody = parseOdpsPayload(
-      (await callToolWithRetry(client, 'get_instance', { project: 'dmp_analyst', instanceId })).text
-    );
-    const rows = extractRows(dataBody);
-    console.log(`完成 ${rows.length} 行 (${Math.round((Date.now() - t0) / 1000)}s)`);
-    return rows;
-  }
-  throw new Error(`超时 instanceId=${instanceId}`);
-}
+// （已弃用）原 MaxCompute 异步查询逻辑见 lib/warehouseClient.js。
+// 本脚本现统一走 createWarehouseClient().runSql（Hologres 同步查询）。
 
 function parseCsvTable(text) {
   const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((l) => l.trim());
@@ -524,7 +455,7 @@ async function main() {
   const monthLabel = fullMonthLabel(year, month);
 
   console.log('========================================');
-  console.log('  各模块渗透率 · MaxCompute 更新');
+  console.log('  各模块渗透率 · Hologres 更新');
   console.log(`  目标月份: ${monthLabel}（${begin} ~ ${end}）`);
   if (dryRun) console.log('  模式: dry-run');
   console.log('========================================\n');
@@ -538,18 +469,10 @@ async function main() {
     process.exit(1);
   }
 
-  const client = new McpHttpClient({
-    url: process.env.MAXCOMPUTE_MCP_URL || 'https://test-dmp-mcp.xkw.com/maxcompute-mcp',
-    apiKey: process.env.MCP_KEY || process.env.X_MCP_KEY
-  });
-
-  await client.initialize();
+  const client = await createWarehouseClient();
   try {
     const sql = buildPenetrationSql(begin, end);
-    const resultRows = await runOdpsSql(client, sql, {
-      maxCU: Number(process.env.ODPS_MAX_CU || 120),
-      waitMs: Number(process.env.ODPS_WAIT_MS || 600000)
-    });
+    const resultRows = await client.runSql(sql, { label: '渗透率' });
 
     const rateByModule = new Map();
     for (const r of resultRows) {

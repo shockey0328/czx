@@ -1,0 +1,76 @@
+# 主题：transaction_payment
+
+按层级优先级列出候选；详情资源包含字段和 ETL 线索。
+
+## BI（5）
+- [`bi_pub_pub_fin_advance_revenue_1d`](../tables/bi/bi_pub_pub_fin_advance_revenue_1d.md)：产品事业部
+- [`bi_pub_pub_fin_instant_consumption_revenue_1d`](../tables/bi/bi_pub_pub_fin_instant_consumption_revenue_1d.md)：产品事业部
+- [`bi_pub_pub_fin_mbr_share_revenue_1m`](../tables/bi/bi_pub_pub_fin_mbr_share_revenue_1m.md)：产品事业部
+- [`bi_pub_pub_fin_moneyrecord_revenue_1d`](../tables/bi/bi_pub_pub_fin_moneyrecord_revenue_1d.md)：产品事业部
+- [`bi_zj_zj_trd_rev_stats`](../tables/bi/bi_zj_zj_trd_rev_stats.md)：日：统计日；周/月起始日
+
+## ADS（9）
+- [`ads_cmp_qbm_trd_res_sal_1d`](../tables/ads/ads_cmp_qbm_trd_res_sal_1d.md)：唯一ID
+- [`ads_pub_pub_trd_mbr_advance_ord_1m`](../tables/ads/ads_pub_pub_trd_mbr_advance_ord_1m.md)：订单月
+- [`ads_pub_pub_trd_moneyrecord_iaprecord_stats_mi`](../tables/ads/ads_pub_pub_trd_moneyrecord_iaprecord_stats_mi.md)：收入
+- [`ads_pub_pub_trd_paid_sum_mi`](../tables/ads/ads_pub_pub_trd_paid_sum_mi.md)：支付方式（财付通，支付宝）
+- [`ads_ump_uc_trd_incomerecord_1d`](../tables/ads/ads_ump_uc_trd_incomerecord_1d.md)：主键ID
+- [`ads_zxxk_aibook_order_detail`](../tables/ads/ads_zxxk_aibook_order_detail.md)：所属图书id
+- [`ads_zxxk_aibook_order_stat`](../tables/ads/ads_zxxk_aibook_order_stat.md)：图书ID
+- [`ads_zxxk_zxxk_trd_feeback_1d_di`](../tables/ads/ads_zxxk_zxxk_trd_feeback_1d_di.md)：自增id
+- [`ads_zxxk_zxxk_trd_mbr_save_amount_td`](../tables/ads/ads_zxxk_zxxk_trd_mbr_save_amount_td.md)：用户id
+
+## DWD（47）
+- [`dwd_cmp_qbm_trd_account_records_di`](../tables/dwd/dwd_cmp_qbm_trd_account_records_di.md)：ID
+- [`dwd_cmp_qbm_trd_res_sal_di`](../tables/dwd/dwd_cmp_qbm_trd_res_sal_di.md)：唯一ID
+- [`dwd_pub_pub_fin_iap_record_df`](../tables/dwd/dwd_pub_pub_fin_iap_record_df.md)：主键ID
+- [`dwd_pub_pub_fin_moneyrecord_di`](../tables/dwd/dwd_pub_pub_fin_moneyrecord_di.md)：资产表id储值流水号
+- [`dwd_pub_xop_trd_refund_df`](../tables/dwd/dwd_pub_xop_trd_refund_df.md)：自增id
+- [`dwd_pub_xop_trd_subscribe_df`](../tables/dwd/dwd_pub_xop_trd_subscribe_df.md)：自增id
+- [`dwd_pub_xop_trd_unsubscribe_df`](../tables/dwd/dwd_pub_xop_trd_unsubscribe_df.md)：自增id
+- [`dwd_ump_pay_trd_cash_payment_di`](../tables/dwd/dwd_ump_pay_trd_cash_payment_di.md)：自增id
+- [`dwd_ump_pay_trd_cash_payment_ex_df`](../tables/dwd/dwd_ump_pay_trd_cash_payment_ex_df.md)：自增ID
+- [`dwd_ump_pay_trd_cash_payment_extra_di`](../tables/dwd/dwd_ump_pay_trd_cash_payment_extra_di.md)：自增id
+- [`dwd_ump_pay_trd_cash_refund_df`](../tables/dwd/dwd_ump_pay_trd_cash_refund_df.md)：自增id
+- [`dwd_ump_pay_trd_charges_di`](../tables/dwd/dwd_ump_pay_trd_charges_di.md)：订单编号
+- [`dwd_ump_pay_trd_refund_wide_df`](../tables/dwd/dwd_ump_pay_trd_refund_wide_df.md)：支付系统的退款单号
+- [`dwd_ump_pay_trd_refunds_df`](../tables/dwd/dwd_ump_pay_trd_refunds_df.md)：退单ID
+- [`dwd_ump_pay_trd_sub_trade_di`](../tables/dwd/dwd_ump_pay_trd_sub_trade_di.md)：自增id
+- [`dwd_ump_pay_trd_sub_trade_ex_df`](../tables/dwd/dwd_ump_pay_trd_sub_trade_ex_df.md)：自增ID
+- [`dwd_ump_pay_trd_sub_trade_refund_df`](../tables/dwd/dwd_ump_pay_trd_sub_trade_refund_df.md)：自增id
+- [`dwd_ump_pay_trd_trade_di`](../tables/dwd/dwd_ump_pay_trd_trade_di.md)：自增id
+- [`dwd_ump_pay_trd_trade_wide_di`](../tables/dwd/dwd_ump_pay_trd_trade_wide_di.md)：订单支付完成的时间戳
+- [`dwd_ump_uc_trd_iap_record_df`](../tables/dwd/dwd_ump_uc_trd_iap_record_df.md)：主键ID
+- [`dwd_ump_uc_trd_incomerecord_di`](../tables/dwd/dwd_ump_uc_trd_incomerecord_di.md)：主键ID
+- [`dwd_ump_uc_trd_mms_assets_record_df`](../tables/dwd/dwd_ump_uc_trd_mms_assets_record_df.md)：自增id
+- [`dwd_ump_uc_trd_moneyrecord_di`](../tables/dwd/dwd_ump_uc_trd_moneyrecord_di.md)：储值流水号
+- [`dwd_ump_uc_trd_school_charges_new_df`](../tables/dwd/dwd_ump_uc_trd_school_charges_new_df.md)：自增ID
+- [`dwd_ump_uc_trd_school_charges_record_df`](../tables/dwd/dwd_ump_uc_trd_school_charges_record_df.md)：自增主键
+- [`dwd_ump_uc_trd_school_user_charges_record_df`](../tables/dwd/dwd_ump_uc_trd_school_user_charges_record_df.md)：自增主键
+- [`dwd_ump_uc_trd_shop_assets_df`](../tables/dwd/dwd_ump_uc_trd_shop_assets_df.md)：自增id
+- [`dwd_ump_uc_user_t_moneyrecord_di`](../tables/dwd/dwd_ump_uc_user_t_moneyrecord_di.md)：主键
+- [`dwd_yx_yx_trd_collect_cost_share_df`](../tables/dwd/dwd_yx_yx_trd_collect_cost_share_df.md)：主键(train_user_permission_log表的data_id)
+- [`dwd_yx_yx_trd_train_bill_df`](../tables/dwd/dwd_yx_yx_trd_train_bill_df.md)：主键
+- [`dwd_zj_xj_trd_member_pay_df`](../tables/dwd/dwd_zj_xj_trd_member_pay_df.md)：自增主键
+- [`dwd_zj_zj_trd_c_userupgraderecord_df`](../tables/dwd/dwd_zj_zj_trd_c_userupgraderecord_df.md)：ID
+- [`dwd_zj_zj_trd_order_record_df`](../tables/dwd/dwd_zj_zj_trd_order_record_df.md)：主键自增
+- [`dwd_zj_zj_trd_orderlist_df`](../tables/dwd/dwd_zj_zj_trd_orderlist_df.md)：ID
+- [`dwd_zj_zj_trd_score_record_df`](../tables/dwd/dwd_zj_zj_trd_score_record_df.md)：主键自增
+- [`dwd_zj_zj_trd_signingorder_df`](../tables/dwd/dwd_zj_zj_trd_signingorder_df.md)：ID
+- [`dwd_zxxk_ebk_trd_biz_order_df`](../tables/dwd/dwd_zxxk_ebk_trd_biz_order_df.md)：自增ID
+- [`dwd_zxxk_user_asset_sub_order_df`](../tables/dwd/dwd_zxxk_user_asset_sub_order_df.md)：自增主键
+- [`dwd_zxxk_zxxk_tls_print_order_detail_df`](../tables/dwd/dwd_zxxk_zxxk_tls_print_order_detail_df.md)：id
+- [`dwd_zxxk_zxxk_tls_print_order_df`](../tables/dwd/dwd_zxxk_zxxk_tls_print_order_df.md)：id
+- [`dwd_zxxk_zxxk_trd_b_monthlyorder_df`](../tables/dwd/dwd_zxxk_zxxk_trd_b_monthlyorder_df.md)：主键ID
+- [`dwd_zxxk_zxxk_trd_b_plusorder_df`](../tables/dwd/dwd_zxxk_zxxk_trd_b_plusorder_df.md)：主键ID
+- [`dwd_zxxk_zxxk_trd_cl_payment_df`](../tables/dwd/dwd_zxxk_zxxk_trd_cl_payment_df.md)：支付id
+- [`dwd_zxxk_zxxk_trd_cl_uservoucherconsumelog_df`](../tables/dwd/dwd_zxxk_zxxk_trd_cl_uservoucherconsumelog_df.md)：消费记录id
+- [`dwd_zxxk_zxxk_trd_feeback_1d_di`](../tables/dwd/dwd_zxxk_zxxk_trd_feeback_1d_di.md)：自增id
+- [`dwd_zxxk_zxxk_trd_subject_b_order_df`](../tables/dwd/dwd_zxxk_zxxk_trd_subject_b_order_df.md)：主键
+- [`dwd_zxxk_zxxk_trd_subject_b_ordersoftdetail_df`](../tables/dwd/dwd_zxxk_zxxk_trd_subject_b_ordersoftdetail_df.md)：自增主键
+
+## DIM（4）
+- [`dim_pub_pub_pay_channel`](../tables/dim/dim_pub_pub_pay_channel.md)：支付渠道id
+- [`dim_ump_pay_apps`](../tables/dim/dim_ump_pay_apps.md)：应用ID
+- [`dim_ump_pay_channels`](../tables/dim/dim_ump_pay_channels.md)：渠道id
+- [`dim_ump_pay_labels`](../tables/dim/dim_ump_pay_labels.md)：标签ID

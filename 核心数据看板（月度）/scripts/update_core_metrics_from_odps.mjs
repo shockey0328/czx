@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { spawnSync } from 'child_process';
 import { loadEnv } from '../../lib/loadEnv.js';
-import { McpHttpClient, sleep } from '../../lib/mcpHttpClient.js';
+import { createWarehouseClient } from '../../lib/warehouseClient.js';
 
 const require = createRequire(import.meta.url);
 
@@ -123,143 +123,6 @@ function loadExcludedPayers() {
   return uniq.map((id) => `'${id.replace(/'/g, "''")}'`).join(',');
 }
 
-function parseOdpsPayload(text) {
-  const raw = (text || '').trim();
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const a = raw.indexOf('{');
-    const b = raw.lastIndexOf('}');
-    if (a >= 0 && b > a) return JSON.parse(raw.slice(a, b + 1));
-    throw new Error(`无法解析 ODPS 返回: ${raw.slice(0, 200)}`);
-  }
-}
-
-function parseCsvText(csvText) {
-  const text = String(csvText || '').replace(/^\uFEFF/, '');
-  if (!text.trim()) return [];
-  const rows = [];
-  let field = '';
-  let row = [];
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (inQuotes) {
-      if (ch === '"' && next === '"') {
-        field += '"';
-        i++;
-      } else if (ch === '"') inQuotes = false;
-      else field += ch;
-      continue;
-    }
-    if (ch === '"') {
-      inQuotes = true;
-      continue;
-    }
-    if (ch === ',') {
-      row.push(field);
-      field = '';
-      continue;
-    }
-    if (ch === '\n' || (ch === '\r' && next === '\n')) {
-      if (ch === '\r') i++;
-      row.push(field);
-      field = '';
-      if (row.some((c) => c !== '')) rows.push(row);
-      row = [];
-      continue;
-    }
-    if (ch === '\r') {
-      row.push(field);
-      field = '';
-      if (row.some((c) => c !== '')) rows.push(row);
-      row = [];
-      continue;
-    }
-    field += ch;
-  }
-  row.push(field);
-  if (row.some((c) => c !== '')) rows.push(row);
-  if (rows.length < 2) return [];
-  const headers = rows[0].map((h) => String(h).trim());
-  return rows.slice(1).map((cols) => {
-    const obj = {};
-    headers.forEach((h, idx) => {
-      obj[h] = cols[idx] ?? '';
-    });
-    return obj;
-  });
-}
-
-function extractRows(body) {
-  if (!body) return [];
-  if (Array.isArray(body.data)) return body.data;
-  const csv = body.results?.AnonymousSQLTask;
-  if (typeof csv === 'string') return parseCsvText(csv);
-  return [];
-}
-
-async function runOdpsSql(client, sql, { maxCU, label, waitMs } = {}) {
-  const cu = maxCU || Number(process.env.ODPS_MAX_CU || 200);
-  const maxWait = waitMs || Number(process.env.ODPS_WAIT_MS || 600000);
-  process.stdout.write(`  [${label}] 提交 (maxCU=${cu}) ... `);
-  const submit = await client.callTool('execute_sql', {
-    project: 'dmp_analyst',
-    sql,
-    async: true,
-    maxCU: cu
-  });
-  const submitBody = parseOdpsPayload(submit.text);
-  if (submitBody?.overLimit) {
-    throw new Error(
-      `CU 超限 estimated=${submitBody.estimatedCU}，请提高 ODPS_MAX_CU（建议 ${submitBody.suggestedMaxCU || cu * 2}）`
-    );
-  }
-  const instanceId = submitBody?.instanceId;
-  if (!instanceId) {
-    const sync = extractRows(submitBody);
-    if (sync.length) {
-      console.log('同步完成');
-      return sync[0];
-    }
-    throw new Error(`未返回 instanceId: ${submit.text.slice(0, 240)}`);
-  }
-
-  const t0 = Date.now();
-  while (Date.now() - t0 < maxWait) {
-    const st = parseOdpsPayload(
-      (
-        await client.callTool('get_instance_status', {
-          project: 'dmp_analyst',
-          instanceId
-        })
-      ).text
-    );
-    if (!st?.isTerminated) {
-      await sleep(3000);
-      continue;
-    }
-    if (st.isSuccessful === false) {
-      throw new Error(`ODPS 失败: ${JSON.stringify(st).slice(0, 300)}`);
-    }
-    const dataBody = parseOdpsPayload(
-      (
-        await client.callTool('get_instance', {
-          project: 'dmp_analyst',
-          instanceId
-        })
-      ).text
-    );
-    const rows = extractRows(dataBody);
-    console.log(`完成 (${Math.round((Date.now() - t0) / 1000)}s)`);
-    if (!rows.length) throw new Error(`[${label}] 无结果行`);
-    return rows[0];
-  }
-  throw new Error(`[${label}] 超时 instanceId=${instanceId}`);
-}
-
 function pctFromRatio(ratio) {
   return `${Math.round(Number(ratio) * 100)}%`;
 }
@@ -332,7 +195,7 @@ temp4 AS (
     FROM temp1
 )
 SELECT t4.active_users, t3.retained_users,
-       t3.retained_users / t4.active_users AS retention_rate
+       t3.retained_users * 1.0 / t4.active_users AS retention_rate
 FROM temp4 t4
 LEFT JOIN temp3 t3 ON t4.a = t3.a
 `.trim()
@@ -695,7 +558,7 @@ async function main() {
   const monthLabel = csvMonthLabel(month);
 
   console.log('========================================');
-  console.log('  月度核心数据 · MaxCompute 更新');
+  console.log('  月度核心数据 · Hologres 更新');
   console.log(`  目标月份: ${yearLabel}${monthLabel}（${begin} ~ ${end}）`);
   console.log(`  留存对照: ${csvYearLabel(prev.year)}${csvMonthLabel(prev.month)} → 当月`);
   if (dryRun) console.log('  模式: dry-run（不写文件）');
@@ -710,28 +573,23 @@ async function main() {
   const payerInList = loadExcludedPayers();
   const sqls = buildSqls({ begin, end, prevBegin, prevEnd, payerInList });
 
-  const client = new McpHttpClient({
-    url: process.env.MAXCOMPUTE_MCP_URL || 'https://test-dmp-mcp.xkw.com/maxcompute-mcp',
-    apiKey: process.env.MCP_KEY || process.env.X_MCP_KEY
-  });
-
-  await client.initialize();
+  const client = await createWarehouseClient();
   try {
-    const mauRow = await runOdpsSql(client, sqls.mau.sql, sqls.mau);
+    const mauRow = (await client.runSql(sqls.mau.sql, sqls.mau))[0];
     const mau = Number(mauRow.uv);
     console.log(`    月活 UV = ${mau}`);
 
-    const newRow = await runOdpsSql(client, sqls.newUsers.sql, sqls.newUsers);
+    const newRow = (await client.runSql(sqls.newUsers.sql, sqls.newUsers))[0];
     const newUsers = Number(newRow.new_user_cnt);
     console.log(`    新增用户 = ${newUsers}`);
 
-    const retRow = await runOdpsSql(client, sqls.retention.sql, sqls.retention);
+    const retRow = (await client.runSql(sqls.retention.sql, sqls.retention))[0];
     const retention = pctFromRatio(retRow.retention_rate);
     console.log(
       `    次月留存 = ${retention}（活跃 ${retRow.active_users} / 留存 ${retRow.retained_users}）`
     );
 
-    const revRow = await runOdpsSql(client, sqls.revenue.sql, sqls.revenue);
+    const revRow = (await client.runSql(sqls.revenue.sql, sqls.revenue))[0];
     const revenue = Math.round(Number(revRow.revenue));
     const orders = Number(revRow.order_cnt);
     const payingUsers = Number(revRow.paying_users);
@@ -741,17 +599,17 @@ async function main() {
       `    营收=${revenue} 订单=${orders} 付费用户=${payingUsers} ARPU=${arpu} ARPPU=${arppu}`
     );
 
-    const depthRow = await runOdpsSql(client, sqls.depth.sql, sqls.depth);
+    const depthRow = (await client.runSql(sqls.depth.sql, sqls.depth))[0];
     const depthUv = Number(depthRow.uv);
     const depthRate = pctFromRatio(depthUv / mau);
     console.log(`    深度访问率 = ${depthRate}（详情 UV ${depthUv}）`);
 
-    const usageRow = await runOdpsSql(client, sqls.usage.sql, sqls.usage);
+    const usageRow = (await client.runSql(sqls.usage.sql, sqls.usage))[0];
     const usageUsers = Number(usageRow.user_count);
     const usageRate = pctFromRatio(usageUsers / mau);
     console.log(`    使用率 = ${usageRate}（使用用户 ${usageUsers}）`);
 
-    const vipRow = await runOdpsSql(client, sqls.vip.sql, sqls.vip);
+    const vipRow = (await client.runSql(sqls.vip.sql, sqls.vip))[0];
     const vipRate = pctFromPercentNumber(vipRow.active_rate);
     console.log(
       `    大会员活跃率 = ${vipRate}（会员 ${vipRow.member_cnt} / 到访 ${vipRow.visit_cnt}）`
