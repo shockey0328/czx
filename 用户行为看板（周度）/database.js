@@ -101,7 +101,14 @@ class UserBehaviorDB {
       element_name: row.element_name ?? row.html_element_name ?? row['元素名称'] ?? row.name ?? '',
       log_event_type: row.log_event_type ?? row['事件类型'] ?? row.event_type ?? row.event ?? '',
       xyio_backend_time: row.xyio_backend_time ?? row['后端时间'] ?? row.backend_time ?? row.server_time ?? '',
-      dt: row.dt ?? row['日期'] ?? row.date ?? ''
+      dt: row.dt ?? row['日期'] ?? row.date ?? '',
+      // —— A 类 2.1 补充字段（需导出 SQL 一并 SELECT 这些列；当前仅 14 列的导出数据里尚无值）——
+      title: row.title ?? row['页面标题'] ?? '',
+      single_page_app: row.single_page_app ?? row['是否单页应用'] ?? '',
+      env_trust_click: row.env_trust_click ?? row['是否真实点击'] ?? '',
+      fp_id: row.fp_id ?? row['浏览器指纹'] ?? '',
+      latest_inside_search_keyword: row.latest_inside_search_keyword ?? row['最近一次站内搜索关键词'] ?? '',
+      latest_traffic_source_type: row.latest_traffic_source_type ?? row['本次流量来源类型'] ?? ''
     };
   }
 
